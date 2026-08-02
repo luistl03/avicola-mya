@@ -1,0 +1,556 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// MÓDULO 1 — Usuarios, Sesiones y Auditoría
+// ============================================
+
+enum Rol {
+  GERENTE
+  OPERARIO
+}
+
+enum EstadoUsuario {
+  ACTIVO
+  INACTIVO
+}
+
+model Usuario {
+  id           String        @id @default(uuid())
+  usuario      String        @unique
+  passwordHash String
+  nombre       String
+  celular      String?
+  email        String?
+  rol          Rol
+  estado       EstadoUsuario @default(ACTIVO)
+  creadoEn     DateTime      @default(now())
+
+  sesiones           SesionActiva[]
+  auditLogs          AuditLog[]
+  bitacoras          BitacoraGlobal[]
+  mortalidades       RegistroMortalidad[]
+  recolecciones      RegistroRecoleccion[]
+  movimientosSueltos MovimientoSueltos[]
+  precios            PrecioKilo[]
+  ventas             Venta[]
+  abonosRecibidos    HistorialAbonos[]
+  egresosRegistrados Egreso[]
+  empleadoVinculado  Empleado?
+  pushSubscriptions  PushSubscription[]
+
+  @@index([rol])
+  @@index([estado])
+}
+
+model SesionActiva {
+  id              String    @id @default(uuid())
+  usuarioId       String
+  jti             String    @unique
+  creadaEn        DateTime  @default(now())
+  ultimaActividad DateTime  @default(now())
+  revocada        Boolean   @default(false)
+  revocadaEn      DateTime?
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([jti, revocada])
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  entidad       String
+  entidadId     String
+  accion        String
+  estadoAntes   Json?
+  estadoDespues Json?
+  usuarioId     String
+  ip            String?
+  creadoEn      DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([entidad, entidadId])
+  @@index([creadoEn])
+}
+
+// ============================================
+// MÓDULO 2 — Galpones y Lotes
+// ============================================
+
+enum EstadoLote {
+  ACTIVO
+  INACTIVO
+}
+
+model Galpon {
+  id              String   @id @default(uuid())
+  nombre          String
+  capacidadMaxima Int
+  creadoEn        DateTime @default(now())
+
+  historialUbicaciones HistorialUbicacionLote[]
+  inventarioSueltos    InventarioSueltos[]
+  movimientosSueltos   MovimientoSueltos[]
+  paqueteOrigenes      PaqueteOrigen[]
+  bandejaOrigenes      BandejaOrigen[]
+  recolecciones        RegistroRecoleccion[]
+  mortalidades         RegistroMortalidad[]
+  detalleVentas        DetalleVenta[]
+
+  @@index([nombre])
+}
+
+model Lote {
+  id            String     @id @default(uuid())
+  codigo        String     @unique
+  fechaIngreso  DateTime
+  avesIniciales Int
+  avesVivas     Int
+  estado        EstadoLote @default(ACTIVO)
+
+  historialUbicaciones HistorialUbicacionLote[]
+  inventarioSueltos    InventarioSueltos[]
+  movimientosSueltos   MovimientoSueltos[]
+  recolecciones        RegistroRecoleccion[]
+  mortalidades         RegistroMortalidad[]
+  detalleVentas        DetalleVenta[]
+
+  @@index([estado])
+  @@index([fechaIngreso])
+}
+
+model HistorialUbicacionLote {
+  id           String    @id @default(uuid())
+  loteId       String
+  galponId     String
+  fechaEntrada DateTime  @default(now())
+  fechaSalida  DateTime?
+
+  lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  galpon Galpon @relation(fields: [galponId], references: [id], onDelete: Restrict)
+
+  @@index([loteId, fechaSalida])
+  @@index([galponId])
+}
+
+// ============================================
+// MÓDULO 3 — Bitácora (D2: siempre general, sin galpón)
+// ============================================
+
+enum CategoriaBitacora {
+  ALIMENTACION
+  VACUNACION
+  OBSERVACION
+}
+
+model BitacoraGlobal {
+  id        String            @id @default(uuid())
+  fecha     DateTime          @default(now())
+  usuarioId String
+  categoria CategoriaBitacora
+  contenido String
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([fecha])
+  @@index([categoria])
+}
+
+// ============================================
+// MÓDULO 2b — Mortalidad
+// ============================================
+
+enum TipoMortalidad {
+  MUERTE
+  DESCARTE
+}
+
+model RegistroMortalidad {
+  id        String         @id @default(uuid())
+  loteId    String
+  galponId  String
+  usuarioId String
+  tipo      TipoMortalidad
+  cantidad  Int
+  fecha     DateTime       @default(now())
+
+  lote    Lote    @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  galpon  Galpon  @relation(fields: [galponId], references: [id], onDelete: Restrict)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([loteId, fecha])
+}
+
+// ============================================
+// MÓDULO 4 — Recolección e Inventario
+// ============================================
+
+enum TipoPaquete {
+  PURO
+  MIXTO
+}
+
+enum EstadoPaquete {
+  DISPONIBLE
+  VENDIDO
+  ROTO
+  ANULADO
+}
+
+model Paquete {
+  id                     String        @id @default(uuid())
+  peso                   Decimal       @db.Decimal(6, 3)
+  tipo                   TipoPaquete
+  estado                 EstadoPaquete @default(DISPONIBLE)
+  registroRecoleccionId  String?
+  creadoEn               DateTime      @default(now())
+
+  registroRecoleccion RegistroRecoleccion? @relation(fields: [registroRecoleccionId], references: [id], onDelete: SetNull)
+  origenes            PaqueteOrigen[]
+  detalleVentas       DetalleVenta[]
+  rotura              RoturaPaquete?
+
+  @@index([estado])
+  @@index([tipo])
+  @@index([registroRecoleccionId])
+}
+
+model PaqueteOrigen {
+  id        String @id @default(uuid())
+  paqueteId String
+  galponId  String
+  cantidad  Int
+
+  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  galpon  Galpon  @relation(fields: [galponId], references: [id], onDelete: Restrict)
+
+  @@index([paqueteId])
+}
+
+enum EstadoBandeja {
+  DISPONIBLE
+  VENDIDO
+}
+
+model BandejaSuelta {
+  id       String        @id @default(uuid())
+  peso     Decimal       @db.Decimal(6, 3)
+  estado   EstadoBandeja @default(DISPONIBLE)
+  creadoEn DateTime      @default(now())
+
+  origenes      BandejaOrigen[]
+  detalleVentas DetalleVenta[]
+
+  @@index([estado])
+}
+
+model BandejaOrigen {
+  id        String @id @default(uuid())
+  bandejaId String
+  galponId  String
+  cantidad  Int
+
+  bandeja BandejaSuelta @relation(fields: [bandejaId], references: [id], onDelete: Cascade)
+  galpon  Galpon        @relation(fields: [galponId], references: [id], onDelete: Restrict)
+
+  @@index([bandejaId])
+}
+
+model InventarioSueltos {
+  id       String @id @default(uuid())
+  galponId String
+  loteId   String
+  cantidad Int    @default(0)
+
+  galpon Galpon @relation(fields: [galponId], references: [id], onDelete: Restrict)
+  lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Restrict)
+
+  @@unique([galponId, loteId])
+}
+
+enum TipoMovimientoSueltos {
+  RECOLECCION
+  CONSOLIDACION_SALIDA
+  ROTURA_PAQUETE_ENTRADA
+  VENTA_SUELTO
+  REVERSION
+  AJUSTE_GERENTE
+}
+
+model MovimientoSueltos {
+  id           String                @id @default(uuid())
+  galponId     String
+  loteId       String
+  tipo         TipoMovimientoSueltos
+  cantidad     Int
+  referenciaId String?
+  motivo       String?
+  usuarioId    String
+  creadoEn     DateTime              @default(now())
+
+  galpon  Galpon  @relation(fields: [galponId], references: [id], onDelete: Restrict)
+  lote    Lote    @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([galponId, loteId, creadoEn])
+}
+
+model RegistroRecoleccion {
+  id              String    @id @default(uuid())
+  loteId          String
+  galponId        String
+  usuarioId       String
+  cantidadTotal   Int
+  creadoEnCliente DateTime?
+  creadoEn        DateTime  @default(now())
+  revertido       Boolean   @default(false)
+
+  lote     Lote      @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  galpon   Galpon    @relation(fields: [galponId], references: [id], onDelete: Restrict)
+  usuario  Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  paquetes Paquete[]
+
+  @@index([creadoEn, revertido])
+  @@index([loteId])
+}
+
+// ============================================
+// MÓDULO 7 — Clientes
+// ============================================
+
+enum TipoCliente {
+  MAYORISTA
+  MINORISTA
+  EVENTUAL
+}
+
+enum EstadoCliente {
+  ACTIVO
+  SUSPENDIDO
+}
+
+model Cliente {
+  id        String        @id @default(uuid())
+  nombre    String
+  celular   String?
+  direccion String?
+  tipo      TipoCliente
+  estado    EstadoCliente @default(ACTIVO)
+
+  ventas   Venta[]
+  creditos Credito[]
+
+  @@index([nombre])
+  @@index([estado])
+}
+
+// ============================================
+// MÓDULO 6 — Punto de Venta
+// ============================================
+
+model PrecioKilo {
+  id           String   @id @default(uuid())
+  precio       Decimal  @db.Decimal(10, 2)
+  vigenteDesde DateTime @default(now())
+  usuarioId    String
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([vigenteDesde])
+}
+
+enum MetodoPago {
+  EFECTIVO
+  YAPE
+  PLIN
+  TRANSFERENCIA
+}
+
+model Venta {
+  id           String     @id @default(uuid())
+  clienteId    String
+  usuarioId    String
+  fecha        DateTime   @default(now())
+  totalCobrado Decimal    @db.Decimal(10, 2)
+  descuento    Decimal    @db.Decimal(10, 2) @default(0)
+  metodoPago   MetodoPago
+  montoContado Decimal?   @db.Decimal(10, 2)
+  montoCredito Decimal?   @db.Decimal(10, 2)
+
+  cliente  Cliente        @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  usuario  Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  detalles DetalleVenta[]
+  credito  Credito?
+
+  @@index([fecha])
+  @@index([clienteId])
+  @@index([metodoPago])
+}
+
+enum TipoDetalleVenta {
+  PAQUETE
+  BANDEJA
+  SUELTO
+}
+
+model DetalleVenta {
+  id                 String           @id @default(uuid())
+  ventaId            String
+  tipo               TipoDetalleVenta
+  paqueteId          String?
+  bandejaId          String?
+  galponId           String?
+  loteId             String?
+  cantidadUnidades   Int?
+  pesoKg             Decimal          @db.Decimal(6, 3)
+  precioKiloAplicado Decimal          @db.Decimal(10, 2)
+  subtotal           Decimal          @db.Decimal(10, 2)
+
+  venta   Venta          @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  paquete Paquete?       @relation(fields: [paqueteId], references: [id], onDelete: Restrict)
+  bandeja BandejaSuelta? @relation(fields: [bandejaId], references: [id], onDelete: Restrict)
+  galpon  Galpon?        @relation(fields: [galponId], references: [id], onDelete: Restrict)
+  lote    Lote?          @relation(fields: [loteId], references: [id], onDelete: Restrict)
+
+  @@index([ventaId])
+}
+
+model RoturaPaquete {
+  id                String   @id @default(uuid())
+  paqueteId         String   @unique
+  pesoExtraido      Decimal  @db.Decimal(6, 3)
+  unidadesExtraidas Int
+  unidadesDevueltas Int
+  creadoEn          DateTime @default(now())
+
+  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// MÓDULO 8 — Créditos y Cobranza
+// ============================================
+
+enum EstadoCredito {
+  PENDIENTE
+  LIQUIDADO
+}
+
+model Credito {
+  id          String        @id @default(uuid())
+  ventaId     String        @unique
+  clienteId   String
+  montoTotal  Decimal       @db.Decimal(10, 2)
+  montoPagado Decimal       @db.Decimal(10, 2) @default(0)
+  fechaLimite DateTime
+  estado      EstadoCredito @default(PENDIENTE)
+
+  venta   Venta             @relation(fields: [ventaId], references: [id], onDelete: Restrict)
+  cliente Cliente           @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  abonos  HistorialAbonos[]
+
+  @@index([estado, fechaLimite])
+  @@index([clienteId])
+}
+
+model HistorialAbonos {
+  id         String     @id @default(uuid())
+  creditoId  String
+  fecha      DateTime   @default(now())
+  monto      Decimal    @db.Decimal(10, 2)
+  metodoPago MetodoPago
+  usuarioId  String
+
+  credito Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([creditoId])
+}
+
+// ============================================
+// MÓDULO 9 — Egresos y Personal (D4: sin adjuntos)
+// ============================================
+
+enum CategoriaEgreso {
+  ALIMENTOS
+  INSUMOS_VACUNAS
+  SERVICIOS
+  MANTENIMIENTO
+  VARIOS
+}
+
+model Egreso {
+  id          String          @id @default(uuid())
+  categoria   CategoriaEgreso
+  monto       Decimal         @db.Decimal(10, 2)
+  descripcion String
+  fecha       DateTime        @default(now())
+  usuarioId   String
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([fecha])
+  @@index([categoria])
+}
+
+enum EstadoEmpleado {
+  ACTIVO
+  INACTIVO
+}
+
+model Empleado {
+  id        String         @id @default(uuid())
+  nombre    String
+  celular   String?
+  cargo     String?
+  usuarioId String?        @unique
+  estado    EstadoEmpleado @default(ACTIVO)
+
+  usuario           Usuario?           @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  sueldoMovimientos SueldoMovimiento[]
+}
+
+enum TipoSueldoMovimiento {
+  SUELDO_BASE
+  ADELANTO
+  BONO
+  DESCUENTO
+}
+
+model SueldoMovimiento {
+  id          String               @id @default(uuid())
+  empleadoId  String
+  tipo        TipoSueldoMovimiento
+  monto       Decimal              @db.Decimal(10, 2)
+  fecha       DateTime             @default(now())
+  descripcion String?
+
+  empleado Empleado @relation(fields: [empleadoId], references: [id], onDelete: Restrict)
+
+  @@index([empleadoId, fecha])
+}
+
+// ============================================
+// MÓDULO 11 — Notificaciones Push
+// ============================================
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  usuarioId String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  creadoEn  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+}
