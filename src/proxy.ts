@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { verificarRateLimitAuth, verificarRateLimitOperativo } from "@/lib/rate-limit";
 import { auth } from "@/server/auth";
+import { rolPermitidoParaRuta } from "@/server/auth/rbac";
 
 function obtenerIdentificador(request: Request): string {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -33,6 +34,11 @@ export default auth(async (req) => {
   }
 
   if (req.auth) {
+    const rol = req.auth.user?.rol;
+    if (rol && !rolPermitidoParaRuta(pathname, rol)) {
+      return NextResponse.json({ error: "No autorizado." }, { status: 403 });
+    }
+
     const permitido = await verificarRateLimitOperativo(req.auth.user?.id ?? obtenerIdentificador(req));
     if (!permitido) {
       return NextResponse.json(

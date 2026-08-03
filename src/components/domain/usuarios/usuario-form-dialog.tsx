@@ -1,0 +1,208 @@
+"use client";
+
+import { useActionState, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { crearUsuario, editarUsuario } from "@/server/actions/usuario";
+import type { ActionResult } from "@/server/auth/with-auth";
+
+type UsuarioEditable = {
+  id: string;
+  nombre: string;
+  celular: string | null;
+  email: string | null;
+};
+
+type Props = { modo: "crear" } | { modo: "editar"; usuario: UsuarioEditable };
+
+type Estado = ActionResult<{ id: string }> | undefined;
+
+export function UsuarioFormDialog(props: Props) {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [open, setOpen] = useState(false);
+  const accion = props.modo === "crear" ? crearUsuario : editarUsuario;
+  // El cierre/reset en éxito se hace acá adentro (no en un useEffect que
+  // reaccione a `state`) — llamar setState dentro de un efecto dispara
+  // renders en cascada; como ya estamos en el callback async de la action,
+  // no hace falta ese paso intermedio.
+  const [state, formAction, pending] = useActionState<Estado, FormData>(
+    async (_prev, formData) => {
+      const resultado = await accion(formData);
+      if (resultado.ok) {
+        formRef.current?.reset();
+        setOpen(false);
+        router.refresh();
+      }
+      return resultado;
+    },
+    undefined
+  );
+
+  const erroresDe = (campo: string): string[] | undefined =>
+    state && !state.ok ? state.campos?.[campo] : undefined;
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => setOpen(next)}>
+      <DialogTrigger
+        render={
+          props.modo === "crear" ? (
+            <Button>Nuevo usuario</Button>
+          ) : (
+            <Button variant="outline" size="sm">
+              Editar
+            </Button>
+          )
+        }
+      />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{props.modo === "crear" ? "Nuevo usuario" : "Editar usuario"}</DialogTitle>
+          <DialogDescription>
+            {props.modo === "crear"
+              ? "El usuario queda ACTIVO de inmediato con la contraseña que definas."
+              : "Dejá la contraseña en blanco para no cambiarla."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Base UI mantiene el contenido del Popup montado durante la
+        animación de cierre — si `open` pasa a false y justo después llega
+        un `router.refresh()` con props nuevas (p. ej. al guardar una
+        edición), los inputs no controlados de abajo reciben un
+        `defaultValue` distinto estando ya montados, y Base UI lo marca
+        con una advertencia en consola ("changing default value ... after
+        being initialized"). No afecta el dato mostrado en la siguiente
+        apertura (se remonta desde cero con las props ya actualizadas),
+        pero se evita del todo desmontando el form apenas `open` es
+        false, antes de que ese refresh pueda alcanzarlo. */}
+        {open ? (
+          <form ref={formRef} action={formAction} className="flex flex-col gap-4">
+            {props.modo === "editar" ? (
+              <input type="hidden" name="usuarioId" value={props.usuario.id} />
+            ) : null}
+
+            {state && !state.ok ? (
+              <p role="alert" className="text-sm text-destructive">
+                {state.error}
+              </p>
+            ) : null}
+
+            {props.modo === "crear" ? (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="usuario">Usuario</Label>
+                <Input id="usuario" name="usuario" required autoFocus />
+                {erroresDe("usuario")?.map((error) => (
+                  <p key={error} role="alert" className="text-sm text-destructive">
+                    {error}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="nombre">Nombre</Label>
+              <Input
+                id="nombre"
+                name="nombre"
+                required
+                defaultValue={props.modo === "editar" ? props.usuario.nombre : undefined}
+              />
+              {erroresDe("nombre")?.map((error) => (
+                <p key={error} role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ))}
+            </div>
+
+            {props.modo === "crear" ? (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="rol">Rol</Label>
+                <Select name="rol" defaultValue="OPERARIO">
+                  <SelectTrigger id="rol">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPERARIO">Operario</SelectItem>
+                    <SelectItem value="GERENTE">Gerente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="password">
+                {props.modo === "crear" ? "Contraseña" : "Nueva contraseña (opcional)"}
+              </Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required={props.modo === "crear"}
+                autoComplete="new-password"
+              />
+              {erroresDe("password")?.map((error) => (
+                <p key={error} role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="celular">Celular (opcional)</Label>
+              <Input
+                id="celular"
+                name="celular"
+                defaultValue={props.modo === "editar" ? (props.usuario.celular ?? "") : undefined}
+              />
+              {erroresDe("celular")?.map((error) => (
+                <p key={error} role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="email">Email (opcional)</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                defaultValue={props.modo === "editar" ? (props.usuario.email ?? "") : undefined}
+              />
+              {erroresDe("email")?.map((error) => (
+                <p key={error} role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ))}
+            </div>
+
+            <DialogFooter>
+              <Button type="submit" disabled={pending}>
+                {pending ? "Guardando..." : "Guardar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}

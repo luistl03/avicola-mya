@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 1 completado, verificado en producción y pusheado (commit `4cf67ee`).
-**Progreso:** 2 de 16 sprints (12.5%)
+**Última actualización:** Sprint 2 completado, verificado en producción y pusheado.
+**Progreso:** 3 de 16 sprints (18.75%)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -21,7 +21,7 @@ resumen + `memory/` como base — no inventar alcance nuevo.
 
 | Release | Sprints | Estado | Entrega de valor |
 |---|---|---|---|
-| R1 — Operación básica | 0–7 | 🟡 En curso (2/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
+| R1 — Operación básica | 0–7 | 🟡 En curso (3/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
 | R2 — Finanzas | 8–11 | ⬜ Pendiente | Créditos, cobranza, egresos, planilla. |
 | R3 — Campo real | 12–13 | ⬜ Pendiente | Funciona sin señal. Instalable. |
 | R4 — Inteligencia | 14–15 | ⬜ Pendiente | Dashboard, reportes, push. |
@@ -49,23 +49,25 @@ Velocidad de referencia: 1 dev full-time 26–34 pts/sprint,
 - Modelo SesionActiva, idle check server-side, IdleTimer cliente (28min aviso, 30min logout)
 - Pantalla /login mobile-first (con el logo real de Avícola M&A)
 - Rate limiting Upstash: /api/auth/* 5/min→ban 15min; operativas 60/min
-  (código integrado, sin probar en vivo — falta crear la cuenta de Upstash)
+  (verificado en vivo contra Upstash real, local y producción, al cerrar
+  Sprint 2)
 **Specs:** `specs/sprint-01-autenticacion/`
 **Detalle de ejecución (5 bugs reales encontrados y corregidos):** `memory/estado-proyecto.md`
 
-### Sprint 2 — RBAC, auditoría y shell (29 pts)
+### ✅ Sprint 2 — RBAC, auditoría y shell (29 pts) — COMPLETADO
 **Goal:** Operario no accede a nada de Gerente, toda mutación queda auditada.
-- `proxy.ts` (ya existe desde Sprint 1 con guard de sesión binario + rate
-  limiting — no crear `middleware.ts`): agregar el guard por rol → 403
-- **withAuth(action, {rol})** — wrapper que envuelve toda Server Action (auth+Zod+AuditLog). Máximo apalancamiento del proyecto.
-- Servicio AuditLog, Shell (Sidebar/BottomNav por rol) — reemplaza el botón
+- `proxy.ts` (ya existía desde Sprint 1 con guard de sesión binario + rate
+  limiting — no se creó `middleware.ts`): guard por rol agregado → 403
+- **withAuth(action, {rol})** — wrapper que envuelve toda Server Action
+  (auth + revocación/idle + rol + Zod + AuditLog). Máximo apalancamiento
+  del proyecto, lo van a usar todos los sprints siguientes.
+- Servicio AuditLog, Shell (Sidebar/BottomNav por rol) — reemplazó el botón
   de logout placeholder montado directo en `layout.tsx` en Sprint 1
-- CRUD usuarios, tests RBAC
-**Nota importante (confirmado en Sprint 1, no es una suposición):** `proxy.ts`
-en Next 16.2.12 corre siempre en Node.js runtime, nunca en Edge — leer la
-sección "Next 16: proxy.ts" de `memory/estado-proyecto.md` antes de diseñar
-el guard por rol, cambia qué es viable ahí (p. ej. sí se puede consultar
-`SesionActiva` directamente desde `proxy.ts` si conviene).
+- CRUD usuarios completo (crear con rol elegido por el Gerente, editar,
+  activar/desactivar con revocación de sesiones), tests RBAC (65 tests)
+**Specs:** `specs/sprint-02-rbac-auditoria/`
+**Detalle de ejecución (3 bugs reales encontrados y corregidos, más el
+cierre de la deuda de Sprint 1):** `memory/estado-proyecto.md`
 
 ### Sprint 3 — Galpones, Lotes y Mudanzas (29 pts)
 **Goal:** Gerente configura estructura física, muda lotes sin perder historia.

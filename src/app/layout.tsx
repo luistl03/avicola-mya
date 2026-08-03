@@ -3,7 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { IdleTimer } from "@/components/domain/auth/idle-timer";
-import { LogoutButton } from "@/components/domain/auth/logout-button";
+import { BottomNav } from "@/components/layout/bottom-nav";
+import { Sidebar } from "@/components/layout/sidebar";
 import { auth } from "@/server/auth";
 
 const geistSans = Geist({
@@ -27,6 +28,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
+  const rol = session?.user?.rol;
 
   return (
     <html
@@ -34,15 +36,17 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {session ? (
-          // Placeholder mínimo hasta el shell real (Sidebar/BottomNav) de
-          // Sprint 2 — acá solo se garantiza que el logout sea alcanzable.
-          <div className="flex justify-end p-4">
-            <LogoutButton />
+        {rol ? (
+          <div className="flex min-h-full flex-1">
+            <Sidebar rol={rol} />
+            {/* pb-16 en mobile: deja espacio para el BottomNav fijo (S2-10) */}
+            <div className="flex flex-1 flex-col pb-16 md:pb-0">{children}</div>
           </div>
-        ) : null}
-        {children}
-        {session ? <IdleTimer /> : null}
+        ) : (
+          children
+        )}
+        {rol ? <BottomNav rol={rol} /> : null}
+        {rol ? <IdleTimer /> : null}
       </body>
     </html>
   );

@@ -25,3 +25,12 @@ export function revocarSesion(jti: string, ahora: Date) {
     data: { revocada: true, revocadaEn: ahora },
   });
 }
+
+// Por usuarioId (no por jti): se usa al desactivar un usuario (Sprint 2),
+// donde hay que tumbar TODAS sus sesiones abiertas de una vez, no una sola.
+export function revocarSesionesPorUsuario(usuarioId: string, ahora: Date) {
+  return prisma.sesionActiva.updateMany({
+    where: { usuarioId, revocada: false },
+    data: { revocada: true, revocadaEn: ahora },
+  });
+}

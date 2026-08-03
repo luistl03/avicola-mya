@@ -9,7 +9,8 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 2 de 16 completados (Sprint 0 — Cimientos, Sprint 1 — Autenticación y sesiones)
+- **Sprint actual:** 3 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+  Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell)
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -120,15 +121,41 @@ en producción y viceversa. No es un problema mientras no haya datos reales
 de la granja cargados, pero **hay que separar los branches antes de eso**
 — agregarlo a la lista de riesgos junto a D6.
 
-## Upstash Redis — cuenta todavía no creada
-El rate limiting de Sprint 1 (S1-9) está completamente integrado en código
-(`src/lib/rate-limit.ts`, usado desde `src/proxy.ts`) pero sin cuenta real
-de Upstash — degrada a "no bloquea nada" mientras falten
-`UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`, tanto en `.env` local
-como en las env vars de Vercel. Crear la cuenta (gratis, console.upstash.com)
-y cargar las credenciales en ambos lugares antes de considerar el rate
-limiting realmente activo — hasta entonces, los 5 intentos/min con ban de
-15 min de `/api/auth/*` no están aplicándose de verdad.
+## Upstash Redis — cuenta creada y verificada en vivo (cierre de Sprint 2, 2026-08-03)
+El rate limiting de Sprint 1 (S1-9), integrado en código desde entonces
+(`src/lib/rate-limit.ts`, usado desde `src/proxy.ts`), quedó **verificado
+contra la cuenta real de Upstash** (`UPSTASH_REDIS_REST_URL`/`_TOKEN`
+cargadas en `.env` local) durante el cierre de Sprint 2: 7 intentos de
+login rápidos contra `/api/auth/*` con un mismo identificador dispararon
+el bloqueo real a partir del 5to request dentro de la ventana de 1 min
+(cada intento de login hace 2 requests a `/api/auth/*` — `GET /csrf` +
+`POST /callback/credentials` —, ambos cuentan contra el mismo límite, así
+que el bloqueo aparece antes que "6 intentos de login" en términos
+humanos), con el cuerpo de respuesta esperado
+(`{"error":"Demasiados intentos. Intenta de nuevo en 15 minutos."}`,
+`HTTP 429`), aplicando incluso a una request con credenciales correctas
+mientras dura el ban, y confirmado que el bloqueo es por identificador
+(un `x-forwarded-for` distinto no fue afectado). Rate limiting real,
+activo y probado end-to-end en local.
+
+**Verificado también en producción real (2026-08-03):** el Product Owner
+cargó las mismas credenciales como env vars del proyecto en Vercel
+(Production + Preview; Development queda sin marcar a propósito — Vercel
+no permite variables "Sensitive" ahí, y este proyecto no depende de
+`vercel env pull` para desarrollo local, que ya lee su propio `.env`) y
+disparó un redeploy manual. Repetido el mismo ataque contra
+`https://avicola-mya.vercel.app`: bloqueo real con `429` y el mensaje
+esperado a partir del 5to request. **Hallazgo no-bug, solo para
+tenerlo presente:** en producción, intentar falsificar el identificador
+con un header `x-forwarded-for` propio no tuvo ningún efecto — Vercel
+sobrescribe ese header con la IP real detectada en su borde de red antes
+de que la petición llegue a la app, así que `obtenerIdentificador()` en
+`src/proxy.ts` (que confía en el primer valor de `x-forwarded-for`) es
+más robusto en producción de lo que sería en un entorno que respete
+headers de cliente sin sanear. En local (`curl` directo) sí es posible
+declarar cualquier IP, pero ahí no hay superficie de ataque real. Rate
+limiting confirmado end-to-end en local **y** producción — sin deuda
+pendiente en este ítem.
 
 ## Herramientas y configuración del entorno
 - La extensión "Claude in Chrome" se activó en Sprint 1 (pantalla de login)
@@ -144,6 +171,26 @@ limiting realmente activo — hasta entonces, los 5 intentos/min con ban de
   resultados de prueba confusos/inconsistentes en la sesión siguiente.
   Antes de dar por buena una prueba rara, verificar `netstat` para procesos
   zombie en el puerto antes de reintentar.
+- **Confirmado otra vez en Sprint 2** que `resize_window` no cambia el
+  viewport lógico real en este entorno (dos screenshots idénticos
+  antes/después de pedir 390×844) — no es intermitente, es un límite
+  estable de la herramienta acá. La verificación mobile pixel a pixel de
+  `/login` y del Shell terminó resolviéndose con el Product Owner
+  probando directo desde su celular contra producción — ambas pantallas
+  confirmadas OK. Ese es el camino a usar de nuevo si hace falta un
+  chequeo visual mobile en sprints futuros, no reintentar `resize_window`.
+- **Bug real de la extensión encontrado en Sprint 2:** editar un archivo
+  de código (`Write`/`Edit`) mientras hay una sesión de browser activa
+  interactuando con esa misma página puede dejar la pestaña "trabada"
+  (screenshots y `get_page_text` fallan con timeout de inyección de
+  script durante 1-2 minutos, aunque el propio servidor Next.js sigue
+  respondiendo bien por `curl` en paralelo) — probablemente Fast
+  Refresh/HMR recargando la página a mitad de una secuencia de acciones
+  del navegador. Se resuelve solo esperando, o navegando a una URL nueva
+  para forzar un reset de la pestaña. **Lección:** no editar el código
+  que se está probando mientras una batería de acciones de browser está
+  en curso sobre esa misma pantalla — pausar, editar, y recién después
+  retomar las acciones del navegador.
 
 ## Identidad visual — pendiente, decisión consciente
 Se evaluaron paletas basadas en el logo de Avícola M&A (ámbar/naranja/rojo
@@ -157,34 +204,88 @@ logo real de Avícola M&A ya está en `public/avicola-logo.png` y se usa en
 `/login` — la decisión de posponer la paleta de color sigue en pie, solo
 cambió que ahora sí existe el asset gráfico real para cuando se retome.
 
+## Problemas encontrados y resueltos durante Sprint 2
+1. **Diseño original ponía `prisma.$transaction(...)` dentro de la Server
+   Action de desactivar usuario — violaba ADR-000** ("solo `repositories`
+   importa Prisma"). Detectado antes de escribir código, al revisar el
+   plan contra `memory/arquitectura.md`. Corregido: la transacción
+   (`Usuario.estado` + revocar `SesionActiva`) vive en
+   `desactivarUsuarioYRevocarSesiones()` dentro de
+   `server/repositories/usuario.ts`; la action solo la invoca.
+2. **`puedeDesactivarUsuario` tenía el chequeo de "último Gerente" después
+   del de autodesactivación — la rama de "último Gerente" era código
+   muerto en la práctica.** Quien invoca la action ya tiene que ser un
+   Gerente ACTIVO (lo exige `withAuth` + el login rechaza `estado != ACTIVO`),
+   así que si objetivo ≠ actual, `totalGerentesActivos` siempre cuenta a
+   ambos (nunca ≤ 1) — el único caso real donde "último Gerente" aplica es
+   la autodesactivación del propio último Gerente activo, y el chequeo
+   viejo la interceptaba antes con el mensaje genérico. Corregido
+   invirtiendo el orden. Verificado en vivo con dos Gerentes reales: sólo
+   con uno activo, autodesactivarse muestra "Debe quedar al menos un
+   Gerente activo."; con dos activos, muestra el mensaje genérico.
+3. **`UsuarioFormDialog` disparaba una advertencia real de Base UI en
+   consola al guardar una edición** ("changing default value ... after
+   being initialized"). Causa: Base UI mantiene el contenido del `Dialog`
+   montado durante su animación de cierre; `setOpen(false)` +
+   `router.refresh()` casi simultáneos hacían que las props nuevas
+   llegaran a inputs no controlados todavía montados. Corregido gateando
+   el `<form>` detrás de `{open ? (...) : null}` para que se desmonte en
+   el mismo tick en que `open` pasa a `false`. Verificado: mismo flujo
+   repetido tras el fix, cero mensajes en consola.
+4. **Editar código fuente mientras una sesión de browser está interactuando
+   con esa misma pantalla puede trabar la pestaña** (Fast Refresh/HMR
+   recarga a mitad de una secuencia de clics) — ver detalle en
+   "Herramientas y configuración del entorno" arriba.
+
 ## Cómo continuar desde acá
-1. Sprint 2 (RBAC, auditoría y shell) es el siguiente. Su `spec.md` aún no
-   existe — generarlo primero usando `specs/roadmap-completo.md` (sección
-   Sprint 2) + este archivo + el resto de `memory/` como contexto. Usar
-   `specs/sprint-01-autenticacion/` como referencia de estructura.
-2. Antes de escribir el guard por rol, leer la sección "Next 16: proxy.ts"
-   de arriba completa — `proxy.ts` ya existe con guard de sesión binario y
-   rate limiting, no hay que crear `middleware.ts` desde cero, y corre en
-   Node.js (no Edge), lo que cambia lo que es viable ahí.
-3. El botón de logout actual (`components/domain/auth/logout-button.tsx`,
-   montado directo en `layout.tsx`) es un placeholder explícito hasta que
-   exista el Shell real de Sprint 2 (Sidebar/BottomNav) — reemplazarlo ahí,
-   no dejarlo duplicado.
-4. Mantener el mismo patrón de Sprints 0 y 1: ejecutar tarea por tarea,
-   verificar en código real (no solo tests) antes de marcar como completa,
-   commits frecuentes con git status confirmado limpio de `.env` antes de
-   cada uno.
+1. Sprint 3 (Galpones, Lotes y Mudanzas) es el siguiente. Su `spec.md` aún
+   no existe — generarlo usando `specs/roadmap-completo.md` (sección
+   Sprint 3) + este archivo + el resto de `memory/` como contexto. Usar
+   `specs/sprint-02-rbac-auditoria/` como referencia de estructura más
+   reciente (incluye el patrón de verificación en vivo con navegador +
+   script + curl que se consolidó en Sprint 2).
+2. Toda Server Action nueva que mute datos debe envolverse con
+   `withAuth(config, handler)` (`server/auth/with-auth.ts`, Sprint 2) — es
+   la pieza de mayor apalancamiento del proyecto, ya trae auth + rol + Zod
+   + AuditLog automático. No reinventar ese chequeo a mano.
+3. El guard por rol de rutas nuevas se resuelve agregando el prefijo a
+   `RUTAS_POR_ROL` en `server/auth/rbac.ts` — no escribir lógica de rol
+   nueva en `proxy.ts` directamente.
+4. Cualquier link de navegación nuevo (pantallas de Sprint 3 en adelante)
+   se agrega a `NAV_ITEMS` en `components/layout/nav-items.ts` — el Shell
+   ya filtra automáticamente por rol contra `rolPermitidoParaRuta()`, no
+   hace falta tocar `Sidebar`/`BottomNav`.
+5. Mantener el mismo patrón de Sprints 0-2: ejecutar tarea por tarea,
+   verificar en código real (no solo tests) antes de marcar como completa.
+   Cuando la extensión Claude in Chrome esté conectada, no editar archivos
+   de código mientras hay una batería de acciones de browser en curso
+   sobre la misma pantalla (ver punto 4 de "Problemas... Sprint 2").
 
 ## Registro de cierre de sprints
 - **Sprint 0** — cerrado. 10/10 tareas completas y verificadas. Deploy
   funcionando en producción. Sin deuda técnica pendiente conocida.
-- **Sprint 1** — cerrado (2026-08-02). 10/10 tareas completas, 24 tests
-  (unit + integración), verificado en código real contra servidor limpio
-  y en producción (no solo tests) — login, logout, idle timeout, guard de
-  sesión y creación de logo confirmados end-to-end. Commit `4cf67ee`,
-  pusheado y desplegado. 5 bugs reales encontrados y corregidos en el
-  camino (detalle arriba en "Problemas encontrados... Sprint 1"). Deuda
-  pendiente, ambos bloqueados por factores externos, no por código: (1)
-  rate limiting sin probar contra Upstash real (falta crear la cuenta),
-  (2) `/login` sin verificar en viewport móvil real pixel a pixel
-  (limitación de la herramienta de browser en este entorno).
+- **Sprint 1** — cerrado (2026-08-02), deuda pendiente resuelta por
+  completo al cerrar Sprint 2 (2026-08-03). 10/10 tareas completas, 24
+  tests (unit + integración), verificado en código real contra servidor
+  limpio y en producción (no solo tests) — login, logout, idle timeout,
+  guard de sesión y creación de logo confirmados end-to-end. Commit
+  `4cf67ee`, pusheado y desplegado. 5 bugs reales encontrados y corregidos
+  en el camino (detalle arriba en "Problemas encontrados... Sprint 1").
+  Los dos ítems que habían quedado pendientes (rate limiting contra
+  Upstash real, `/login` en viewport móvil real) se cerraron ambos al
+  cerrar Sprint 2 — ver esa entrada abajo.
+- **Sprint 2** — cerrado (2026-08-03). 11/11 tareas completas, 65 tests
+  (unit + integración), verificado en navegador real contra servidor
+  limpio y en producción (no solo tests): guard por rol (403 real a un
+  Operario), CRUD de usuarios completo clic a clic (crear con rol elegido,
+  editar, activar/desactivar), revocación real de `SesionActiva` al
+  desactivar (confirmada contra Neon), ambas ramas de la guard de
+  "último Gerente"/autodesactivación, Shell sin el placeholder de logout
+  duplicado, y una fila real de `AuditLog` verificada contra Neon. 3 bugs
+  reales encontrados y corregidos en el camino (detalle arriba en
+  "Problemas encontrados... Sprint 2"). De paso, se cerró también la
+  deuda pendiente de Sprint 1: rate limiting de Upstash verificado en vivo
+  contra cuenta real, en local y en producción (con un hallazgo no-bug
+  sobre cómo Vercel sanea `x-forwarded-for` en su borde de red), y
+  `/login` + el Shell verificados en viewport móvil real (celular físico
+  del Product Owner) — sin deuda pendiente conocida al cerrar este sprint.

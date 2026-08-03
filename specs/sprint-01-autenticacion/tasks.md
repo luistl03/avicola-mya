@@ -17,7 +17,20 @@
 - [x] Login manual con `gerente` / `Cambiar123!` (seed de Sprint 0) funciona end-to-end (verificado repetidas veces vía curl y navegador)
 - [x] Sesión se revoca correctamente al hacer logout — confirmado end-to-end en S1-8 tras el fix `jti`→`sesionId`: `sesionId` de la cookie coincide con `SesionActiva.jti`, y logout deja `revocada: true` + `revocadaEn` en la fila correcta
 - [x] Idle timeout probado manualmente con umbrales acortados temporalmente (28min/30min → 28s/30s) contra el server real — aviso y auto-logout confirmados
-- [ ] 🔒 BLOQUEADO POR INFRA EXTERNA (no es trabajo de código pendiente) — Rate limiting probado en vivo contra Upstash real: 6 intentos de login fallidos en <1 min producen bloqueo de 15 min. El código ya está integrado y probado en modo "sin configurar" (S1-9); falta únicamente crear la cuenta de Upstash y pegar las credenciales en `.env`
+- [x] Rate limiting probado en vivo contra Upstash real (resuelto al cerrar
+  Sprint 2, 2026-08-03 — cuenta creada por el Product Owner, credenciales
+  cargadas en `.env` local): 7 intentos rápidos contra `/api/auth/*`
+  dispararon el bloqueo real dentro de la ventana de 1 min, con el cuerpo
+  de respuesta esperado y `HTTP 429`, aplicado incluso a credenciales
+  correctas mientras dura el ban de 15 min, y confirmado que el bloqueo es
+  por identificador (no global). **Verificado también en producción real**
+  (mismo día): Product Owner cargó las credenciales en Vercel
+  (Production + Preview) e hizo un redeploy manual; se repitió el ataque
+  contra `https://avicola-mya.vercel.app` y bloqueó igual, `429` + mismo
+  mensaje, a partir del 5to request. Detalle completo, incluido un
+  hallazgo no-bug sobre `x-forwarded-for` en el borde de Vercel, en
+  `memory/estado-proyecto.md`, sección "Upstash Redis". Sin deuda
+  pendiente en este ítem, local y producción confirmados
 - [ ] 🔒 BLOQUEADO POR HERRAMIENTA (no es trabajo de código pendiente) — Pantalla `/login` verificada pixel a pixel en viewport móvil real: la herramienta de resize del navegador de este entorno no cambia el viewport lógico (queda fijo). El CSS es mobile-safe por diseño (card centrado `max-w-sm`, inputs/botones de 48px de Sprint 0) pero no hay captura verificada a 390px
 - [x] Ninguna Server Action ni componente de este sprint importa Prisma directamente (solo `server/repositories/`)
 
@@ -28,3 +41,10 @@ no son deuda de código: dependen de crear una cuenta externa (Upstash) o de
 una limitación de la herramienta de navegador en este entorno — no de algo
 que falte implementar. Retomar ambos apenas se resuelva el bloqueo externo
 correspondiente.
+
+**Actualización al cerrar Sprint 2 (2026-08-03):** el ítem de Upstash se
+resolvió (ver arriba). Sigue pendiente únicamente el viewport móvil de
+`/login` — reintentado durante el cierre de Sprint 2 con la extensión
+Claude in Chrome conectada, mismo síntoma (`resize_window` no cambia el
+viewport lógico real, dos screenshots idénticos antes/después). Sigue
+siendo un límite de la herramienta en este entorno, no del código.
