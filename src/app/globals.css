@@ -27,6 +27,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -49,38 +50,69 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
+  /* Paleta de marca: recalibrada a los colores reales del logo (medidos
+     píxel a píxel sobre avicolamya-imagotipo.png, no a ojo). El naranja de las
+     letras "AVÍCOLA M&A" (#f4900f) domina el dibujo (38% de los píxeles no
+     blancos, casi el doble que el amarillo de la paja) y es el color que
+     literalmente deletrea el nombre — por eso es --primary, no el amarillo.
+     --primary usa #f4900f tal cual, sin oscurecer (decisión explícita del
+     Product Owner: prefiere el naranja encendido del logo a una versión más
+     apagada). Ese naranja da solo 2.3:1 de contraste contra texto blanco
+     (falla AA 4.5:1) — dado que este proyecto prioriza contraste alto para
+     operarios leyendo la pantalla al sol directo en campo, --primary-
+     foreground pasa a ser oscuro (mismo tono que --foreground) en vez de
+     blanco: contra ese oscuro el naranja da ~8.3:1, de sobra. --secondary
+     usa el amarillo de la paja (#ffcc4d) casi tal cual, con
+     --secondary-foreground oscurecido al matiz del naranja para que el
+     texto sobre --secondary también pase AA. --background se mantiene casi
+     blanco — el color de marca vive en acentos (botones, foco, nav activo,
+     panel de marca del login), no en el fondo general de las pantallas
+     operativas. */
+  --background: oklch(0.99 0.008 85);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
+  --primary: oklch(0.743 0.167 62.74);
+  --primary-foreground: oklch(0.145 0 0);
+  --secondary: oklch(0.868 0.151 86.401);
+  --secondary-foreground: oklch(0.4 0.16 62.74);
+  --muted: oklch(0.97 0.012 85);
   --muted-foreground: oklch(0.32 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: oklch(0.868 0.151 86.401);
+  --accent-foreground: oklch(0.4 0.16 62.74);
   --destructive: oklch(0.48 0.22 27.325);
-  --border: oklch(0.82 0 0);
-  --input: oklch(0.82 0 0);
-  --ring: oklch(0.556 0 0);
+  /* Texto sobre --destructive sólido (variante outline-destructive en
+     hover): blanco da 6.78:1 acá; texto oscuro daría solo 2.92:1 y no pasa
+     AA — no reusar --foreground para esto aunque en otros fondos claros sí
+     funcione. */
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.85 0.025 75);
+  --input: oklch(0.85 0.025 75);
+  --ring: oklch(0.743 0.167 62.74);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
+  /* El Sidebar ya no es una superficie neutra: usa el mismo
+     naranja encendido del logo como fondo (--sidebar = --primary), con
+     --sidebar-accent en el amarillo de la paja (--secondary) para que el
+     ítem de navegación activo y el botón de logout "salten" como un acento
+     de un segundo color sobre el naranja, en vez de un simple resaltado
+     monocromático. --sidebar-border baja la opacidad del texto oscuro en
+     vez de inventar un gris nuevo, para separar encabezado/pie sin romper
+     la superficie de color. */
+  --sidebar: oklch(0.743 0.167 62.74);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-primary: oklch(0.743 0.167 62.74);
+  --sidebar-primary-foreground: oklch(0.145 0 0);
+  --sidebar-accent: oklch(0.868 0.151 86.401);
+  --sidebar-accent-foreground: oklch(0.4 0.16 62.74);
+  --sidebar-border: oklch(0.145 0 0 / 15%);
+  --sidebar-ring: oklch(0.743 0.167 62.74);
 }
 
 .dark {
@@ -99,6 +131,9 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.75 0.19 22.216);
+  /* En dark mode --destructive es mucho más claro (0.75 de L): texto oscuro
+     da 7.53:1 acá, blanco solo 2.63:1 — se invierte respecto al modo claro. */
+  --destructive-foreground: oklch(0.145 0 0);
   --border: oklch(1 0 0 / 18%);
   --input: oklch(1 0 0 / 22%);
   --ring: oklch(0.65 0 0);

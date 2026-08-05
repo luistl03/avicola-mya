@@ -17,12 +17,12 @@ export default async function UsuariosPage() {
   const usuarios = await listarUsuarios();
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
+    <div className="flex flex-col gap-6 p-4 md:p-8">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Usuarios</h1>
         <UsuarioFormDialog modo="crear" />
       </div>
       <UsuariosTabla usuarios={usuarios} />
-    </main>
+    </div>
   );
 }

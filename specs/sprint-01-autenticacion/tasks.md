@@ -31,7 +31,7 @@
   hallazgo no-bug sobre `x-forwarded-for` en el borde de Vercel, en
   `memory/estado-proyecto.md`, sección "Upstash Redis". Sin deuda
   pendiente en este ítem, local y producción confirmados
-- [ ] 🔒 BLOQUEADO POR HERRAMIENTA (no es trabajo de código pendiente) — Pantalla `/login` verificada pixel a pixel en viewport móvil real: la herramienta de resize del navegador de este entorno no cambia el viewport lógico (queda fijo). El CSS es mobile-safe por diseño (card centrado `max-w-sm`, inputs/botones de 48px de Sprint 0) pero no hay captura verificada a 390px
+- [x] Pantalla `/login` verificada en viewport móvil real — no se pudo hacer pixel a pixel con la herramienta de resize de Claude in Chrome (no cambia el viewport lógico en este entorno, confirmado dos veces). Resuelto por otra vía al cerrar Sprint 2 (2026-08-03): el Product Owner probó `/login` y el Shell desde su celular físico contra producción, ambas pantallas confirmadas OK.
 - [x] Ninguna Server Action ni componente de este sprint importa Prisma directamente (solo `server/repositories/`)
 
 ## Cierre de Sprint 1 (2026-08-02)

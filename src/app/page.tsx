@@ -1,27 +1,66 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Egg, ShoppingCart, Skull, Warehouse } from "lucide-react";
 
-export default function Home() {
+import { auth } from "@/server/auth";
+
+const TARJETAS_EJEMPLO = [
+  {
+    label: "Lotes activos",
+    valor: "3",
+    icono: Warehouse,
+    color: "bg-blue-50 text-blue-700",
+  },
+  {
+    label: "Huevos hoy",
+    valor: "1,240",
+    icono: Egg,
+    color: "bg-green-50 text-green-700",
+  },
+  {
+    label: "Mortalidad hoy",
+    valor: "2",
+    icono: Skull,
+    color: "bg-red-50 text-red-700",
+  },
+  {
+    label: "Ventas hoy",
+    valor: "S/ 0.00",
+    icono: ShoppingCart,
+    color: "bg-amber-50 text-amber-700",
+  },
+] as const;
+
+export default async function Home() {
+  const session = await auth();
+  const nombre = session?.user?.nombre ?? "";
+
   return (
-    <div className="flex flex-1 items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Vista previa del tema</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="usuario">Usuario</Label>
-            <Input id="usuario" placeholder="operario1" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Button>Registrar recolección</Button>
-            <Button variant="outline">Cancelar</Button>
-            <Button variant="destructive">Eliminar</Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-8">
+      <div>
+        <h1 className="text-2xl font-semibold">Hola{nombre ? `, ${nombre}` : ""}</h1>
+        <p className="text-muted-foreground">Avícola M&A — panel de inicio</p>
+      </div>
+
+      <div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {TARJETAS_EJEMPLO.map(({ label, valor, icono: Icono, color }) => (
+            <div
+              key={label}
+              className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm"
+            >
+              <span className={`flex size-9 items-center justify-center rounded-lg ${color}`}>
+                <Icono className="size-5" />
+              </span>
+              <div>
+                <p className="text-xl font-semibold">{valor}</p>
+                <p className="text-sm text-muted-foreground">{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Datos de ejemplo — los módulos de producción y ventas llegan en próximos sprints.
+        </p>
+      </div>
     </div>
   );
 }

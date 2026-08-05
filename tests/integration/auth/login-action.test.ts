@@ -56,7 +56,7 @@ describe("login (Server Action)", () => {
     signInMock.mockRejectedValue(new OtroError("NEXT_REDIRECT"));
 
     await expect(login("/", undefined, formDataDe("gerente", "Cambiar123!"))).rejects.toThrow(
-      "NEXT_REDIRECT"
+      "NEXT_REDIRECT",
     );
   });
 

@@ -58,8 +58,8 @@ async function main() {
         where: { id: galpon.id },
         update: {},
         create: galpon,
-      })
-    )
+      }),
+    ),
   );
 
   const lote = await prisma.lote.upsert({

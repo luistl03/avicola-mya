@@ -33,7 +33,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
         </p>
       ) : null}
       <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Ingresando..." : "Ingresar"}
+        {pending ? "Iniciando sesión..." : "Iniciar Sesión"}
       </Button>
     </form>
   );

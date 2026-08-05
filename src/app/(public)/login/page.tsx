@@ -1,7 +1,8 @@
 import Image from "next/image";
+import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/domain/auth/login-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { auth } from "@/server/auth";
 
 function rutaDeRetorno(callbackUrl: string | undefined): string {
   // callbackUrl llega como URL absoluta desde el guard de src/proxy.ts.
@@ -21,20 +22,51 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ callbackUrl?: string }>;
 }) {
+  // Si ya hay sesión activa, /login no tiene nada que hacer por vos — sin
+  // esto, el layout raíz igual monta el Sidebar por encima del
+  // formulario (decide solo por session, no por ruta), lo que se ve roto.
+  const session = await auth();
+  if (session?.user) {
+    redirect("/");
+  }
+
   const { callbackUrl } = await searchParams;
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-muted p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="flex flex-col items-center gap-2 text-center">
-          <Image src="/avicola-logo.png" alt="Avícola M&A" width={96} height={96} priority />
-          <CardTitle className="text-2xl">Avícola M&A</CardTitle>
-          <CardDescription>Ingresa con tu usuario y contraseña</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <main className="flex min-h-dvh items-center justify-center bg-background p-4">
+      {/* Grid en vez de <Card>: Card asume un solo bloque vertical
+          (header/content apilados), no dos paneles lado a lado con un color
+          a sangre completa. Se replica a mano el mismo lenguaje visual
+          (rounded-2xl, ring, shadow) para que siga viéndose parte del
+          mismo sistema. En mobile, sin md:grid-cols-2, el grid cae a una
+          sola columna y el panel de marca queda arriba del formulario. */}
+      <div className="grid w-full max-w-4xl overflow-hidden rounded-2xl bg-card shadow-lg ring-1 ring-foreground/10 md:grid-cols-2">
+        <div className="flex items-center justify-center bg-primary p-10 md:min-h-[520px]">
+          {/* El PNG no tiene canal alfa (fondo blanco horneado en la
+              imagen) — va dentro de una placa clara propia en vez de
+              directo sobre bg-primary, para que el recuadro se vea
+              intencional (insignia) y no como un borde blanco suelto. */}
+          <div className="rounded-2xl bg-card p-3 shadow-sm">
+            <Image
+              src="/avicolamya-imagotipo.png"
+              alt="Avícola M&A"
+              width={250}
+              height={250}
+              priority
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-center gap-6 p-8 md:p-12">
+          <div className="flex flex-col items-center gap-1 text-center">
+            <p className="text-sm font-semibold tracking-widest text-primary uppercase">
+              Sistema ERP
+            </p>
+            <h1 className="text-2xl font-bold uppercase md:text-3xl">Avícola M&A</h1>
+          </div>
           <LoginForm callbackUrl={rutaDeRetorno(callbackUrl)} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </main>
   );
 }

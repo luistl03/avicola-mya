@@ -4,19 +4,14 @@ import { z } from "zod";
 // vi.hoisted: las factories de vi.mock se izan por encima de cualquier
 // declaración normal del archivo (mismo patrón que
 // tests/integration/auth/login-action.test.ts).
-const {
-  authMock,
-  buscarSesionPorJtiMock,
-  revocarSesionMock,
-  crearAuditLogMock,
-  headersMock,
-} = vi.hoisted(() => ({
-  authMock: vi.fn(),
-  buscarSesionPorJtiMock: vi.fn(),
-  revocarSesionMock: vi.fn(),
-  crearAuditLogMock: vi.fn(),
-  headersMock: vi.fn(),
-}));
+const { authMock, buscarSesionPorJtiMock, revocarSesionMock, crearAuditLogMock, headersMock } =
+  vi.hoisted(() => ({
+    authMock: vi.fn(),
+    buscarSesionPorJtiMock: vi.fn(),
+    revocarSesionMock: vi.fn(),
+    crearAuditLogMock: vi.fn(),
+    headersMock: vi.fn(),
+  }));
 
 vi.mock("@/server/auth", () => ({
   auth: authMock,
@@ -139,7 +134,7 @@ describe("withAuth", () => {
     buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
     const accion = withAuth(
       { schema, rol: "GERENTE", entidad: "Usuario", accion: "CREAR" },
-      handlerExitoso
+      handlerExitoso,
     );
 
     const resultado = await accion({ nombre: "x" });
@@ -152,7 +147,7 @@ describe("withAuth", () => {
     buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
     const accion = withAuth(
       { schema, rol: ["GERENTE", "OPERARIO"], entidad: "Usuario", accion: "CREAR" },
-      handlerExitoso
+      handlerExitoso,
     );
 
     const resultado = await accion({ nombre: "x" });

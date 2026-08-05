@@ -289,3 +289,23 @@ cambió que ahora sí existe el asset gráfico real para cuando se retome.
   sobre cómo Vercel sanea `x-forwarded-for` en su borde de red), y
   `/login` + el Shell verificados en viewport móvil real (celular físico
   del Product Owner) — sin deuda pendiente conocida al cerrar este sprint.
+
+## Cierre de cabos sueltos post-Sprint 2 (2026-08-03)
+Al re-verificar el estado de Sprints 0-2 en una sesión nueva (typecheck,
+lint, `prisma validate` y los 65 tests, todos en verde de forma independiente,
+no solo releyendo la bitácora) quedaban dos cabos sueltos sin cerrar
+formalmente:
+1. El checkbox de viewport móvil de `/login` en
+   `specs/sprint-01-autenticacion/tasks.md` seguía sin tildar pese a que el
+   trabajo ya estaba resuelto (celular real del Product Owner, ver arriba) —
+   tildado ahora.
+2. La decisión pendiente de `.prettierrc.json` (`singleQuote: true` vs. el
+   100% del código real en comillas dobles, documentada en el cierre de
+   Sprint 2). **Resuelto:** se cambió `singleQuote` a `false` para que el
+   config coincida con el código real (el código ya escrito es la fuente de
+   verdad, no al revés) y se corrió `prettier --write` sobre `src/`, `tests/`,
+   `prisma/seed.ts` y `next.config.ts` (no sobre `memory/`/`specs/*.md` —
+   reformatear prosa markdown con Prettier reflowa párrafos completos y no
+   es lo que estaba en discusión). Typecheck, lint y los 65 tests se
+   corrieron de nuevo después del reformateo y siguen en verde. Sin deuda
+   pendiente conocida en Sprints 0, 1 y 2 después de este cierre.

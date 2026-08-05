@@ -6,7 +6,14 @@ import type { EstadoUsuario, Rol, Usuario } from "@prisma/client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { UsuarioFormDialog } from "@/components/domain/usuarios/usuario-form-dialog";
 import { cambiarEstadoUsuarioAction } from "@/server/actions/usuario";
 
@@ -17,22 +24,24 @@ const ROL_LABEL: Record<Rol, string> = {
 
 export function UsuariosTabla({ usuarios }: { usuarios: Usuario[] }) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Usuario</TableHead>
-          <TableHead>Nombre</TableHead>
-          <TableHead>Rol</TableHead>
-          <TableHead>Estado</TableHead>
-          <TableHead className="text-right">Acciones</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {usuarios.map((usuario) => (
-          <UsuarioFila key={usuario.id} usuario={usuario} />
-        ))}
-      </TableBody>
-    </Table>
+    <div className="overflow-x-auto rounded-lg border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Usuario</TableHead>
+            <TableHead>Nombre</TableHead>
+            <TableHead>Rol</TableHead>
+            <TableHead>Estado</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {usuarios.map((usuario) => (
+            <UsuarioFila key={usuario.id} usuario={usuario} />
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -64,7 +73,14 @@ function UsuarioFila({ usuario }: { usuario: Usuario }) {
       <TableCell>{usuario.nombre}</TableCell>
       <TableCell>{ROL_LABEL[usuario.rol]}</TableCell>
       <TableCell>
-        <Badge variant={usuario.estado === "ACTIVO" ? "default" : "secondary"}>
+        <Badge
+          variant="secondary"
+          className={
+            usuario.estado === "ACTIVO"
+              ? "bg-green-100 text-green-800"
+              : "bg-muted text-muted-foreground"
+          }
+        >
           {usuario.estado === "ACTIVO" ? "Activo" : "Inactivo"}
         </Badge>
       </TableCell>

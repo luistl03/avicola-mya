@@ -66,7 +66,7 @@ export const crearUsuario = withAuth(
       entidadId: usuario.id,
       estadoDespues: { usuario: usuario.usuario, nombre: usuario.nombre, rol: usuario.rol },
     };
-  }
+  },
 );
 
 export const editarUsuario = withAuth(
@@ -102,7 +102,7 @@ export const editarUsuario = withAuth(
         email: usuario.email,
       },
     };
-  }
+  },
 );
 
 export const cambiarEstadoUsuarioAction = withAuth(
@@ -155,5 +155,5 @@ export const cambiarEstadoUsuarioAction = withAuth(
       estadoAntes: { estado: existente.estado },
       estadoDespues: { estado: usuario.estado },
     };
-  }
+  },
 );

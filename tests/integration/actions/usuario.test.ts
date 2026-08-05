@@ -154,10 +154,14 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
       expect(resultado).toEqual({ ok: true, data: { id: "usuario-nuevo" } });
       expect(bcryptHashMock).toHaveBeenCalledWith("Cambiar123!", 12);
       expect(crearUsuarioRepoMock).toHaveBeenCalledWith(
-        expect.objectContaining({ rol: "GERENTE", passwordHash: "hash-simulado" })
+        expect.objectContaining({ rol: "GERENTE", passwordHash: "hash-simulado" }),
       );
       expect(crearAuditLogMock).toHaveBeenCalledWith(
-        expect.objectContaining({ entidad: "Usuario", accion: "CREAR", entidadId: "usuario-nuevo" })
+        expect.objectContaining({
+          entidad: "Usuario",
+          accion: "CREAR",
+          entidadId: "usuario-nuevo",
+        }),
       );
     });
 
@@ -183,7 +187,7 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
         new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
           code: "P2002",
           clientVersion: "6.19.3",
-        })
+        }),
       );
 
       const resultado = await crearUsuario(inputValido);
@@ -258,7 +262,7 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
       expect(bcryptHashMock).toHaveBeenCalledWith("NuevaClave123", 12);
       expect(actualizarUsuarioMock).toHaveBeenCalledWith(
         USUARIO_1_ID,
-        expect.objectContaining({ passwordHash: "hash-simulado" })
+        expect.objectContaining({ passwordHash: "hash-simulado" }),
       );
     });
 
@@ -303,7 +307,7 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
       expect(resultado).toEqual({ ok: true, data: { id: USUARIO_2_ID, estado: "INACTIVO" } });
       expect(desactivarUsuarioYRevocarSesionesMock).toHaveBeenCalledWith(
         USUARIO_2_ID,
-        expect.any(Date)
+        expect.any(Date),
       );
     });
 

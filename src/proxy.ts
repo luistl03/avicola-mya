@@ -21,7 +21,7 @@ export default auth(async (req) => {
     if (!permitido) {
       return NextResponse.json(
         { error: "Demasiados intentos. Intenta de nuevo en 15 minutos." },
-        { status: 429 }
+        { status: 429 },
       );
     }
     return NextResponse.next();
@@ -39,11 +39,13 @@ export default auth(async (req) => {
       return NextResponse.json({ error: "No autorizado." }, { status: 403 });
     }
 
-    const permitido = await verificarRateLimitOperativo(req.auth.user?.id ?? obtenerIdentificador(req));
+    const permitido = await verificarRateLimitOperativo(
+      req.auth.user?.id ?? obtenerIdentificador(req),
+    );
     if (!permitido) {
       return NextResponse.json(
         { error: "Demasiadas solicitudes. Intenta de nuevo en un momento." },
-        { status: 429 }
+        { status: 429 },
       );
     }
   }

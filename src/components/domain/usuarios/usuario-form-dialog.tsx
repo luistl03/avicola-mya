@@ -45,18 +45,15 @@ export function UsuarioFormDialog(props: Props) {
   // reaccione a `state`) — llamar setState dentro de un efecto dispara
   // renders en cascada; como ya estamos en el callback async de la action,
   // no hace falta ese paso intermedio.
-  const [state, formAction, pending] = useActionState<Estado, FormData>(
-    async (_prev, formData) => {
-      const resultado = await accion(formData);
-      if (resultado.ok) {
-        formRef.current?.reset();
-        setOpen(false);
-        router.refresh();
-      }
-      return resultado;
-    },
-    undefined
-  );
+  const [state, formAction, pending] = useActionState<Estado, FormData>(async (_prev, formData) => {
+    const resultado = await accion(formData);
+    if (resultado.ok) {
+      formRef.current?.reset();
+      setOpen(false);
+      router.refresh();
+    }
+    return resultado;
+  }, undefined);
 
   const erroresDe = (campo: string): string[] | undefined =>
     state && !state.ok ? state.campos?.[campo] : undefined;

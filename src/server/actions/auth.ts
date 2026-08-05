@@ -9,7 +9,7 @@ export type LoginState = { error: string } | undefined;
 export async function login(
   callbackUrl: string,
   _prevState: LoginState,
-  formData: FormData
+  formData: FormData,
 ): Promise<LoginState> {
   const parsed = loginSchema.safeParse({
     usuario: formData.get("usuario"),

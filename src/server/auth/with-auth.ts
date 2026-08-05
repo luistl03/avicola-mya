@@ -59,7 +59,7 @@ const ERROR_SESION_INVALIDA = "Tu sesión ya no es válida. Inicia sesión de nu
 
 export function withAuth<TInput, TOutput>(
   config: WithAuthConfig<TInput>,
-  handler: (input: TInput, ctx: HandlerCtx) => Promise<HandlerResult<TOutput>>
+  handler: (input: TInput, ctx: HandlerCtx) => Promise<HandlerResult<TOutput>>,
 ) {
   return async (rawInput: unknown): Promise<ActionResult<TOutput>> => {
     const session = await auth();

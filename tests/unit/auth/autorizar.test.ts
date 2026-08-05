@@ -44,7 +44,10 @@ describe("autorizarCredenciales", () => {
     const usuario = makeUsuario({ passwordHash: PASSWORD_HASH });
     buscarUsuarioPorUsuarioMock.mockResolvedValue(usuario);
 
-    const resultado = await autorizarCredenciales({ usuario: usuario.usuario, password: "otra-clave" });
+    const resultado = await autorizarCredenciales({
+      usuario: usuario.usuario,
+      password: "otra-clave",
+    });
     expect(resultado).toBeNull();
   });
 

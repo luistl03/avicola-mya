@@ -2,7 +2,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
 const upstashConfigurado = Boolean(
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
 );
 
 // Upstash todavía no está provisionado en este entorno (ver
