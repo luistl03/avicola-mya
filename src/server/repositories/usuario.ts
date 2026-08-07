@@ -49,8 +49,20 @@ type ActualizarUsuarioData = {
 // Gerente lo dejó en blanco", así que se persiste como `null` explícito.
 // Pasar `undefined` tal cual a Prisma.update() significaría "no tocar
 // este campo", que dejaría un valor viejo pegado si el usuario lo borró.
-export function actualizarUsuario(id: string, data: ActualizarUsuarioData) {
-  return prisma.usuario.update({
+//
+// Toca dos tablas (Usuario + SesionActiva) cuando se resetea la
+// contraseña — va en prisma.$transaction por convención
+// (convenciones.md), mismo patrón que desactivarUsuarioYRevocarSesiones.
+// Revocar solo pasa si `passwordHash` viene seteado: no tiene sentido
+// desloguear el resto de sesiones por editar el nombre o el celular, pero
+// SÍ tiene sentido hacerlo al cambiar la contraseña — si el motivo del
+// cambio es que la vieja quedó expuesta (p. ej. aviso de brecha del
+// gestor de contraseñas del navegador), dejar sesiones viejas vivas
+// anularía el propósito del reseteo. Devuelve un array (no un Usuario
+// suelto) porque `$transaction` siempre devuelve un array — el caller
+// desestructura el primer elemento.
+export function actualizarUsuario(id: string, data: ActualizarUsuarioData, ahora: Date) {
+  const actualizacion = prisma.usuario.update({
     where: { id },
     data: {
       usuario: data.usuario,
@@ -60,6 +72,12 @@ export function actualizarUsuario(id: string, data: ActualizarUsuarioData) {
       ...(data.passwordHash ? { passwordHash: data.passwordHash } : {}),
     },
   });
+
+  if (!data.passwordHash) {
+    return prisma.$transaction([actualizacion]);
+  }
+
+  return prisma.$transaction([actualizacion, revocarSesionesPorUsuario(id, ahora)]);
 }
 
 export function cambiarEstadoUsuario(id: string, estado: EstadoUsuario) {

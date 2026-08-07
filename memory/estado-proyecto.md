@@ -335,6 +335,53 @@ confirmaron con capturas de pantalla reales que compartió el Product Owner
 desde su celular, no con la herramienta de navegador. Camino a repetir en
 sprints futuros si hace falta verificar diseño mobile pixel a pixel.
 
+## Seguridad: revocar sesiones al resetear contraseña (2026-08-07)
+Auditoría de seguridad pedida explícitamente por el Product Owner sobre
+todo lo de la sesión de identidad visual/UX (sección de arriba) encontró
+un hueco real: **editar un usuario y ponerle una contraseña nueva no
+revocaba sus sesiones activas** — a diferencia de "Desactivar", que sí lo
+hace desde Sprint 2 (`desactivarUsuarioYRevocarSesiones`). El motivo por
+el que importa: el propio Product Owner cambió la contraseña de `gerente`
+en producción justo porque el gestor de contraseñas de Chrome la marcó
+como expuesta en una brecha — el objetivo de ese cambio es sacar a
+cualquiera que pudiera tener acceso con la contraseña vieja, y sin
+revocar sesiones esa protección quedaba incompleta (una sesión ya abierta
+seguía viva hasta el logout automático por inactividad, 30 min).
+
+**Corregido:** `actualizarUsuario()` en `server/repositories/usuario.ts`
+ahora recibe también `ahora: Date` y, cuando `data.passwordHash` viene
+seteado, envuelve el `update` del usuario junto con
+`revocarSesionesPorUsuario(id, ahora)` en el mismo `prisma.$transaction`
+(mismo patrón que `desactivarUsuarioYRevocarSesiones`). Si no se resetea
+la contraseña (solo se edita nombre/celular/email), no se toca
+`SesionActiva` — no tiene sentido desloguear al resto de sesiones por eso.
+La función ahora devuelve un array (como cualquier `$transaction`), así
+que `editarUsuario()` en `server/actions/usuario.ts` desestructura el
+primer elemento.
+
+**Verificado contra la base real** (no solo con mocks — no hay tests de
+repository en este proyecto, ver ADR-000/convenciones.md, así que se
+siguió el mismo criterio que ya se usó para verificar
+`desactivarUsuarioYRevocarSesiones` en Sprint 2): se insertó una fila de
+`SesionActiva` de prueba para `operario` con un script temporal, se llamó
+a `actualizarUsuario()` real con `passwordHash` seteado, y la fila pasó de
+`revocada: false` a `revocada: true` con `revocadaEn` seteado. Repetido el
+caso negativo (sin `passwordHash`): la sesión de prueba quedó intacta.
+Filas y scripts de prueba borrados al terminar. 3 tests de
+`tests/integration/actions/usuario.test.ts` actualizados (mock de
+`actualizarUsuario` ahora resuelve un array, no un objeto suelto).
+
+**Efecto colateral a tener presente:** si un Gerente resetea su propia
+contraseña estando logueado, esa acción revoca también su sesión actual —
+va a tener que volver a loguearse con la contraseña nueva. Es el
+comportamiento esperado (mismo criterio que la mayoría de apps con esta
+protección), no un bug.
+
+**Pendiente real, no de esta sesión:** sigue sin existir una pantalla de
+"cambiar mi propia contraseña" — ver "Credenciales de desarrollo (seed)"
+arriba. El único camino hoy para cambiar una contraseña es que un Gerente
+la resetee desde Editar (la propia o la de otro usuario).
+
 ## Problemas encontrados y resueltos durante Sprint 2
 1. **Diseño original ponía `prisma.$transaction(...)` dentro de la Server
    Action de desactivar usuario — violaba ADR-000** ("solo `repositories`

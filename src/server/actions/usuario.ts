@@ -91,21 +91,26 @@ export const editarUsuario = withAuth(
       ? await bcrypt.hash(input.password, BCRYPT_COST)
       : undefined;
 
-    let usuario;
+    let resultado: Awaited<ReturnType<typeof actualizarUsuario>>;
     try {
-      usuario = await actualizarUsuario(input.usuarioId, {
-        usuario: input.usuario,
-        nombre: input.nombre,
-        celular: input.celular,
-        email: input.email,
-        passwordHash,
-      });
+      resultado = await actualizarUsuario(
+        input.usuarioId,
+        {
+          usuario: input.usuario,
+          nombre: input.nombre,
+          celular: input.celular,
+          email: input.email,
+          passwordHash,
+        },
+        new Date(),
+      );
     } catch (error) {
       if (esErrorDeUnicidad(error)) {
         throw new AccionError(ERROR_USUARIO_DUPLICADO);
       }
       throw error;
     }
+    const [usuario] = resultado;
 
     return {
       data: { id: usuario.id },

@@ -212,13 +212,15 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
         email: null,
       });
       buscarUsuarioPorUsuarioMock.mockResolvedValue(null);
-      actualizarUsuarioMock.mockResolvedValue({
-        id: USUARIO_1_ID,
-        usuario: "usuario.nuevo",
-        nombre: "Nombre Nuevo",
-        celular: "988888888",
-        email: null,
-      });
+      actualizarUsuarioMock.mockResolvedValue([
+        {
+          id: USUARIO_1_ID,
+          usuario: "usuario.nuevo",
+          nombre: "Nombre Nuevo",
+          celular: "988888888",
+          email: null,
+        },
+      ]);
 
       const resultado = await editarUsuario({
         usuarioId: USUARIO_1_ID,
@@ -231,13 +233,17 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
 
       expect(resultado).toEqual({ ok: true, data: { id: USUARIO_1_ID } });
       expect(bcryptHashMock).not.toHaveBeenCalled();
-      expect(actualizarUsuarioMock).toHaveBeenCalledWith(USUARIO_1_ID, {
-        usuario: "usuario.nuevo",
-        nombre: "Nombre Nuevo",
-        celular: "988888888",
-        email: undefined,
-        passwordHash: undefined,
-      });
+      expect(actualizarUsuarioMock).toHaveBeenCalledWith(
+        USUARIO_1_ID,
+        {
+          usuario: "usuario.nuevo",
+          nombre: "Nombre Nuevo",
+          celular: "988888888",
+          email: undefined,
+          passwordHash: undefined,
+        },
+        expect.any(Date),
+      );
     });
 
     it("no vuelve a chequear unicidad si el nombre de usuario no cambió", async () => {
@@ -250,13 +256,15 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
         celular: null,
         email: null,
       });
-      actualizarUsuarioMock.mockResolvedValue({
-        id: USUARIO_1_ID,
-        usuario: "usuario.actual",
-        nombre: "Nombre",
-        celular: null,
-        email: null,
-      });
+      actualizarUsuarioMock.mockResolvedValue([
+        {
+          id: USUARIO_1_ID,
+          usuario: "usuario.actual",
+          nombre: "Nombre",
+          celular: null,
+          email: null,
+        },
+      ]);
 
       const resultado = await editarUsuario({
         usuarioId: USUARIO_1_ID,
@@ -309,13 +317,15 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
         celular: null,
         email: null,
       });
-      actualizarUsuarioMock.mockResolvedValue({
-        id: USUARIO_1_ID,
-        usuario: "usuario.actual",
-        nombre: "Nombre",
-        celular: null,
-        email: null,
-      });
+      actualizarUsuarioMock.mockResolvedValue([
+        {
+          id: USUARIO_1_ID,
+          usuario: "usuario.actual",
+          nombre: "Nombre",
+          celular: null,
+          email: null,
+        },
+      ]);
 
       await editarUsuario({
         usuarioId: USUARIO_1_ID,
@@ -327,9 +337,14 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
       });
 
       expect(bcryptHashMock).toHaveBeenCalledWith("NuevaClave123", 12);
+      // El repository (actualizarUsuario) es quien decide revocar sesiones
+      // dentro de la misma transacción cuando viene passwordHash — acá solo
+      // se confirma que la action le pasa passwordHash, no que revoque
+      // (eso se prueba en la unidad del repository, no con un mock).
       expect(actualizarUsuarioMock).toHaveBeenCalledWith(
         USUARIO_1_ID,
         expect.objectContaining({ passwordHash: "hash-simulado" }),
+        expect.any(Date),
       );
     });
 
