@@ -5,7 +5,14 @@
 - [x] S1-3 — Callbacks `jwt`/`session`: embeber `usuarioId`, `rol`, `jti` en el token — ⚠️ el campo se renombró a `sesionId` en S1-8 (bug real: `jti` colisionaba con el claim JWT estándar que Auth.js reescribe en `encode()`, ver plan.md)
 - [x] S1-4 — `repositories/sesion.ts` + `services/sesion.ts`: crear SesionActiva al login, `estaExpiradaPorInactividad()`, `actualizarUltimaActividad()`, `revocar()`
 - [x] S1-5 — `proxy.ts` (Next 16, ex-`middleware.ts`): guard binario autenticado/no autenticado — confirmar sintaxis vigente contra la versión instalada de next-auth (R1 en spec.md) antes de escribir
-- [x] S1-6 — Pantalla `/login` mobile-first: `Card`/`Input`/`Label`/`Button` de `components/ui/`, estados de error/carga, `await searchParams` si se leen params de la URL (R2 en spec.md)
+- [x] S1-6 — Pantalla `/login` mobile-first: `Input`/`Label`/`Button` de
+  `components/ui/`, estados de error/carga, `await searchParams` si se leen
+  params de la URL (R2 en spec.md). **Actualizado en una sesión posterior
+  de identidad visual:** ya no usa `Card` — se reemplazó por un grid a
+  mano (dos paneles lado a lado, uno a sangre completa con el color de
+  marca) porque `Card` asume un solo bloque vertical apilado, no dos
+  paneles con un color a sangre completa; ver el comentario en el propio
+  `page.tsx`. `Card` no se usa en ningún lugar del proyecto todavía.
 - [x] S1-7 — `IdleTimer` cliente: aviso a los 28 min, logout a los 30 min, heartbeat con debounce ~60s o `sendBeacon` (R3 en spec.md)
 - [x] S1-8 — Botón "Cerrar sesión" (`components/domain/auth/logout-button.tsx`, form directo a la Server Action `logout()` ya construida en S1-7, montado en el layout raíz mientras no exista el shell de Sprint 2). Al verificarlo en vivo se encontró y corrigió el bug real `jti`/`sesionId` descrito arriba en S1-3 — el logout revoca ahora la fila correcta, confirmado end-to-end con un servidor limpio.
 - [x] S1-9 — Rate limiting Upstash: `@upstash/ratelimit` + `@upstash/redis`, `/api/auth/*` 5/min → ban 15 min; rutas operativas 60/min. ⚠️ Código integrado y verificado en modo "no configurado" (sin credenciales reales de Upstash todavía — degrada a no-limitar, ver plan.md). Falta probar en vivo cuando exista la cuenta.

@@ -64,11 +64,13 @@
      blanco: contra ese oscuro el naranja da ~8.3:1, de sobra. --secondary
      usa el amarillo de la paja (#ffcc4d) casi tal cual, con
      --secondary-foreground oscurecido al matiz del naranja para que el
-     texto sobre --secondary también pase AA. --background se mantiene casi
-     blanco — el color de marca vive en acentos (botones, foco, nav activo,
-     panel de marca del login), no en el fondo general de las pantallas
-     operativas. */
-  --background: oklch(0.99 0.008 85);
+     texto sobre --secondary también pase AA. --background es blanco puro,
+     igual que --card (decisión explícita: mismo blanco que el fondo de la
+     insignia del isotipo) — el color de marca vive en acentos (botones,
+     foco, nav activo, panel de marca del login), no en el fondo general de
+     las pantallas operativas. Las tarjetas/tablas se siguen distinguiendo
+     por borde + sombra, no por un tono de fondo distinto. */
+  --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -163,5 +165,42 @@
     /* Base 18px (no 16px): operarios leen la pantalla al sol directo en campo. */
     font-size: 18px;
     @apply font-sans;
+  }
+}
+
+@layer components {
+  /* Tarjetas de toast (ui/toast.tsx) — fondo tintado por tipo, no una
+     tarjeta blanca con un acento aparte: un toast se lee de reojo, el
+     color de fondo tiene que comunicar el estado antes que el texto. No
+     son tonos nuevos: success reusa el mismo verde del badge "Activo"
+     (usuarios-tabla.tsx), error el mismo destructive/10 del botón
+     "Desactivar" (ui/button.tsx), info el par --accent/--accent-foreground
+     que ya definía este archivo sin que ningún componente lo usara. El
+     ícono de cada toast no tiene clase de color propia: hereda este mismo
+     texto vía currentColor. */
+  .toast-success {
+    @apply border-green-300 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200;
+  }
+  .toast-error {
+    @apply border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/20;
+  }
+  .toast-info {
+    @apply border-accent-foreground/20 bg-accent text-accent-foreground;
+  }
+
+  /* Sombra de "hay más para deslizar" en TableScrollArea
+     (ui/table-scroll-area.tsx) — sombra interior, no un degradé de color:
+     un degradé de --background a transparente no se distingue sobre una
+     tabla que también es blanca (blanco sobre blanco no se ve). Sigue la
+     posición real del scroll: aparece del lado hacia el que todavía se
+     puede deslizar y desaparece del lado ya recorrido. */
+  .scroll-shadow-derecha {
+    @apply shadow-[inset_-14px_0_10px_-10px_rgb(0_0_0_/_0.15)] dark:shadow-[inset_-14px_0_10px_-10px_rgb(255_255_255_/_0.12)];
+  }
+  .scroll-shadow-izquierda {
+    @apply shadow-[inset_14px_0_10px_-10px_rgb(0_0_0_/_0.15)] dark:shadow-[inset_14px_0_10px_-10px_rgb(255_255_255_/_0.12)];
+  }
+  .scroll-shadow-ambas {
+    @apply shadow-[inset_-14px_0_10px_-10px_rgb(0_0_0_/_0.15),inset_14px_0_10px_-10px_rgb(0_0_0_/_0.15)] dark:shadow-[inset_-14px_0_10px_-10px_rgb(255_255_255_/_0.12),inset_14px_0_10px_-10px_rgb(255_255_255_/_0.12)];
   }
 }

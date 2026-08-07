@@ -192,17 +192,148 @@ pendiente en este ítem.
   en curso sobre esa misma pantalla — pausar, editar, y recién después
   retomar las acciones del navegador.
 
-## Identidad visual — pendiente, decisión consciente
-Se evaluaron paletas basadas en el logo de Avícola M&A (ámbar/naranja/rojo
-extraídos directamente del logo) pero **se decidió posponer** la definición
-final hasta tener pantallas reales de negocio construidas — es más fácil
-decidir estilo viendo la app funcionando que sobre mockups aislados.
-Actualmente el proyecto usa el tema por defecto de shadcn/ui (negro/blanco)
-como placeholder. Retomar este tema cuando haya UI de negocio real que
-mostrar (sugerido: después de Sprint 3-4). **Actualización Sprint 1:** el
-logo real de Avícola M&A ya está en `public/avicola-logo.png` y se usa en
-`/login` — la decisión de posponer la paleta de color sigue en pie, solo
-cambió que ahora sí existe el asset gráfico real para cuando se retome.
+## Identidad visual, shell y UX de mobile (post-Sprint 2, 2026-08-06)
+**Esta sección reemplaza la anterior ("Identidad visual — pendiente"), que
+quedó obsoleta: la paleta ya no está pospuesta, se definió y se retocó dos
+veces.** Todo esto ocurrió después de cerrar Sprint 2 formalmente (commit
+`74b9c9b`), en dos tandas: un commit propio (`a49d41a feat: identidad
+visual, login y shell con Sidebar deslizable`) más una sesión larga de
+ajuste fino de UX/frontend sobre el módulo de Usuarios que quedó sin
+commitear hasta el cierre documentado más abajo. Se registra acá porque
+tocó decisiones de arquitectura de UI que sprints futuros van a heredar
+tal cual (no hay que repensarlas por pantalla).
+
+### Paleta de color: regla 60-30-10
+El naranja del logo (`--primary`, `#f4900f`) e inicialmente el ámbar
+(`--secondary`) se usaban en TODO — títulos, franjas, y prácticamente
+todos los botones (Nuevo usuario, Guardar, Editar compartían el mismo
+ámbar). El Product Owner lo encontró "cargado". Se resolvió aplicando
+60-30-10 (dominante neutro, secundario neutro, acento de marca solo en la
+única CTA principal por pantalla + nav activo + focus + acentos
+puntuales):
+- Ámbar (`--secondary`) salió por completo de los botones — ya no se usa
+  como `variant` de ningún botón del proyecto.
+- Naranja (`--primary`) queda reservado a la acción principal de cada
+  pantalla (`variant="default"`) y a la marca (Sidebar, focus ring).
+- Acciones secundarias (Editar, Cancelar) usan `variant="outline"` —
+  neutro, con hover que rellena el fondo (`hover:bg-muted`) para que el
+  cambio se note al pasar el cursor (el hover de `secondary` era casi
+  imperceptible).
+- Los títulos de modal usan `text-foreground font-semibold` (no un color
+  de marca): la primera versión probada usaba `text-primary` (naranja)
+  directo sobre fondo blanco y fallaba contraste AA (~2.3:1 contra el
+  4.5:1 exigido) — bug real de accesibilidad encontrado y corregido en el
+  camino. El ícono del título usa `text-primary` como acento puntual.
+  `DialogHeader` separa el título/descripción del cuerpo con un divisor
+  delgado y neutro (`border-b border-border`), no una franja de color.
+
+### Tamaño de botones: `size="md"` para pantallas de gestión
+El tamaño `default` de `Button` (`h-12`, ≥48px) es intencional para
+pantallas táctiles de campo (Operario, sol directo — ver comentario en
+`ui/button.tsx`), pero se veía sobredimensionado en diálogos de gestión de
+escritorio (Gerente). Se agregó `size="md"` (`h-10`, igual a la altura de
+los `Input` del formulario) para ese contexto — `default`/`lg` siguen
+siendo el estándar para pantallas operativas de campo en sprints futuros
+(Producción, Ventas), no se tocaron.
+
+### Sistema de toasts (`components/ui/toast.tsx`, nuevo)
+Usa el primitivo `Toast` de `@base-ui/react` (misma librería que ya usan
+`Dialog`/`Button`/`Input`/`Select` — cero dependencias nuevas). Un solo
+`toastManager` (singleton a nivel de módulo, `createToastManager()`) + un
+solo `<ToastProvider>` montado una vez en `layout.tsx`: cualquier
+componente del proyecto dispara `toastManager.add({...})` sin volver a
+montar nada. Plantilla única con 3 tipos semánticos (`success`/`error`/
+`info`), fondo tintado por tipo (no una tarjeta blanca con acento — un
+toast se lee de reojo, el color de fondo comunica el estado antes que el
+texto), reusando paletas ya aprobadas en otras partes del proyecto (verde
+del badge "Activo", `destructive/10` del botón "Desactivar", el par
+`--accent`/`--accent-foreground` que existía sin usar). Conectado en los 4
+flujos de Usuarios (crear, editar, activar, desactivar) como caso de
+referencia para sprints futuros.
+
+### Paginación de tablas de datos (`components/ui/data-table-pagination.tsx`, nuevo)
+Server-side, dirigida por URL (`?page=N` + `skip`/`take` en el
+repository), tamaño fijo de 10 filas, sin renderizarse si no hace falta.
+Detalle completo del patrón (y por qué no se ata al tamaño del
+dispositivo) en `memory/convenciones.md`, sección "Paginación de tablas de
+datos" — cualquier módulo con listados grandes (Clientes en Sprint 8,
+Ventas/Créditos en 9-11) lo hereda desde ahí.
+
+### Nombre de usuario (`usuario`) ahora es editable
+Sprint 2 lo había dejado fijo a propósito ("no editable después de
+creado", ver `lib/zod/usuario.ts` original). Se revirtió esa decisión a
+pedido del Product Owner: `editarUsuarioSchema` ahora exige `usuario`, la
+action revalida unicidad contra el resto de la tabla (excluyendo al
+propio `usuarioId`, para no fallar si se reenvía el mismo valor) con el
+mismo patrón de `crearUsuario` (chequeo previo + catch de `P2002` para la
+carrera entre dos ediciones simultáneas). 2 tests nuevos cubren unicidad
+al editar.
+
+### Shell mobile: Sidebar deslizable reemplaza a BottomNav, rutas planas
+Estos dos cambios ya estaban hechos (commit `a49d41a` + trabajo posterior
+sin commitear) al empezar esta sesión de frontend, pero **no estaban
+reflejados en `specs/sprint-02-rbac-auditoria/`** — ya corregido ahí
+(notas de actualización en spec.md/plan.md/tasks.md apuntando a
+`server/auth/rbac.ts` como fuente de verdad):
+- **`components/layout/bottom-nav.tsx` ya no existe.** El Shell mobile no
+  es una barra fija abajo — es el mismo `AppSidebar` de desktop, que en
+  mobile se abre como drawer (`Sheet` de Base UI) disparado por
+  `MobileSidebarTrigger`.
+- **Rutas planas, no prefijo `/gestion`/`/operacion`.** `/usuarios`, no
+  `/gestion/usuarios`. `RUTAS_POR_ROL` en `rbac.ts` matchea por ruta
+  exacta (`startsWith`), no por prefijo compartido — motivo documentado en
+  el propio archivo.
+- **`/login` ya no usa `Card`** — un grid a mano (dos paneles, uno a
+  sangre completa con el color de marca), porque `Card` asume un solo
+  bloque vertical apilado. `Card` no se usa en ningún lugar del proyecto
+  todavía.
+
+### Bugs reales encontrados y corregidos en esta sesión
+1. **Título de modal en `text-primary` sobre fondo blanco fallaba
+   contraste AA** (~2.3:1, ver arriba en "Paleta de color").
+2. **`DialogContent` no tenía `max-h`/scroll interno** — un formulario más
+   alto que el viewport de un celular quedaba cortado sin forma de llegar
+   al resto (encontrado con "Nuevo usuario" en iPhone). Corregido:
+   `max-h-[90dvh]` + `overflow-y-auto` en el Popup, `DialogFooter` con
+   `sticky -bottom-4` para que el botón principal quede siempre visible
+   mientras el resto del formulario se desplaza por detrás.
+3. **`MobileSidebarTrigger` en `position: fixed` se superponía con el
+   título de cada pantalla.** Corregido: vive en el flujo del nuevo
+   `PageHeader` (`components/layout/page-header.tsx`), junto al título, no
+   flotando encima.
+4. **El botón de acción del header (p. ej. "Nuevo usuario") podía forzar
+   scroll horizontal de toda la pantalla en mobile** — su texto no puede
+   partirse en dos líneas (`whitespace-nowrap`, típico en botones).
+   `PageHeader` es `flex-col` por defecto y recién pasa a fila desde
+   640px (`sm:flex-row`), no `flex-wrap` sobre una sola fila.
+5. **Doble contenedor de scroll horizontal anidado en las tablas.** El
+   `Table` de shadcn ya traía su propio `<div overflow-x-auto>` interno;
+   el `TableScrollArea` nuevo (que agrega una sombra cuando la tabla
+   desborda) envolvía ese wrapper y nunca detectaba desborde porque medía
+   el contenedor equivocado. Corregido quitando el wrapper de `Table`
+   (`ui/table.tsx`) — `TableScrollArea` es ahora el único contenedor de
+   scroll de toda tabla del proyecto.
+6. **La sombra de "hay más para deslizar" usaba un degradé de color
+   (`from-background to-transparent`) que no se distinguía sobre una
+   tabla también blanca** — blanco sobre blanco no se ve. Reemplazado por
+   una sombra interior (oscurece el borde sin depender del color de fondo
+   real).
+7. **En iPhone (Safari), la sombra del lado ya recorrido no desaparecía
+   al llegar al final del scroll** (confirmado por el Product Owner en su
+   celular real — en Android/Chrome funcionaba bien). Causa: el scroll con
+   inercia de iOS puede disparar el evento `scroll` final un poco antes de
+   que la posición se asiente en el máximo real; el margen de tolerancia
+   de 1px no alcanzaba. Corregido: tolerancia subida a 4px + re-chequeo
+   diferido 120ms después de cada evento de scroll (agarra la posición ya
+   quieta) + listener de `scrollend` donde el navegador lo soporta.
+
+### Verificación en dispositivos reales — limitación de herramienta, otra vez
+Igual que en Sprints 1 y 2, `resize_window` de la extensión Claude in
+Chrome no cambia el viewport lógico en este entorno. La mayoría de los
+hallazgos de mobile de esta sesión (bugs #3, #4, #7 de arriba) se
+confirmaron con capturas de pantalla reales que compartió el Product Owner
+desde su celular, no con la herramienta de navegador. Camino a repetir en
+sprints futuros si hace falta verificar diseño mobile pixel a pixel.
 
 ## Problemas encontrados y resueltos durante Sprint 2
 1. **Diseño original ponía `prisma.$transaction(...)` dentro de la Server
@@ -254,7 +385,12 @@ cambió que ahora sí existe el asset gráfico real para cuando se retome.
 4. Cualquier link de navegación nuevo (pantallas de Sprint 3 en adelante)
    se agrega a `NAV_ITEMS` en `components/layout/nav-items.ts` — el Shell
    ya filtra automáticamente por rol contra `rolPermitidoParaRuta()`, no
-   hace falta tocar `Sidebar`/`BottomNav`.
+   hace falta tocar `Sidebar` (ya no existe `BottomNav`, ver sección
+   "Identidad visual, shell y UX de mobile" más abajo). Toda pantalla
+   nueva usa `<PageHeader title=... actions=... />` en vez de armar un
+   `<h1>` a mano — si no lo usa, se queda sin forma de abrir el Sidebar en
+   mobile. Toda tabla ancha usa `<TableScrollArea>`, no un
+   `<div overflow-x-auto>` a mano.
 5. Mantener el mismo patrón de Sprints 0-2: ejecutar tarea por tarea,
    verificar en código real (no solo tests) antes de marcar como completa.
    Cuando la extensión Claude in Chrome esté conectada, no editar archivos

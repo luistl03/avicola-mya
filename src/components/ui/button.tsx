@@ -29,6 +29,12 @@ const buttonVariants = cva(
         // default/lg/icon: ≥48px en cualquier root font-size (h-12 = 48px @16px, 54px @18px) — target táctil mínimo para uso en campo.
         default:
           "h-12 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
+        // md: h-10, misma altura que los inputs (ver INPUT_COMPACTO) — para
+        // acciones primarias en pantallas de gestión de escritorio (diálogos,
+        // formularios de administración) donde h-12 se ve sobredimensionado.
+        // No usar para pantallas táctiles de campo, donde default/lg siguen
+        // siendo el estándar.
+        md: "h-10 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
         // xs/sm/icon-xs/icon-sm: compactas a propósito, solo para UI densa (tablas de gestión), no acciones primarias táctiles.
         xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { EstadoUsuario, Rol, Usuario } from "@prisma/client";
 
@@ -14,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TableScrollArea } from "@/components/ui/table-scroll-area";
+import { toastManager } from "@/components/ui/toast";
 import { UsuarioFormDialog } from "@/components/domain/usuarios/usuario-form-dialog";
 import { cambiarEstadoUsuarioAction } from "@/server/actions/usuario";
 
@@ -24,7 +26,7 @@ const ROL_LABEL: Record<Rol, string> = {
 
 export function UsuariosTabla({ usuarios }: { usuarios: Usuario[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <TableScrollArea>
       <Table>
         <TableHeader>
           <TableRow>
@@ -41,28 +43,39 @@ export function UsuariosTabla({ usuarios }: { usuarios: Usuario[] }) {
           ))}
         </TableBody>
       </Table>
-    </div>
+    </TableScrollArea>
   );
 }
 
 function UsuarioFila({ usuario }: { usuario: Usuario }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
   const proximoEstado: EstadoUsuario = usuario.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
 
   function alternarEstado() {
-    setError(null);
     startTransition(async () => {
       const resultado = await cambiarEstadoUsuarioAction({
         usuarioId: usuario.id,
         estado: proximoEstado,
       });
       if (!resultado.ok) {
-        setError(resultado.error);
+        // priority: "high" — se anuncia de inmediato a lectores de pantalla
+        // (antes esto vivía en un <p role="alert"> propio de la fila; el
+        // toast reemplaza esa función además de dar feedback visual).
+        toastManager.add({
+          type: "error",
+          priority: "high",
+          title: "No se pudo cambiar el estado",
+          description: resultado.error,
+        });
         return;
       }
+      toastManager.add({
+        type: "success",
+        title: proximoEstado === "ACTIVO" ? "Usuario activado" : "Usuario desactivado",
+        description: `${usuario.nombre} ahora está ${proximoEstado === "ACTIVO" ? "activo" : "inactivo"}.`,
+      });
       router.refresh();
     });
   }
@@ -77,8 +90,8 @@ function UsuarioFila({ usuario }: { usuario: Usuario }) {
           variant="secondary"
           className={
             usuario.estado === "ACTIVO"
-              ? "bg-green-100 text-green-800"
-              : "bg-muted text-muted-foreground"
+              ? "border-green-300 bg-green-100 text-green-800"
+              : "border-border bg-muted text-muted-foreground"
           }
         >
           {usuario.estado === "ACTIVO" ? "Activo" : "Inactivo"}
@@ -90,6 +103,7 @@ function UsuarioFila({ usuario }: { usuario: Usuario }) {
             modo="editar"
             usuario={{
               id: usuario.id,
+              usuario: usuario.usuario,
               nombre: usuario.nombre,
               celular: usuario.celular,
               email: usuario.email,
@@ -105,11 +119,6 @@ function UsuarioFila({ usuario }: { usuario: Usuario }) {
             {usuario.estado === "ACTIVO" ? "Desactivar" : "Activar"}
           </Button>
         </div>
-        {error ? (
-          <p role="alert" className="mt-1 text-right text-sm text-destructive">
-            {error}
-          </p>
-        ) : null}
       </TableCell>
     </TableRow>
   );

@@ -40,11 +40,18 @@ src/
     (app)/                        # protegido por middleware
       layout.tsx                  # shell + sidebar + idle-timer
       dashboard/
-      operacion/                  # rutas de OPERARIO
-        recoleccion/ mortalidad/ bitacora/ consolidacion/ pos/
-      gestion/                    # rutas de GERENTE
-        galpones/ lotes/ clientes/ creditos/ egresos/ personal/
-        reportes/ configuracion/ usuarios/
+      # Nota (post-Sprint 2): el prefijo compartido operacion//gestion/
+      # de este árbol ilustrativo se abandonó por URLs planas por
+      # pantalla (p. ej. /usuarios, no /gestion/usuarios) — el control de
+      # acceso por rol vive en server/auth/rbac.ts (RUTAS_POR_ROL, regla
+      # por ruta exacta), no en el prefijo de carpeta. Ver
+      # memory/estado-proyecto.md, sección "Identidad visual, shell y UX
+      # de mobile", para el motivo completo.
+      usuarios/                   # GERENTE (Sprint 2)
+      # resto de pantallas (Sprint 3+): galpones/ lotes/ clientes/
+      # creditos/ egresos/ personal/ reportes/ configuracion/
+      # recoleccion/ mortalidad/ bitacora/ consolidacion/ pos/ — todas
+      # rutas planas, sin prefijo
     api/
       auth/[...nextauth]/route.ts
       sync/route.ts               # cola offline (batch, idempotente)

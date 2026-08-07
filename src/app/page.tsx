@@ -1,5 +1,6 @@
 import { Egg, ShoppingCart, Skull, Warehouse } from "lucide-react";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { auth } from "@/server/auth";
 
 const TARJETAS_EJEMPLO = [
@@ -35,10 +36,10 @@ export default async function Home() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Hola{nombre ? `, ${nombre}` : ""}</h1>
-        <p className="text-muted-foreground">Avícola M&A — panel de inicio</p>
-      </div>
+      <PageHeader
+        title={`Hola${nombre ? `, ${nombre}` : ""}`}
+        description="Avícola M&A — panel de inicio"
+      />
 
       <div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

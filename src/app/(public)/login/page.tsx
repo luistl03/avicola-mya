@@ -47,12 +47,18 @@ export default async function LoginPage({
               directo sobre bg-primary, para que el recuadro se vea
               intencional (insignia) y no como un borde blanco suelto. */}
           <div className="rounded-2xl bg-card p-3 shadow-sm">
+            {/* width/height=250 son el tamaño intrínseco (desktop); el
+                className recorta el tamaño real mostrado en mobile — sin
+                esto, el <Image> se renderiza a 250x250 siempre, sin importar
+                el viewport (por eso el cambio anterior en el Sidebar no
+                afectaba a esta pantalla: eran archivos distintos). */}
             <Image
               src="/avicolamya-imagotipo.png"
               alt="Avícola M&A"
               width={250}
               height={250}
               priority
+              className="size-32 md:size-[250px]"
             />
           </div>
         </div>

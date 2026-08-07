@@ -47,8 +47,8 @@ describe("guard por rol de src/proxy.ts (H1, Sprint 2)", () => {
     verificarRateLimitOperativoMock.mockReset().mockResolvedValue(true);
   });
 
-  it("responde 403 si un OPERARIO pide una ruta bajo /gestion", async () => {
-    const req = fakeRequest("/gestion/usuarios", { user: { id: "u1", rol: "OPERARIO" } });
+  it("responde 403 si un OPERARIO pide /usuarios", async () => {
+    const req = fakeRequest("/usuarios", { user: { id: "u1", rol: "OPERARIO" } });
 
     const res = await proxyHandler(req, FAKE_CTX);
 
@@ -57,31 +57,15 @@ describe("guard por rol de src/proxy.ts (H1, Sprint 2)", () => {
     expect(body).toEqual({ error: "No autorizado." });
   });
 
-  it("deja pasar a un GERENTE en /gestion", async () => {
-    const req = fakeRequest("/gestion/usuarios", { user: { id: "g1", rol: "GERENTE" } });
+  it("deja pasar a un GERENTE en /usuarios", async () => {
+    const req = fakeRequest("/usuarios", { user: { id: "g1", rol: "GERENTE" } });
 
     const res = await proxyHandler(req, FAKE_CTX);
 
     expect(res?.status).not.toBe(403);
   });
 
-  it("deja pasar a un OPERARIO en /operacion", async () => {
-    const req = fakeRequest("/operacion/recoleccion", { user: { id: "u1", rol: "OPERARIO" } });
-
-    const res = await proxyHandler(req, FAKE_CTX);
-
-    expect(res?.status).not.toBe(403);
-  });
-
-  it("deja pasar a un GERENTE en /operacion (visibilidad total, no al revés)", async () => {
-    const req = fakeRequest("/operacion/recoleccion", { user: { id: "g1", rol: "GERENTE" } });
-
-    const res = await proxyHandler(req, FAKE_CTX);
-
-    expect(res?.status).not.toBe(403);
-  });
-
-  it("no restringe por rol una ruta sin prefijo conocido (p. ej. /)", async () => {
+  it("no restringe por rol una ruta sin regla explícita en RUTAS_POR_ROL (p. ej. / u /operacion/recoleccion)", async () => {
     const req = fakeRequest("/", { user: { id: "u1", rol: "OPERARIO" } });
 
     const res = await proxyHandler(req, FAKE_CTX);
@@ -90,7 +74,7 @@ describe("guard por rol de src/proxy.ts (H1, Sprint 2)", () => {
   });
 
   it("sin sesión, el guard binario de Sprint 1 redirige antes de llegar al chequeo de rol", async () => {
-    const req = fakeRequest("/gestion/usuarios", null);
+    const req = fakeRequest("/usuarios", null);
 
     const res = await proxyHandler(req, FAKE_CTX);
 
@@ -100,7 +84,7 @@ describe("guard por rol de src/proxy.ts (H1, Sprint 2)", () => {
 
   it("respeta el rate limit de rutas operativas incluso para un GERENTE autorizado por rol", async () => {
     verificarRateLimitOperativoMock.mockResolvedValue(false);
-    const req = fakeRequest("/gestion/usuarios", { user: { id: "g1", rol: "GERENTE" } });
+    const req = fakeRequest("/usuarios", { user: { id: "g1", rol: "GERENTE" } });
 
     const res = await proxyHandler(req, FAKE_CTX);
 

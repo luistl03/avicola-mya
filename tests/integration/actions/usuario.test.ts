@@ -206,12 +206,15 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
       buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
       buscarUsuarioPorIdMock.mockResolvedValue({
         id: USUARIO_1_ID,
+        usuario: "usuario.viejo",
         nombre: "Nombre Viejo",
         celular: "999999999",
         email: null,
       });
+      buscarUsuarioPorUsuarioMock.mockResolvedValue(null);
       actualizarUsuarioMock.mockResolvedValue({
         id: USUARIO_1_ID,
+        usuario: "usuario.nuevo",
         nombre: "Nombre Nuevo",
         celular: "988888888",
         email: null,
@@ -219,6 +222,7 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
 
       const resultado = await editarUsuario({
         usuarioId: USUARIO_1_ID,
+        usuario: "usuario.nuevo",
         nombre: "Nombre Nuevo",
         celular: "988888888",
         email: "",
@@ -228,6 +232,7 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
       expect(resultado).toEqual({ ok: true, data: { id: USUARIO_1_ID } });
       expect(bcryptHashMock).not.toHaveBeenCalled();
       expect(actualizarUsuarioMock).toHaveBeenCalledWith(USUARIO_1_ID, {
+        usuario: "usuario.nuevo",
         nombre: "Nombre Nuevo",
         celular: "988888888",
         email: undefined,
@@ -235,17 +240,78 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
       });
     });
 
-    it("hashea y pasa passwordHash solo si el Gerente completa un reseteo", async () => {
+    it("no vuelve a chequear unicidad si el nombre de usuario no cambió", async () => {
       authMock.mockResolvedValue(sessionGerente());
       buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
       buscarUsuarioPorIdMock.mockResolvedValue({
         id: USUARIO_1_ID,
+        usuario: "usuario.actual",
         nombre: "Nombre",
         celular: null,
         email: null,
       });
       actualizarUsuarioMock.mockResolvedValue({
         id: USUARIO_1_ID,
+        usuario: "usuario.actual",
+        nombre: "Nombre",
+        celular: null,
+        email: null,
+      });
+
+      const resultado = await editarUsuario({
+        usuarioId: USUARIO_1_ID,
+        usuario: "usuario.actual",
+        nombre: "Nombre",
+        celular: "",
+        email: "",
+        password: "",
+      });
+
+      expect(resultado).toEqual({ ok: true, data: { id: USUARIO_1_ID } });
+      expect(buscarUsuarioPorUsuarioMock).not.toHaveBeenCalled();
+    });
+
+    it("rechaza con un mensaje claro si el nuevo nombre de usuario ya lo tiene otro usuario", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      buscarUsuarioPorIdMock.mockResolvedValue({
+        id: USUARIO_1_ID,
+        usuario: "usuario.viejo",
+        nombre: "Nombre",
+        celular: null,
+        email: null,
+      });
+      buscarUsuarioPorUsuarioMock.mockResolvedValue({ id: USUARIO_2_ID });
+
+      const resultado = await editarUsuario({
+        usuarioId: USUARIO_1_ID,
+        usuario: "usuario.ocupado",
+        nombre: "Nombre",
+        celular: "",
+        email: "",
+        password: "",
+      });
+
+      expect(resultado).toEqual({
+        ok: false,
+        error: "Ya existe un usuario con ese nombre de usuario.",
+      });
+      expect(actualizarUsuarioMock).not.toHaveBeenCalled();
+    });
+
+    it("hashea y pasa passwordHash solo si el Gerente completa un reseteo", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      buscarUsuarioPorIdMock.mockResolvedValue({
+        id: USUARIO_1_ID,
+        usuario: "usuario.actual",
+        nombre: "Nombre",
+        celular: null,
+        email: null,
+      });
+      actualizarUsuarioMock.mockResolvedValue({
+        id: USUARIO_1_ID,
+        usuario: "usuario.actual",
         nombre: "Nombre",
         celular: null,
         email: null,
@@ -253,6 +319,7 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
 
       await editarUsuario({
         usuarioId: USUARIO_1_ID,
+        usuario: "usuario.actual",
         nombre: "Nombre",
         celular: "",
         email: "",
@@ -273,6 +340,7 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
 
       const resultado = await editarUsuario({
         usuarioId: USUARIO_INEXISTENTE_ID,
+        usuario: "usuario.x",
         nombre: "X",
         celular: "",
         email: "",

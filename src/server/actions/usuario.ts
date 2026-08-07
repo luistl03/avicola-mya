@@ -77,26 +77,47 @@ export const editarUsuario = withAuth(
       throw new AccionError("El usuario no existe.");
     }
 
+    // Mismo chequeo previo que crearUsuario, pero excluyendo al propio
+    // usuarioId (si el Gerente reenvía el mismo nombre de usuario sin
+    // cambiarlo, buscarUsuarioPorUsuario lo va a encontrar — es él mismo).
+    if (input.usuario !== existente.usuario) {
+      const otro = await buscarUsuarioPorUsuario(input.usuario);
+      if (otro && otro.id !== input.usuarioId) {
+        throw new AccionError(ERROR_USUARIO_DUPLICADO);
+      }
+    }
+
     const passwordHash = input.password
       ? await bcrypt.hash(input.password, BCRYPT_COST)
       : undefined;
 
-    const usuario = await actualizarUsuario(input.usuarioId, {
-      nombre: input.nombre,
-      celular: input.celular,
-      email: input.email,
-      passwordHash,
-    });
+    let usuario;
+    try {
+      usuario = await actualizarUsuario(input.usuarioId, {
+        usuario: input.usuario,
+        nombre: input.nombre,
+        celular: input.celular,
+        email: input.email,
+        passwordHash,
+      });
+    } catch (error) {
+      if (esErrorDeUnicidad(error)) {
+        throw new AccionError(ERROR_USUARIO_DUPLICADO);
+      }
+      throw error;
+    }
 
     return {
       data: { id: usuario.id },
       entidadId: usuario.id,
       estadoAntes: {
+        usuario: existente.usuario,
         nombre: existente.nombre,
         celular: existente.celular,
         email: existente.email,
       },
       estadoDespues: {
+        usuario: usuario.usuario,
         nombre: usuario.nombre,
         celular: usuario.celular,
         email: usuario.email,

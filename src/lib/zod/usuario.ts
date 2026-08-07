@@ -39,10 +39,13 @@ export const crearUsuarioSchema = z.object({
 
 export type CrearUsuarioInput = z.infer<typeof crearUsuarioSchema>;
 
-// `usuario` (nombre de login) no es editable después de creado. `password`
-// es opcional: solo se reescribe si el Gerente la completa (reseteo).
+// `usuario` (nombre de login) es editable: la action revalida unicidad
+// contra el resto de la tabla (excluyendo al propio usuarioId) antes de
+// guardar. `password` es opcional: solo se reescribe si el Gerente la
+// completa (reseteo).
 export const editarUsuarioSchema = z.object({
   usuarioId,
+  usuario: usuarioLogin,
   nombre,
   celular,
   email,

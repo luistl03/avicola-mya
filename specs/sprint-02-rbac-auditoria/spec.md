@@ -1,5 +1,17 @@
 # Sprint 2 — RBAC, auditoría y shell
 
+> **Nota de actualización (post-cierre, sesión de diseño de frontend):** el
+> esquema de rutas con prefijo compartido (`/gestion/*` para Gerente,
+> `/operacion/*` para ambos roles) descrito en este documento **se
+> abandonó** en favor de URLs planas por pantalla (`/usuarios`, sin
+> prefijo) — decisión ya reflejada en el código real y documentada ahí
+> mismo: ver el comentario en `server/auth/rbac.ts` (`RUTAS_POR_ROL`, regla
+> por ruta exacta con `startsWith`, no por prefijo) y
+> `components/layout/nav-items.ts`. Ese archivo es la fuente de verdad
+> vigente — este spec.md queda como registro histórico de la intención
+> original de Sprint 2; los escenarios Gherkin de abajo que mencionan
+> `/gestion`/`/operacion` no reflejan las rutas reales del proyecto.
+
 ## Sprint Goal
 Un Operario no puede acceder a ninguna ruta ni ejecutar ninguna acción
 reservada al Gerente, y toda mutación de datos queda registrada en

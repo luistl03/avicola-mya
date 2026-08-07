@@ -4,9 +4,9 @@ import { cookies } from "next/headers";
 import "./globals.css";
 
 import { IdleTimer } from "@/components/domain/auth/idle-timer";
-import { MobileSidebarTrigger } from "@/components/layout/mobile-sidebar-trigger";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { ToastProvider } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { auth } from "@/server/auth";
 
@@ -44,18 +44,19 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        {usuario ? (
-          <TooltipProvider>
-            <SidebarProvider defaultOpen={sidebarAbierto}>
-              <AppSidebar rol={usuario.rol} nombre={usuario.nombre} />
-              <MobileSidebarTrigger />
-              <SidebarInset>{children}</SidebarInset>
-            </SidebarProvider>
-          </TooltipProvider>
-        ) : (
-          children
-        )}
-        {usuario ? <IdleTimer /> : null}
+        <ToastProvider>
+          {usuario ? (
+            <TooltipProvider>
+              <SidebarProvider defaultOpen={sidebarAbierto}>
+                <AppSidebar rol={usuario.rol} nombre={usuario.nombre} />
+                <SidebarInset>{children}</SidebarInset>
+              </SidebarProvider>
+            </TooltipProvider>
+          ) : (
+            children
+          )}
+          {usuario ? <IdleTimer /> : null}
+        </ToastProvider>
       </body>
     </html>
   );

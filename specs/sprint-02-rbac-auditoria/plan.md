@@ -1,5 +1,12 @@
 # Plan técnico — Sprint 2
 
+> **Nota de actualización (post-cierre):** el esquema de rutas con prefijo
+> (`/gestion`, `/operacion`) planeado acá se reemplazó por URLs planas
+> (`/usuarios`) antes de cerrar el sprint — ver el comentario en
+> `server/auth/rbac.ts` para el motivo y el mapeo real vigente. Este plan
+> queda como registro de la intención original, no como referencia de las
+> rutas actuales.
+
 ## Punto de partida real del código (verificado antes de planificar)
 - `src/proxy.ts` hoy: rate limiting Upstash + guard binario de sesión
   (`!req.auth` → redirect a `/login`). El JWT ya trae `rol` en

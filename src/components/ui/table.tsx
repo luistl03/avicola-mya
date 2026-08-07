@@ -4,27 +4,42 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+// Sin wrapper propio de scroll (a diferencia del Table original de
+// shadcn): el scroll horizontal de toda tabla del proyecto lo da
+// TableScrollArea (ui/table-scroll-area.tsx) en el punto de uso. Tenerlo
+// acá también significaba dos contenedores de scroll anidados — el de
+// afuera (TableScrollArea) nunca detectaba desborde porque el que
+// realmente se deslizaba era este de adentro, un nivel más abajo de donde
+// se medía.
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
-    </div>
+    <table
+      data-slot="table"
+      className={cn("w-full caption-bottom text-sm", className)}
+      {...props}
+    />
   );
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
-  return <thead data-slot="table-header" className={cn("[&_tr]:border-b", className)} {...props} />;
+  return (
+    <thead
+      data-slot="table-header"
+      className={cn("bg-primary [&_th]:text-primary-foreground [&_tr]:border-b", className)}
+      {...props}
+    />
+  );
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
     <tbody
       data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
+      // Hover en un bg-accent bien visible (el ámbar de marca) en vez del
+      // gris casi imperceptible que traía shadcn por defecto — el hover vive
+      // acá (no en TableRow) para que no alcance también a la fila del
+      // encabezado, que ya tiene su propio color fijo.
+      className={cn("[&_tr:last-child]:border-0 [&_tr]:hover:bg-accent/60", className)}
       {...props}
     />
   );
@@ -44,10 +59,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
       data-slot="table-row"
-      className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
-        className,
-      )}
+      className={cn("border-b transition-colors data-[state=selected]:bg-muted", className)}
       {...props}
     />
   );

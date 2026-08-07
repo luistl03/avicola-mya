@@ -11,8 +11,16 @@ export function buscarUsuarioPorId(id: string) {
   return prisma.usuario.findUnique({ where: { id } });
 }
 
-export function listarUsuarios() {
-  return prisma.usuario.findMany({ orderBy: { nombre: "asc" } });
+export function listarUsuarios(params: { skip: number; take: number }) {
+  return prisma.usuario.findMany({
+    orderBy: { nombre: "asc" },
+    skip: params.skip,
+    take: params.take,
+  });
+}
+
+export function contarUsuarios() {
+  return prisma.usuario.count();
 }
 
 type CrearUsuarioData = {
@@ -29,6 +37,7 @@ export function crearUsuario(data: CrearUsuarioData) {
 }
 
 type ActualizarUsuarioData = {
+  usuario: string;
   nombre: string;
   celular?: string;
   email?: string;
@@ -44,6 +53,7 @@ export function actualizarUsuario(id: string, data: ActualizarUsuarioData) {
   return prisma.usuario.update({
     where: { id },
     data: {
+      usuario: data.usuario,
       nombre: data.nombre,
       celular: data.celular ?? null,
       email: data.email ?? null,
