@@ -7,6 +7,7 @@ export function makeLote(overrides: Partial<Lote> = {}): Lote {
     fechaIngreso: new Date(),
     avesIniciales: 500,
     avesVivas: 500,
+    edadInicialSemanas: 0,
     estado: "ACTIVO",
     ...overrides,
   };

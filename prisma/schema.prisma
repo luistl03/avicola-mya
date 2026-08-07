@@ -91,11 +91,17 @@ enum EstadoLote {
   INACTIVO
 }
 
+enum EstadoGalpon {
+  ACTIVO
+  INACTIVO
+}
+
 model Galpon {
-  id              String   @id @default(uuid())
+  id              String       @id @default(uuid())
   nombre          String
   capacidadMaxima Int
-  creadoEn        DateTime @default(now())
+  estado          EstadoGalpon @default(ACTIVO)
+  creadoEn        DateTime     @default(now())
 
   historialUbicaciones HistorialUbicacionLote[]
   inventarioSueltos    InventarioSueltos[]
@@ -107,15 +113,22 @@ model Galpon {
   detalleVentas        DetalleVenta[]
 
   @@index([nombre])
+  @@index([estado])
 }
 
 model Lote {
-  id            String     @id @default(uuid())
-  codigo        String     @unique
-  fechaIngreso  DateTime
-  avesIniciales Int
-  avesVivas     Int
-  estado        EstadoLote @default(ACTIVO)
+  id                 String     @id @default(uuid())
+  codigo             String     @unique
+  fechaIngreso       DateTime
+  avesIniciales      Int
+  avesVivas          Int
+  // Edad de las aves, en semanas, al momento de fechaIngreso — no siempre
+  // es 0: cubre lotes que ingresan como recría ya crecida, no solo
+  // pollitos de un día. La "edad actual" NUNCA se guarda acá — se
+  // calcula al leer (server/services/lote.ts, calcularEdadEnSemanas) a
+  // partir de este valor + fechaIngreso, para no desactualizarse.
+  edadInicialSemanas Int        @default(0)
+  estado             EstadoLote @default(ACTIVO)
 
   historialUbicaciones HistorialUbicacionLote[]
   inventarioSueltos    InventarioSueltos[]
@@ -207,12 +220,12 @@ enum EstadoPaquete {
 }
 
 model Paquete {
-  id                     String        @id @default(uuid())
-  peso                   Decimal       @db.Decimal(6, 3)
-  tipo                   TipoPaquete
-  estado                 EstadoPaquete @default(DISPONIBLE)
-  registroRecoleccionId  String?
-  creadoEn               DateTime      @default(now())
+  id                    String        @id @default(uuid())
+  peso                  Decimal       @db.Decimal(6, 3)
+  tipo                  TipoPaquete
+  estado                EstadoPaquete @default(DISPONIBLE)
+  registroRecoleccionId String?
+  creadoEn              DateTime      @default(now())
 
   registroRecoleccion RegistroRecoleccion? @relation(fields: [registroRecoleccionId], references: [id], onDelete: SetNull)
   origenes            PaqueteOrigen[]
@@ -381,7 +394,7 @@ model Venta {
   usuarioId    String
   fecha        DateTime   @default(now())
   totalCobrado Decimal    @db.Decimal(10, 2)
-  descuento    Decimal    @db.Decimal(10, 2) @default(0)
+  descuento    Decimal    @default(0) @db.Decimal(10, 2)
   metodoPago   MetodoPago
   montoContado Decimal?   @db.Decimal(10, 2)
   montoCredito Decimal?   @db.Decimal(10, 2)
@@ -449,7 +462,7 @@ model Credito {
   ventaId     String        @unique
   clienteId   String
   montoTotal  Decimal       @db.Decimal(10, 2)
-  montoPagado Decimal       @db.Decimal(10, 2) @default(0)
+  montoPagado Decimal       @default(0) @db.Decimal(10, 2)
   fechaLimite DateTime
   estado      EstadoCredito @default(PENDIENTE)
 

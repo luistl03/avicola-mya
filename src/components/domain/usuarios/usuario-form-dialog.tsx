@@ -54,34 +54,10 @@ const INPUT_COMPACTO = "h-10 text-sm";
 const LABEL_COMPACTO = "text-sm text-muted-foreground";
 
 export function UsuarioFormDialog(props: Props) {
-  const router = useRouter();
-  const formRef = useRef<HTMLFormElement>(null);
   const [open, setOpen] = useState(false);
-  const accion = props.modo === "crear" ? crearUsuario : editarUsuario;
-  // El cierre/reset en éxito se hace acá adentro (no en un useEffect que
-  // reaccione a `state`) — llamar setState dentro de un efecto dispara
-  // renders en cascada; como ya estamos en el callback async de la action,
-  // no hace falta ese paso intermedio.
-  const [state, formAction, pending] = useActionState<Estado, FormData>(async (_prev, formData) => {
-    const resultado = await accion(formData);
-    if (resultado.ok) {
-      formRef.current?.reset();
-      setOpen(false);
-      router.refresh();
-      toastManager.add({
-        type: "success",
-        title: props.modo === "crear" ? "Usuario creado" : "Usuario actualizado",
-        description: `${formData.get("nombre")}`,
-      });
-    }
-    return resultado;
-  }, undefined);
-
-  const erroresDe = (campo: string): string[] | undefined =>
-    state && !state.ok ? state.campos?.[campo] : undefined;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => setOpen(next)}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
           props.modo === "crear" ? (
@@ -119,151 +95,183 @@ export function UsuarioFormDialog(props: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        {/* Base UI mantiene el contenido del Popup montado durante la
-        animación de cierre — si `open` pasa a false y justo después llega
-        un `router.refresh()` con props nuevas (p. ej. al guardar una
-        edición), los inputs no controlados de abajo reciben un
-        `defaultValue` distinto estando ya montados, y Base UI lo marca
-        con una advertencia en consola ("changing default value ... after
-        being initialized"). No afecta el dato mostrado en la siguiente
-        apertura (se remonta desde cero con las props ya actualizadas),
-        pero se evita del todo desmontando el form apenas `open` es
-        false, antes de que ese refresh pueda alcanzarlo. */}
-        {open ? (
-          <form ref={formRef} action={formAction} className="flex flex-col gap-4">
-            {props.modo === "editar" ? (
-              <input type="hidden" name="usuarioId" value={props.usuario.id} />
-            ) : null}
-
-            {state && !state.ok ? (
-              <p role="alert" className="text-sm text-destructive">
-                {state.error}
-              </p>
-            ) : null}
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="usuario" className={LABEL_COMPACTO}>
-                <UserRound className="size-4 text-muted-foreground" />
-                Usuario
-              </Label>
-              <Input
-                id="usuario"
-                name="usuario"
-                required
-                autoFocus
-                defaultValue={props.modo === "editar" ? props.usuario.usuario : undefined}
-                className={INPUT_COMPACTO}
-              />
-              {erroresDe("usuario")?.map((error) => (
-                <p key={error} role="alert" className="text-sm text-destructive">
-                  {error}
-                </p>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="nombre" className={LABEL_COMPACTO}>
-                <UserRound className="size-4 text-muted-foreground" />
-                Nombre
-              </Label>
-              <Input
-                id="nombre"
-                name="nombre"
-                required
-                defaultValue={props.modo === "editar" ? props.usuario.nombre : undefined}
-                className={INPUT_COMPACTO}
-              />
-              {erroresDe("nombre")?.map((error) => (
-                <p key={error} role="alert" className="text-sm text-destructive">
-                  {error}
-                </p>
-              ))}
-            </div>
-
-            {props.modo === "crear" ? (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="rol" className={LABEL_COMPACTO}>
-                  <Shield className="size-4 text-muted-foreground" />
-                  Rol
-                </Label>
-                <Select name="rol" defaultValue="OPERARIO">
-                  <SelectTrigger id="rol" className="h-10 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="OPERARIO">Operario</SelectItem>
-                    <SelectItem value="GERENTE">Gerente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password" className={LABEL_COMPACTO}>
-                <Lock className="size-4 text-muted-foreground" />
-                {props.modo === "crear" ? "Contraseña" : "Nueva contraseña (opcional)"}
-              </Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required={props.modo === "crear"}
-                autoComplete="new-password"
-                className={INPUT_COMPACTO}
-              />
-              {erroresDe("password")?.map((error) => (
-                <p key={error} role="alert" className="text-sm text-destructive">
-                  {error}
-                </p>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="celular" className={LABEL_COMPACTO}>
-                <Phone className="size-4 text-muted-foreground" />
-                Celular (opcional)
-              </Label>
-              <Input
-                id="celular"
-                name="celular"
-                defaultValue={props.modo === "editar" ? (props.usuario.celular ?? "") : undefined}
-                className={INPUT_COMPACTO}
-              />
-              {erroresDe("celular")?.map((error) => (
-                <p key={error} role="alert" className="text-sm text-destructive">
-                  {error}
-                </p>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className={LABEL_COMPACTO}>
-                <Mail className="size-4 text-muted-foreground" />
-                Email (opcional)
-              </Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                defaultValue={props.modo === "editar" ? (props.usuario.email ?? "") : undefined}
-                className={INPUT_COMPACTO}
-              />
-              {erroresDe("email")?.map((error) => (
-                <p key={error} role="alert" className="text-sm text-destructive">
-                  {error}
-                </p>
-              ))}
-            </div>
-
-            <DialogFooter>
-              <Button type="submit" variant="default" size="md" disabled={pending}>
-                <Check data-icon="inline-start" />
-                {pending ? "Guardando..." : "Guardar"}
-              </Button>
-            </DialogFooter>
-          </form>
-        ) : null}
+        {/* El formulario vive en un componente aparte, montado solo
+        mientras `open` es true. Dos motivos, los dos por bugs reales
+        encontrados: (1) Base UI mantiene el contenido del Popup montado
+        durante la animación de cierre — si `open` pasa a false y justo
+        después llega un `router.refresh()` con props nuevas, los inputs
+        no controlados de abajo reciben un `defaultValue` distinto
+        estando ya montados (advertencia de Base UI, Sprint 2); (2) el
+        `state` de useActionState vivía antes en este componente de
+        afuera, que nunca se desmonta al cerrar el Dialog — un error de
+        una tanda anterior ("Datos inválidos.") quedaba pegado al reabrir
+        el modal sin que el usuario tocara nada (bug real, encontrado en
+        Sprint 3 en los dialogs de Galpón/Lote, mismo patrón acá).
+        Desmontar todo el subcomponente al cerrar resuelve ambos de una. */}
+        {open ? <UsuarioForm {...props} onExito={() => setOpen(false)} /> : null}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function UsuarioForm(props: Props & { onExito: () => void }) {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const accion = props.modo === "crear" ? crearUsuario : editarUsuario;
+
+  // El cierre/reset en éxito se hace acá adentro (no en un useEffect que
+  // reaccione a `state`) — llamar setState dentro de un efecto dispara
+  // renders en cascada; como ya estamos en el callback async de la action,
+  // no hace falta ese paso intermedio.
+  const [state, formAction, pending] = useActionState<Estado, FormData>(async (_prev, formData) => {
+    const resultado = await accion(formData);
+    if (resultado.ok) {
+      router.refresh();
+      toastManager.add({
+        type: "success",
+        title: props.modo === "crear" ? "Usuario creado" : "Usuario actualizado",
+        description: `${formData.get("nombre")}`,
+      });
+      props.onExito();
+    }
+    return resultado;
+  }, undefined);
+
+  const erroresDe = (campo: string): string[] | undefined =>
+    state && !state.ok ? state.campos?.[campo] : undefined;
+
+  return (
+    <form ref={formRef} action={formAction} className="flex flex-col gap-4">
+      {props.modo === "editar" ? (
+        <input type="hidden" name="usuarioId" value={props.usuario.id} />
+      ) : null}
+
+      {state && !state.ok ? (
+        <p role="alert" className="text-sm text-destructive">
+          {state.error}
+        </p>
+      ) : null}
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="usuario" className={LABEL_COMPACTO}>
+          <UserRound className="size-4 text-muted-foreground" />
+          Usuario
+        </Label>
+        <Input
+          id="usuario"
+          name="usuario"
+          required
+          autoFocus
+          defaultValue={props.modo === "editar" ? props.usuario.usuario : undefined}
+          className={INPUT_COMPACTO}
+        />
+        {erroresDe("usuario")?.map((error) => (
+          <p key={error} role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="nombre" className={LABEL_COMPACTO}>
+          <UserRound className="size-4 text-muted-foreground" />
+          Nombre
+        </Label>
+        <Input
+          id="nombre"
+          name="nombre"
+          required
+          defaultValue={props.modo === "editar" ? props.usuario.nombre : undefined}
+          className={INPUT_COMPACTO}
+        />
+        {erroresDe("nombre")?.map((error) => (
+          <p key={error} role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ))}
+      </div>
+
+      {props.modo === "crear" ? (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="rol" className={LABEL_COMPACTO}>
+            <Shield className="size-4 text-muted-foreground" />
+            Rol
+          </Label>
+          <Select name="rol" defaultValue="OPERARIO">
+            <SelectTrigger id="rol" className="h-10 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="OPERARIO">Operario</SelectItem>
+              <SelectItem value="GERENTE">Gerente</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="password" className={LABEL_COMPACTO}>
+          <Lock className="size-4 text-muted-foreground" />
+          {props.modo === "crear" ? "Contraseña" : "Nueva contraseña (opcional)"}
+        </Label>
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          required={props.modo === "crear"}
+          autoComplete="new-password"
+          className={INPUT_COMPACTO}
+        />
+        {erroresDe("password")?.map((error) => (
+          <p key={error} role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="celular" className={LABEL_COMPACTO}>
+          <Phone className="size-4 text-muted-foreground" />
+          Celular (opcional)
+        </Label>
+        <Input
+          id="celular"
+          name="celular"
+          defaultValue={props.modo === "editar" ? (props.usuario.celular ?? "") : undefined}
+          className={INPUT_COMPACTO}
+        />
+        {erroresDe("celular")?.map((error) => (
+          <p key={error} role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="email" className={LABEL_COMPACTO}>
+          <Mail className="size-4 text-muted-foreground" />
+          Email (opcional)
+        </Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          defaultValue={props.modo === "editar" ? (props.usuario.email ?? "") : undefined}
+          className={INPUT_COMPACTO}
+        />
+        {erroresDe("email")?.map((error) => (
+          <p key={error} role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ))}
+      </div>
+
+      <DialogFooter>
+        <Button type="submit" variant="default" size="md" disabled={pending}>
+          <Check data-icon="inline-start" />
+          {pending ? "Guardando..." : "Guardar"}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

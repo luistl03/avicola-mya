@@ -171,11 +171,14 @@
 @layer components {
   /* Tarjetas de toast (ui/toast.tsx) — fondo tintado por tipo, no una
      tarjeta blanca con un acento aparte: un toast se lee de reojo, el
-     color de fondo tiene que comunicar el estado antes que el texto. No
-     son tonos nuevos: success reusa el mismo verde del badge "Activo"
-     (usuarios-tabla.tsx), error el mismo destructive/10 del botón
-     "Desactivar" (ui/button.tsx), info el par --accent/--accent-foreground
-     que ya definía este archivo sin que ningún componente lo usara. El
+     color de fondo tiene que comunicar el estado antes que el texto.
+     error reusa el mismo destructive/10 del botón "Desactivar"
+     (ui/button.tsx), info el par --accent/--accent-foreground que ya
+     definía este archivo sin que ningún componente lo usara. success es
+     un verde independiente (ya no ligado al badge "Activo" — ese pasó a
+     amber, ver `.badge-estado-activo` más abajo — success sigue siendo
+     verde porque "operación exitosa" es una señal distinta de "este
+     registro está activo", no tiene por qué compartir tono con eso). El
      ícono de cada toast no tiene clase de color propia: hereda este mismo
      texto vía currentColor. */
   .toast-success {
@@ -202,5 +205,42 @@
   }
   .scroll-shadow-ambas {
     @apply shadow-[inset_-14px_0_10px_-10px_rgb(0_0_0_/_0.15),inset_14px_0_10px_-10px_rgb(0_0_0_/_0.15)] dark:shadow-[inset_-14px_0_10px_-10px_rgb(255_255_255_/_0.12),inset_14px_0_10px_-10px_rgb(255_255_255_/_0.12)];
+  }
+
+  /* Badges de estado ACTIVO/INACTIVO — Usuario, Galpón, Lote (única
+     receta para las tres tablas, a pedido del Product Owner: antes
+     Usuario tenía su propio verde suelto en usuarios-tabla.tsx, deuda ya
+     documentada en Sprint 3, corregida acá). ACTIVO usa amber (no verde):
+     concuerda con --secondary, el amarillo de marca ("amarillo de la
+     paja" del logo) — pero se define con clases de Tailwind explícitas
+     (amber-100/300/800), NO con `bg-secondary`/`border-secondary`,
+     porque --secondary en dark mode es un gris neutro (ver .dark más
+     arriba, nunca se retocó para mantener el amber ahí) — usar el token
+     directo haría que ACTIVO se vea idéntico a INACTIVO en dark mode.
+     INACTIVO sigue siendo el mismo gris neutro de siempre. Ambas llevan
+     borde (`border-*`, no solo texto/fondo) para que el estado se lea
+     incluso sin color (accesibilidad) y porque un borde despareja menos
+     entre ambos badges que dejar uno con borde y otro sin.
+
+     El `!` al final de cada utilidad es obligatorio acá, no cosmético:
+     estas dos clases se usan siempre junto con `<Badge variant="...">`
+     (ver ui/badge.tsx), que ya trae sus propias utilidades de fondo,
+     texto y borde (p. ej. `variant="secondary"` trae
+     `bg-secondary`, un amber parecido — casi indistinguible del de acá,
+     que es justo lo que hacía indetectable este bug a simple vista).
+     Esas utilidades del variant y las de acá tienen la MISMA
+     especificidad, pero @layer components (donde vive esta clase) SIEMPRE
+     pierde contra @layer utilities (donde Tailwind genera las del
+     variant) en Tailwind v4, sin importar el orden en className — twMerge
+     (lib/utils.ts) no puede arbitrar el conflicto porque no reconoce
+     `.badge-estado-activo` como una utilidad de Tailwind, así que nunca
+     saca `bg-secondary` de en medio. Bug real encontrado en vivo: los
+     tres badges (Activo x2, Inactivo) se veían del mismo amber sin el
+     `!` — Inactivo estaba mostrando bg-secondary, no bg-muted. */
+  .badge-estado-activo {
+    @apply border-amber-300! bg-amber-100! text-amber-800! dark:border-amber-700! dark:bg-amber-950! dark:text-amber-200!;
+  }
+  .badge-estado-inactivo {
+    @apply border-border! bg-muted! text-muted-foreground!;
   }
 }

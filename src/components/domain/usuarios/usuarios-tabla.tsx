@@ -88,11 +88,7 @@ function UsuarioFila({ usuario }: { usuario: Usuario }) {
       <TableCell>
         <Badge
           variant="secondary"
-          className={
-            usuario.estado === "ACTIVO"
-              ? "border-green-300 bg-green-100 text-green-800"
-              : "border-border bg-muted text-muted-foreground"
-          }
+          className={usuario.estado === "ACTIVO" ? "badge-estado-activo" : "badge-estado-inactivo"}
         >
           {usuario.estado === "ACTIVO" ? "Activo" : "Inactivo"}
         </Badge>

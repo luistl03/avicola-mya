@@ -1,4 +1,4 @@
-import { Home, Users } from "lucide-react";
+import { Home, Layers3, Users, Warehouse } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
@@ -15,4 +15,6 @@ export type NavItem = { href: string; label: string; icon: LucideIcon };
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/usuarios", label: "Usuarios", icon: Users },
+  { href: "/galpones", label: "Galpones", icon: Warehouse },
+  { href: "/lotes", label: "Lotes", icon: Layers3 },
 ];

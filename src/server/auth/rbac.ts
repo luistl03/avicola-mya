@@ -14,6 +14,8 @@ import type { Rol } from "@prisma/client";
 // restringirse a un subconjunto de roles, no todas.
 export const RUTAS_POR_ROL: { ruta: string; roles: Rol[] }[] = [
   { ruta: "/usuarios", roles: ["GERENTE"] },
+  { ruta: "/galpones", roles: ["GERENTE"] },
+  { ruta: "/lotes", roles: ["GERENTE"] },
 ];
 
 export function rolPermitidoParaRuta(pathname: string, rol: Rol): boolean {

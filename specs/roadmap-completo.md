@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 2 completado, verificado en producción y pusheado.
-**Progreso:** 3 de 16 sprints (18.75%)
+**Última actualización:** Sprint 3 completado, verificado contra Neon real (pendiente verificación clic a clic en navegador — ver `memory/estado-proyecto.md`).
+**Progreso:** 4 de 16 sprints (25%)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -21,7 +21,7 @@ resumen + `memory/` como base — no inventar alcance nuevo.
 
 | Release | Sprints | Estado | Entrega de valor |
 |---|---|---|---|
-| R1 — Operación básica | 0–7 | 🟡 En curso (3/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
+| R1 — Operación básica | 0–7 | 🟡 En curso (4/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
 | R2 — Finanzas | 8–11 | ⬜ Pendiente | Créditos, cobranza, egresos, planilla. |
 | R3 — Campo real | 12–13 | ⬜ Pendiente | Funciona sin señal. Instalable. |
 | R4 — Inteligencia | 14–15 | ⬜ Pendiente | Dashboard, reportes, push. |
@@ -69,11 +69,16 @@ Velocidad de referencia: 1 dev full-time 26–34 pts/sprint,
 **Detalle de ejecución (3 bugs reales encontrados y corregidos, más el
 cierre de la deuda de Sprint 1):** `memory/estado-proyecto.md`
 
-### Sprint 3 — Galpones, Lotes y Mudanzas (29 pts)
+### ✅ Sprint 3 — Galpones, Lotes y Mudanzas (29 pts) — COMPLETADO
 **Goal:** Gerente configura estructura física, muda lotes sin perder historia.
-- CRUD Galpón, alta de Lote
-- Mudanza transaccional (cerrar fechaSalida + abrir nueva, valida capacidad)
-- Finalizar lote → INACTIVO, vista ubicación actual, tests de integridad
+- Migración: `Galpon.estado` (soft-delete, no existía desde Sprint 0)
+- CRUD Galpón (con guard de capacidad/ocupación), alta de Lote con ubicación inicial
+- Mudanza transaccional (cerrar fechaSalida + abrir nueva, valida capacidad y estado del destino)
+- Finalizar lote → INACTIVO (cierra su ubicación en la misma transacción), vista de ubicación actual
+- Tests de integridad: 44 tests nuevos (unit + integración) + verificación en vivo contra Neon
+  real del índice único parcial de S0-5 (sigue vigente)
+**Specs:** `specs/sprint-03-galpones-lotes-mudanzas/`
+**Detalle de ejecución (sin bugs de código; deuda pendiente de verificación en navegador real):** `memory/estado-proyecto.md`
 
 ### Sprint 4 — Mortalidad y Bitácora (24 pts)
 **Goal:** operario registra bajas y notas de turno desde el celular.

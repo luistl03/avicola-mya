@@ -34,6 +34,21 @@ duplicar la fuente de verdad en dos lugares que se puedan desincronizar.
 - **IDs siempre UUID**, nunca autoincrement — es requisito del contrato
   offline-ready (ver `convenciones.md`).
 
+## Campos calculados: nunca se guardan valores que se desactualizan solos
+Cuando un valor se puede derivar por completo de otros campos + la fecha
+actual (edad, antigüedad, "días desde"), **no se persiste** — se calcula
+al leer, en una función pura de `server/services/`. Guardarlo significaría
+o bien un job que lo recalcule solo (no existe en este proyecto) o un
+dato que queda mintiendo apenas pasa el tiempo. Ejemplo real:
+`Lote.edadInicialSemanas` (Sprint 3, agregado post-cierre a pedido del
+Product Owner) guarda la edad de las aves en semanas *al momento de
+`fechaIngreso`* — la "edad actual" NUNCA se guarda, la calcula
+`calcularEdadEnSemanas()` (`server/services/lote.ts`) a partir de ese
+valor + `fechaIngreso` + una `fechaReferencia` que decide quien llama
+(hoy si el lote está ACTIVO; la `fechaSalida` de su última
+`HistorialUbicacionLote` si está INACTIVO, para que la edad quede
+"congelada" en el momento de finalizar y no siga subiendo después).
+
 ## Decisiones que ya moldearon este schema (ver `decisiones-tecnicas.md`)
 
 - **D2**: no existe modelo `BitacoraGalpon`. `BitacoraGlobal` es siempre

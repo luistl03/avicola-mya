@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { idUuid } from "@/lib/zod/comun";
+
 const usuarioLogin = z
   .string()
   .trim()
@@ -11,7 +13,7 @@ const nombre = z.string().trim().min(1, "El nombre es obligatorio").max(120);
 
 const password = z.string().min(8, "Mínimo 8 caracteres");
 
-const usuarioId = z.string().uuid("Id inválido");
+const usuarioId = idUuid();
 
 // Un <input> vacío llega como "" (no undefined) al pasar por FormData —
 // se normaliza a undefined antes de validar, para que los campos opcionales

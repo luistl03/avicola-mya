@@ -9,8 +9,9 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 3 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
-  Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell)
+- **Sprint actual:** 4 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+  Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
+  Galpones, Lotes y Mudanzas)
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -415,13 +416,379 @@ la resetee desde Editar (la propia o la de otro usuario).
    recarga a mitad de una secuencia de clics) — ver detalle en
    "Herramientas y configuración del entorno" arriba.
 
+## Sprint 3 — Galpones, Lotes y Mudanzas (cerrado, 2026-08-07)
+13/13 tareas completas (S3-1 a S3-13), 108 tests (44 nuevos: 15 unit +
+29 integración, sobre los 64 heredados de Sprint 2), verificado en código
+real contra Neon (scripts temporales, no solo mocks) y contra servidor
+real vía curl+cookie jar (no navegador esta vez — decisión explícita, ver
+más abajo). `specs/sprint-03-galpones-lotes-mudanzas/` tiene el detalle
+completo (spec.md, plan.md, tasks.md con cada tarea documentada al
+cerrarla).
+
+**Decisiones de negocio confirmadas por el Product Owner antes de
+ejecutar** (preguntadas explícitamente porque el roadmap no las
+resolvía, siguiendo `definition-of-ready.md`):
+1. `Galpon.capacidadMaxima` mide aves vivas totales, sumando todos los
+   lotes que el galpón aloje a la vez — un galpón puede alojar más de un
+   lote simultáneo.
+2. Se agregó `estado` a `Galpon` (no existía en el schema desde Sprint 0)
+   para soft-delete, igual que `Usuario`/`Lote`.
+3. Solo lotes `ACTIVO` pueden mudarse; `avesVivas` puede ser cualquier
+   valor ≥0, incluido 0.
+4. Finalizar un lote no depende de `avesVivas` — se puede finalizar en
+   cualquier momento (venta/retiro total, no solo mortalidad completa).
+
+**Corolarios de diseño documentados en spec.md** (no preguntados de
+nuevo, pero dejados explícitos para que el Product Owner pudiera
+objetarlos): finalizar un lote también cierra su ubicación abierta en la
+misma transacción; un galpón no puede desactivarse mientras aloje algún
+lote; la capacidad máxima de un galpón no se puede editar por debajo de
+su ocupación actual; `Galpon.nombre` quedó sin `@unique` (nada lo pedía);
+`/galpones` y `/lotes` restringidas a GERENTE (mismo criterio que
+`/usuarios`).
+
+**Migración de schema:** `enum EstadoGalpon` + `Galpon.estado` (default
+ACTIVO) + índice, migración `20260807161831_galpon_estado`, no
+destructiva (`ADD COLUMN ... DEFAULT 'ACTIVO'`).
+
+**Sin bugs de código encontrados en este sprint** (a diferencia de los
+Sprints 1 y 2, que sí encontraron bugs reales) — sí hubo dos ajustes
+menores no anticipados en el plan original, ambos resueltos en el
+momento: `estadoDespues` de `AuditLog` no acepta `Date` crudo (Prisma
+exige `InputJsonValue`), se serializa con `.toISOString()`; y se agregó
+un `npm run build` de verificación en S3-9 (además de `tsc --noEmit`)
+para confirmar que ningún import de servidor se filtraba a un componente
+cliente a través del límite de RSC.
+
+**Hallazgo no-bug real durante la verificación final (S3-13):** la
+cuenta sembrada `gerente`/`Cambiar123!` ya **no** sirve para loguearse
+contra la base real — confirma en la práctica lo que
+"Seguridad: revocar sesiones al resetear contraseña" (más abajo) ya
+documentaba: el Product Owner rotó esa contraseña en producción. La
+verificación de 403 de este sprint se hizo con un Gerente y un Operario
+**temporales** (creados y borrados con un script, mismo criterio que
+Sprint 2 usó para no tocar cuentas reales), no con la cuenta sembrada.
+
+**Verificado en vivo contra Neon real** (script temporal, borrado al
+terminar): transacción de alta de lote (Lote + primera
+`HistorialUbicacionLote`), transacción de mudanza (cierra la fila vieja
++ abre la nueva), y — el hallazgo más importante de esta verificación —
+el índice único parcial de `HistorialUbicacionLote` creado en Sprint 0
+(S0-5) **sigue vigente**: un intento directo de abrir una segunda
+ubicación abierta para el mismo lote, sin pasar por el repository, fue
+rechazado por la base. También se ejercitaron las guards de capacidad y
+de "galpón ocupado" con números de ocupación reales (no simulados), y se
+verificó una fila real de `AuditLog` con `entidad: "Lote"`.
+
+**Pendiente explícito, no resuelto en esta sesión:** verificación clic a
+clic en navegador real de `/galpones` y `/lotes` (crear, mudar,
+finalizar) — se optó por scripts contra Neon real en vez de la extensión
+Claude in Chrome. La lógica de negocio ya está probada (tests +
+verificación de Neon real arriba); lo que falta confirmar es
+específicamente la experiencia de UI (diálogos, toasts, refresco de
+tabla). Repetir el mismo camino que Sprints 1-2 usaron para el viewport
+móvil si hace falta cerrarlo: sesión con la extensión conectada, o
+Product Owner probando contra `npm run dev`/producción.
+
+`memory/definition-of-done.md` sigue sin existir — tercer sprint seguido
+que lo señala (Sprint 2 ya lo había encontrado). Si se sigue postergando,
+vale la pena decidir explícitamente si alguna vez se va a crear o si
+`CLAUDE.md` + este archivo son de hecho el DoD del proyecto.
+
+## Edad del lote en semanas (post-Sprint 3, 2026-08-07)
+A pedido del Product Owner (el cliente quería ver de un vistazo cuántas
+semanas tiene cada lote), se agregó **después** de cerrar Sprint 3, sin
+abrir un sprint nuevo del roadmap — mismo criterio que "Identidad visual"
+y "Seguridad" más abajo: un cambio real pero puntual se documenta acá con
+fecha, no en una carpeta `specs/sprint-XX` nueva.
+
+**Decisiones de negocio confirmadas por el Product Owner antes de tocar
+el schema** (las tres, con la opción recomendada elegida en los tres
+casos):
+1. La "edad inicial" que se carga al dar de alta un lote es la edad real
+   de las aves en semanas al momento de `fechaIngreso` — no siempre 0,
+   cubre comprar aves ya crecidas (recría), no solo pollitos de un día.
+2. Al finalizar un lote, la edad mostrada se **congela** en la fecha de
+   finalización — no sigue avanzando después.
+3. Se muestra en semanas completas (parte entera, sin días sueltos).
+
+**Schema:** `Lote.edadInicialSemanas Int @default(0)`, migración
+`20260807173922_lote_edad_inicial_semanas` (no destructiva). **La "edad
+actual" nunca se guarda** — ver el principio nuevo "Campos calculados"
+en `memory/modelo-datos.md`, que este cambio también actualizó (y de
+paso corrigió que el `Galpon.estado` de Sprint 3 no había quedado
+documentado ahí — la convención de "actualizar modelo-datos.md en el
+mismo cambio" se venía incumpliendo desde ese sprint).
+
+**Cómo se resuelve el congelamiento sin agregar un campo
+`fechaFinalizacion`:** se reutiliza algo que ya existía.
+`listarLotesConUbicacion()` (`server/repositories/lote.ts`) antes solo
+traía la fila *abierta* de `HistorialUbicacionLote` (`fechaSalida:
+null`); se cambió para traer siempre la **última** fila por
+`fechaEntrada` (abierta o cerrada, `take: 1`). Para un lote ACTIVO no
+cambia nada (la última fila siempre es la abierta, por el índice único
+parcial de S0-5); para uno INACTIVO, esa fila cerrada es la que
+`finalizarLote()` dejó al cerrar la ubicación — su `fechaSalida` es
+exactamente el momento de finalización. `LotesTabla` tuvo que ajustarse
+para distinguir "última fila = ubicación real" de "última fila cerrada =
+lote finalizado" (antes lo distinguía por si el array venía vacío o no;
+ahora siempre viene con una fila, hay que mirar `fechaSalida === null`).
+
+**Dónde vive el cálculo:** `calcularEdadEnSemanas()`
+(`server/services/lote.ts`) es una función pura — recibe
+`edadInicialSemanas`, `fechaIngreso` y `fechaReferencia` (quien llama
+decide cuál usar, no la función), devuelve semanas completas
+(`Math.floor`). Se invoca desde `app/(app)/lotes/page.tsx` (Server
+Component), no en el cliente — evita repetir lógica de fechas en un
+componente `"use client"` y mantiene la hora del servidor como fuente de
+verdad (D5, América/Lima).
+
+**Tocado:** migración de schema; `lib/zod/lote.ts` (`edadInicialSemanas`
+en `crearLoteSchema`); `server/repositories/lote.ts` (`crearLoteConUbicacion`
+guarda el campo, `listarLotesConUbicacion` cambia de forma);
+`server/actions/lote.ts` (`estadoDespues` de `crearLote` lo incluye para
+`AuditLog`); `LoteFormDialog` (campo nuevo "Edad inicial (semanas)",
+precargado en 0); `LotesTabla` (columna nueva "Edad", más el ajuste de
+"última fila" de arriba); `tests/factories/lote.factory.ts`;
+`tests/integration/actions/lote.test.ts` (el `inputValido` de `crearLote`
+necesitaba el campo nuevo — Zod lo exige); 5 tests unitarios nuevos de
+`calcularEdadEnSemanas` (semana 0, piso no redondeo, edad inicial > 0,
+guarda defensiva contra fechas invertidas, y el caso de congelamiento).
+113/113 tests en verde, `npm run build` limpio, verificado además contra
+Neon real con un script temporal (creación con `edadInicialSemanas: 10`
+hace ~20 días simulados, cálculo en vivo, finalización y confirmación de
+que la fila queda cerrada — datos de prueba borrados al terminar).
+
+**Un detalle real encontrado durante la propia verificación (no un bug,
+un error mío armando los datos de prueba):** un script temporal de
+verificación incluía una aserción de contraste ("sin congelar, la edad
+seguiría subiendo") que falló por elegir offsets de días (15 y 20) que
+caen en la misma semana completa (`Math.floor(15/7) ==
+Math.floor(20/7) == 2`) — no revela ningún problema en
+`calcularEdadEnSemanas` (ya cubierto con precisión por los tests
+unitarios), solo que esa aserción puntual del script descartable no
+separaba bien los casos. Se descartó esa aserción, no el hallazgo
+principal (que sí pasó).
+
+## Bugs reales reportados por el Product Owner tras probar en vivo (2026-08-07)
+Al usar "Nuevo lote"/"Mudar lote" contra la base real (con los galpones
+sembrados en `prisma/seed.ts`, no datos creados con `crypto.randomUUID()`
+como en los tests), aparecieron dos bugs reales que ningún test había
+agarrado — los dos se corrigieron en la misma sesión.
+
+### Bug 1 — El `<Select>` de galpón no dejaba guardar ("Seleccioná un galpón" pegado)
+**Causa raíz:** `z.string().uuid()` en Zod v4 exige que el string cumpla
+estrictamente el nibble de versión/variante de RFC4122. Los ids
+sembrados en `prisma/seed.ts` para `Galpon` (y también
+`CLIENTE_PUBLICO_GENERAL_ID` en `lib/constants.ts`, mismo patrón,
+todavía no probado por ningún `.uuid()` — es el mismo landmine, va a
+explotar en cuanto un sprint futuro valide `clienteId`) son constantes
+fijas legibles tipo `"00000000-0000-0000-0000-000000000101"`, no
+generadas con `crypto.randomUUID()` — no tienen ese nibble en rango
+válido, así que Zod las rechazaba pese a ser ids reales y existentes en
+la base. Nadie lo había notado antes porque Sprint 3 es el primer lugar
+del proyecto que valida un id de este tipo con `.uuid()`.
+**Corregido:** `lib/zod/comun.ts` (nuevo) exporta `idUuid()` — valida la
+FORMA de un UUID (8-4-4-4-12 hex) sin exigir el nibble RFC4122 estricto.
+Reemplaza `z.string().uuid()` en los tres schemas que lo usaban
+(`usuario.ts`, `galpon.ts`, `lote.ts`). Verificado con Zod real, en un
+script y en un test unitario nuevo, que los ids reales del seed ahora sí
+pasan.
+
+### Bug 2 — El `<Select>` de galpón mostraba el UUID crudo en vez del nombre
+**Causa raíz** (confirmada leyendo el código fuente de
+`@base-ui/react`, no adivinada): `<SelectValue>` sin `children` explícito
+resuelve la etiqueta visible buscando el valor seleccionado en una lista
+interna de ítems que Base UI arma sola (`resolveSelectedLabel()` en
+`internals/resolveValueLabel.mjs`); si esa lista no tiene el ítem
+registrado en ese momento, cae en un *fallback* que devuelve el `value`
+crudo tal cual (`stringifyAsLabel` → `serializeValue(item)`).
+**Corregido:** los `<Select>` de galpón (`LoteFormDialog`,
+`MudanzaDialog`) ahora son controlados (`value` + `onValueChange` con
+`useState` propio) y `<SelectValue>` recibe la etiqueta ya resuelta
+como `children` (`galponesActivos.find(...)?.nombre`), sin depender de
+la resolución interna de Base UI. El `<Select>` de rol en
+`UsuarioFormDialog` no tenía este problema en la práctica (su `value` ya
+es texto legible, "OPERARIO"/"GERENTE", así que el *fallback* nunca se
+notaba visualmente) — no se tocó.
+
+### Bug 3 — El error de validación quedaba pegado al reabrir un modal ya cerrado
+Encontrado al leer el código mientras se investigaba el Bug 1 (el
+Product Owner lo reportó para "Nuevo galpón", pero el mismo patrón
+existía en los cuatro dialogs de formulario del proyecto, heredado desde
+`UsuarioFormDialog` de Sprint 2). **Causa raíz:** `useActionState` vivía
+en el componente que renderiza el `<Dialog>`, que **nunca se desmonta**
+al cerrar el modal (solo `open` pasa a `false`) — su `state` (con el
+error de la tanda anterior) sobrevivía intacto a un cierre/apertura,
+así que el mensaje viejo reaparecía sin que el usuario tocara nada.
+**Corregido en los cuatro:** `UsuarioFormDialog`, `GalponFormDialog`,
+`LoteFormDialog`, `MudanzaDialog` — el formulario (con su propio
+`useActionState`) se movió a un subcomponente que solo se renderiza
+mientras `open` es `true`; al cerrar el modal, React lo desmonta de
+verdad, y la próxima apertura lo monta de cero con `state: undefined`.
+De paso, esto también deja resuelta de forma más prolija la advertencia
+de Base UI que `UsuarioFormDialog` ya evitaba a mano en Sprint 2
+(inputs no controlados recibiendo props nuevas mientras el modal
+todavía cierra) — ahora ningún input de ningún dialog de formulario
+puede quedar montado después de que `open` pasa a `false`.
+
+**Verificado:** 117/117 tests (4 nuevos para `idUuid`), `npm run build`
+limpio, y `crearLoteSchema.safeParse(...)` probado en vivo con el id
+real de "Galpón 2" del seed (antes rechazado, ahora aceptado). La
+verificación visual de los tres (clic a clic, confirmando que el
+nombre se ve bien y que el modal no arrastra el error viejo) queda
+para que el Product Owner la confirme en su navegador — no se hizo con
+la extensión Claude in Chrome en esta sesión.
+
+## Bug 4 — fechaIngreso de un lote aceptaba fechas futuras (2026-08-07)
+El Product Owner notó que "Nuevo lote" dejaba elegir una fecha de
+ingreso posterior a hoy — confirmado leyendo el código antes de tocar
+nada: ni el `<input type="date">` (sin `max`) ni `crearLoteSchema`
+(`z.coerce.date()` sin ningún tope) lo impedían.
+**Decisión confirmada por el Product Owner:** el campo sigue editable
+(no fijo en "hoy" — el Gerente puede cargar con atraso un lote que
+ingresó ayer), pero con tope: no se puede elegir una fecha futura.
+**Corregido en dos capas:**
+- `lib/zod/lote.ts` (`crearLoteSchema`): `.refine()` que compara contra
+  "hoy en América/Lima" (D5), no contra un `Date` crudo del servidor —
+  comparar en UTC directo haría que las primeras horas de un día en UTC
+  (todavía "ayer" en Lima, UTC-5) rechacen por error una fecha que en
+  Lima sigue siendo hoy. Esta es la validación real/autoritativa.
+- `LoteFormDialog`: `max` en el `<input type="date">`, calculado igual
+  (América/Lima) pero con el reloj del navegador — comodidad de UX
+  (evita el viaje de ida y vuelta de un error en el caso común), no la
+  guardia real.
+**Tests nuevos:** `tests/unit/lib/zod-lote.test.ts` — hoy pasa, pasado
+pasa, futuro se rechaza con el mensaje esperado, y un caso límite
+explícito de huso horario (reloj del servidor ya cruzó la medianoche UTC
+pero en Lima sigue siendo el día anterior — confirma que la comparación
+usa Lima, no UTC crudo). Se ajustó además el `fechaIngreso` fijo que
+usaban los tests de integración existentes de `crearLote`
+(`tests/integration/actions/lote.test.ts`), que quedaba pegado al mismo
+instante que su reloj simulado (`AHORA`) y por lo tanto corría riesgo de
+caer del lado equivocado de ese mismo borde de zona horaria. 121/121
+tests en verde, `npm run build` limpio.
+
+## Badge "Activo" pasa de verde a amber (2026-08-07)
+A pedido del Product Owner, por consistencia de marca. **Reemplaza** lo
+que decía la sección "Identidad visual, shell y UX de mobile" más arriba
+(2026-08-06) sobre el verde del badge "Activo" — se deja esa sección tal
+cual como registro histórico de esa sesión, no se reescribe (mismo
+criterio que `decisiones-tecnicas.md`); esta nota es la fuente de verdad
+vigente.
+- `.badge-estado-activo` (`globals.css`) pasa de verde a amber
+  (`amber-100`/`amber-300`/`amber-800`, con variantes dark). Se agregó
+  borde a propósito (ya lo tenía; se mantiene) — el pedido explícito era
+  que ambos estados ("Activo"/"Inactivo") se vean con el mismo
+  tratamiento de borde, no que uno tenga y el otro no.
+- **No se usó `bg-secondary`/`border-secondary`** (el amber de marca
+  real, `--secondary`) a propósito: en dark mode `--secondary` es un gris
+  neutro (nunca se retocó para mantener el amber ahí, ver `:root`/`.dark`
+  en `globals.css`) — usar el token directo hubiera hecho que "Activo" se
+  vea idéntico a "Inactivo" en dark mode. Se usan clases de Tailwind
+  amber explícitas en su lugar, mismo criterio que ya usa `.toast-success`
+  con verde.
+- **`usuarios-tabla.tsx` dejó de tener su propio verde suelto** (deuda
+  documentada desde el cierre de Sprint 3 — el badge de Usuario nunca
+  había migrado a una clase de `globals.css`) y ahora usa
+  `.badge-estado-activo`/`.badge-estado-inactivo`, las mismas que ya
+  usaban Galpón y Lote desde que se crearon. Las tres tablas comparten
+  exactamente la misma receta de estado desde acá — un solo lugar para
+  cambiarla en el futuro, no tres.
+- Galpón y Lote **no necesitaron ningún cambio de código** — ya apuntaban
+  a esas clases compartidas (verificado leyendo el código antes de tocar
+  nada), así que el cambio de color en `globals.css` les llegó solo.
+`.toast-success` se queda verde a propósito (no se tocó): "operación
+exitosa" es una señal distinta de "este registro está activo", no tenían
+por qué compartir tono, y de hecho ya no lo comparten literalmente desde
+este cambio (antes el comentario de `globals.css` decía que reusaba el
+verde del badge Activo — ese comentario se corrigió, quedaba desactualizado).
+121/121 tests, `npm run build` limpio.
+
+## Corrección: "Inactivo" se veía amber igual que "Activo" (2026-08-07, mismo día)
+El Product Owner reportó, con captura, que los tres badges (dos
+"Activo" y uno "Inactivo") se veían del mismo amber — el cambio de
+arriba no había funcionado como se esperaba para INACTIVO.
+
+**Causa raíz (no cosmética, de Tailwind v4):** `.badge-estado-activo`/
+`.badge-estado-inactivo` viven en `@layer components`, pero siempre se
+usan junto con `<Badge variant="...">` (`ui/badge.tsx`), que ya trae sus
+propias utilidades de fondo/texto/borde según el `variant` — por ejemplo
+`variant="secondary"` trae `bg-secondary`, un amber de marca casi
+indistinguible del nuevo `.badge-estado-activo` (por eso el bug pasó
+desapercibido justo para ACTIVO, y solo saltó a la vista con INACTIVO,
+que sí debía verse gris). En Tailwind v4, `@layer utilities` **siempre**
+gana sobre `@layer components` con la misma especificidad, sin importar
+el orden en el `className` — y `twMerge` (`lib/utils.ts`) tampoco lo
+arbitra, porque no reconoce `.badge-estado-activo`/`.badge-estado-inactivo`
+como utilidades de Tailwind (solo sabe deduplicar utilidades reales tipo
+`bg-*`). Resultado: `bg-secondary` del `variant` le ganaba a `bg-muted`
+de `.badge-estado-inactivo` siempre, así que INACTIVO nunca mostró gris
+desde que se creó esa clase en Sprint 3 — no es un bug de hoy, es un bug
+que existía desde el principio y nadie había mirado con atención hasta
+ahora.
+
+**Corregido:** las dos clases ahora marcan cada utilidad con `!`
+(important, sintaxis de Tailwind v4 — mismo patrón que ya usaba
+`ui/badge.tsx` para el tamaño del ícono, `size-4!`), forzándolas a ganar
+sin importar el `variant` del `Badge`.
+
+**Bug real que yo mismo introduje arreglando esto, encontrado por el
+navegador (página en blanco, no en los tests):** el comentario nuevo que
+documentaba el porqué del `!` incluía el texto `bg-*/text-*/border-*` —
+la secuencia `*/` cierra un comentario CSS antes de tiempo, así que
+`globals.css` quedó con sintaxis inválida (Next tiraba "Parsing CSS
+source code failed") y `/login`, `/usuarios`, etc. renderizaban en
+blanco. `npm run build`/`typecheck`/`test` no lo agarran porque ninguno
+parsea CSS — solo se vio al levantar el navegador. **Lección:** un
+comentario CSS nunca puede contener la secuencia literal `*/`, ni por
+accidente en prosa explicando código (`bg-*` seguido de `/text-*` la
+genera). Corregido reescribiendo esa frase sin barras.
+
+**Verificado de verdad esta vez, en el navegador real** (no solo
+leyendo el código, después de que la vez anterior eso no alcanzó):
+`/usuarios`, `/galpones` y `/lotes` con capturas confirmando Activo
+amber con borde e Inactivo gris con borde, claramente distintos, en
+las tres tablas. Usuarios de prueba (`gerente.test.badges`,
+`operario.test.inactivo`, este último creado directo en INACTIVO para
+no depender de hacer clic en "Desactivar") borrados al terminar, mismo
+criterio de siempre. 121/121 tests y `npm run build` siguen en verde
+después del arreglo del comentario.
+
+## Pregunta del Product Owner: ¿se puede limpiar la base antes de entregar a producción?
+Sí, pero con una salvedad importante que ya está documentada como riesgo
+sin resolver desde Sprint 1 (**"Riesgo operativo: local y producción
+comparten la misma base de datos"**, más arriba): hoy `DATABASE_URL`/
+`DIRECT_URL` local apunta al **mismo** Neon que usa Vercel en producción.
+No hay un entorno de pruebas separado de producción todavía — así que
+"limpiar los datos de prueba" hecho desde acá borraría lo mismo que
+vería un cliente real en producción, porque literalmente es la misma
+base. **Antes de cargar datos reales de la granja, hay que separar los
+branches dev/main de Neon** (pendiente desde Sprint 1, nunca
+priorizado). Una vez separados:
+- **Se puede borrar sin drama:** los 3 galpones demo (Galpón 1/2/3) y
+  `LOTE-DEMO-01` sembrados en `prisma/seed.ts`, cualquier usuario de
+  prueba, y el precio demo de `PrecioKilo`.
+- **No se borra, se resiembra igual:** el Gerente real (con su propia
+  contraseña, no la de desarrollo) y el Cliente "Público General"
+  (`CLIENTE_PUBLICO_GENERAL_ID`) — ese no es dato de prueba, es un
+  registro fijo que el sistema necesita para ventas de mostrador sin
+  cliente registrado, tiene que existir también en producción.
+
 ## Cómo continuar desde acá
-1. Sprint 3 (Galpones, Lotes y Mudanzas) es el siguiente. Su `spec.md` aún
-   no existe — generarlo usando `specs/roadmap-completo.md` (sección
-   Sprint 3) + este archivo + el resto de `memory/` como contexto. Usar
-   `specs/sprint-02-rbac-auditoria/` como referencia de estructura más
-   reciente (incluye el patrón de verificación en vivo con navegador +
-   script + curl que se consolidó en Sprint 2).
+1. Sprint 4 (Mortalidad y Bitácora) es el siguiente. Su `spec.md` aún no
+   existe — generarlo usando `specs/roadmap-completo.md` (sección
+   Sprint 4) + este archivo + el resto de `memory/` como contexto. Usar
+   `specs/sprint-03-galpones-lotes-mudanzas/` como referencia de
+   estructura más reciente (incluye el patrón de verificación con
+   scripts temporales contra Neon real + curl que se usó al cerrar
+   Sprint 3). Sprint 4 va a necesitar leer la ubicación actual de un lote
+   (`server/repositories/lote.ts`, `buscarUbicacionActual`) y su
+   `avesVivas` — ya existen desde este sprint, no hace falta reinventarlos.
+   `Lote.edadInicialSemanas` y `calcularEdadEnSemanas()` (agregados
+   después de cerrar Sprint 3, ver sección de arriba) también ya
+   existen — si Mortalidad/Bitácora necesita mostrar la edad de un lote
+   en algún lado, reusar esa función, no reinventarla.
 2. Toda Server Action nueva que mute datos debe envolverse con
    `withAuth(config, handler)` (`server/auth/with-auth.ts`, Sprint 2) — es
    la pieza de mayor apalancamiento del proyecto, ya trae auth + rol + Zod
@@ -472,6 +839,18 @@ la resetee desde Editar (la propia o la de otro usuario).
   sobre cómo Vercel sanea `x-forwarded-for` en su borde de red), y
   `/login` + el Shell verificados en viewport móvil real (celular físico
   del Product Owner) — sin deuda pendiente conocida al cerrar este sprint.
+- **Sprint 3** — cerrado (2026-08-07). 13/13 tareas completas, 108 tests
+  (44 nuevos), migración de schema (`Galpon.estado`) aplicada contra
+  Neon real, verificado con scripts temporales contra Neon real (alta de
+  lote, mudanza transaccional, índice único parcial de S0-5 todavía
+  vigente, guards de capacidad/ocupación con números reales, fila real
+  de `AuditLog`) y guard de rol verificado con curl+cookie jar (403 real
+  a Operario en `/galpones`/`/lotes`, con usuarios Gerente/Operario
+  temporales por la rotación de contraseña de `gerente` en producción).
+  Sin bugs de código encontrados. **Deuda pendiente explícita:**
+  verificación clic a clic en navegador real de `/galpones`/`/lotes`
+  — no se hizo en esta sesión (se usaron scripts en su lugar, decisión
+  explícita), ver detalle arriba.
 
 ## Cierre de cabos sueltos post-Sprint 2 (2026-08-03)
 Al re-verificar el estado de Sprints 0-2 en una sesión nueva (typecheck,
