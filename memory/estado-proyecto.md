@@ -1009,12 +1009,22 @@ Sprint 3 no se repitió).
   clic a clic funcional, no pixel-perfect en viewport móvil exacto
   (`resize_window` sigue sin efecto en este entorno). Mismo camino que
   Sprints 1-2: Product Owner probando desde su celular.
-- Datos de prueba (`operario.browser.s4`, lote `VERIF-BROWSER-S4`, notas
-  de Bitácora de prueba) siguen en la base compartida con producción —
-  dejados a propósito para que el Product Owner terminara de probar;
-  borrarlos con un script antes de cargar datos reales de la granja (ver
-  "Riesgo operativo: local y producción comparten la misma base de
-  datos").
+
+**Datos de prueba, limpiados (2026-08-08):** el usuario
+`operario.browser.s4`, el lote `VERIF-BROWSER-S4` y sus 25 notas de
+Bitácora de prueba se borraron con un script una vez que el Product
+Owner terminó de probar. Al limpiar apareció un caso real (no de esta
+sesión): el Product Owner había usado el galpón de prueba para mover
+`LOTE-DEMO-01` y dar de alta dos lotes propios (`LOTE-VERIF-02`,
+`LOTE-VERIF03`) mientras probaba la app — `LOTE-DEMO-01` se movió de
+vuelta a Galpón 1 (su ubicación real anterior) con la función real de
+mudanza, y los dos lotes de prueba del Product Owner se borraron a
+pedido suyo. El galpón de prueba no se pudo borrar físicamente (el paso
+real, aunque breve, de `LOTE-DEMO-01` por ahí sigue registrado en
+`HistorialUbicacionLote`, protegido por `onDelete: Restrict` — no se
+borra esa fila para no perder historial real) — quedó en `INACTIVO`
+en su lugar, mismo criterio que "eliminar" un galpón en el resto del
+proyecto.
 
 ## Cierre de cabos sueltos post-Sprint 2 (2026-08-03)
 Al re-verificar el estado de Sprints 0-2 en una sesión nueva (typecheck,
