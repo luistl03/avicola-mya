@@ -9,3 +9,9 @@ export const SESION_IDLE_LIMITE_MIN = 30;
 
 /** Throttle mínimo (ms) entre heartbeats de actividad al servidor — ver R3 en specs/sprint-01-autenticacion/spec.md: sin esto, un ping por evento satura Neon. */
 export const SESION_HEARTBEAT_THROTTLE_MS = 60_000;
+
+/** Tamaño de tanda del muro cronológico de Bitácora (scroll infinito) — no son las 10 filas de una tabla paginada de gestión (ver memory/convenciones.md, "Tabla paginada vs. muro con scroll infinito"): es un feed, conviene traer más por tanda. Compartida entre server/actions/bitacora.ts, app/(app)/bitacora/page.tsx y bitacora-muro.tsx para que las tres no puedan desincronizarse. */
+export const PAGE_SIZE_MURO = 20;
+
+/** Minutos de ventana de gracia para revertir un RegistroMortalidad (restaura avesVivas) — mismo plazo que el roadmap ya fija para la ventana de gracia de Recolección (Sprint 6), por consistencia entre módulos. Compartida entre server/services/mortalidad.ts (guard real) y el countdown de la UI. */
+export const MORTALIDAD_VENTANA_GRACIA_MIN = 10;

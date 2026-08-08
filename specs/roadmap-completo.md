@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 3 completado, verificado contra Neon real (pendiente verificación clic a clic en navegador — ver `memory/estado-proyecto.md`).
-**Progreso:** 4 de 16 sprints (25%)
+**Última actualización:** Sprint 4 completado, verificado contra Neon real y clic a clic con Claude in Chrome (pendiente verificación en celular físico — ver `memory/estado-proyecto.md`).
+**Progreso:** 5 de 16 sprints (31%)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -21,7 +21,7 @@ resumen + `memory/` como base — no inventar alcance nuevo.
 
 | Release | Sprints | Estado | Entrega de valor |
 |---|---|---|---|
-| R1 — Operación básica | 0–7 | 🟡 En curso (4/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
+| R1 — Operación básica | 0–7 | 🟡 En curso (5/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
 | R2 — Finanzas | 8–11 | ⬜ Pendiente | Créditos, cobranza, egresos, planilla. |
 | R3 — Campo real | 12–13 | ⬜ Pendiente | Funciona sin señal. Instalable. |
 | R4 — Inteligencia | 14–15 | ⬜ Pendiente | Dashboard, reportes, push. |
@@ -80,12 +80,16 @@ cierre de la deuda de Sprint 1):** `memory/estado-proyecto.md`
 **Specs:** `specs/sprint-03-galpones-lotes-mudanzas/`
 **Detalle de ejecución (sin bugs de código; deuda pendiente de verificación en navegador real):** `memory/estado-proyecto.md`
 
-### Sprint 4 — Mortalidad y Bitácora (24 pts)
+### ✅ Sprint 4 — Mortalidad y Bitácora (24 pts) — COMPLETADO
 **Goal:** operario registra bajas y notas de turno desde el celular.
-- RegistroMortalidad + decremento atómico de avesVivas
+- RegistroMortalidad + decremento atómico de avesVivas (primera transacción
+  interactiva del proyecto, verificada sobre el pooler de Neon)
 - Bitácora con categoría (ALIMENTACION/VACUNACION/OBSERVACION), sin vínculo a galpón (D2)
-- Muro cronológico con scroll infinito, filtro por categoría/fecha
-- Guard: avesVivas nunca negativo
+- Muro cronológico con scroll infinito (paginación por cursor), filtro por categoría/fecha
+- Guard: avesVivas nunca negativo (guard anti-carrera real, forzado y verificado contra Neon)
+- Primeras pantallas mobile-first para el Operario (`<Sheet side="bottom">`), sin restricción de rol
+**Specs:** `specs/sprint-04-mortalidad-bitacora/`
+**Detalle de ejecución (sin bugs de negocio; un ajuste real de UI marcado por el linter de React):** `memory/estado-proyecto.md`
 
 ### Sprint 5 — Recolección e Inventario (29 pts) ⚠️ NÚCLEO, riesgo alto
 **Goal:** operario ingresa conteo del día, sistema genera paquetes + sueltos con ledger auditable.

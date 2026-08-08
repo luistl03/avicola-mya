@@ -9,9 +9,9 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 4 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+- **Sprint actual:** 5 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
   Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
-  Galpones, Lotes y Mudanzas)
+  Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora)
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -776,36 +776,64 @@ priorizado). Una vez separados:
   cliente registrado, tiene que existir también en producción.
 
 ## Cómo continuar desde acá
-1. Sprint 4 (Mortalidad y Bitácora) es el siguiente. Su `spec.md` aún no
-   existe — generarlo usando `specs/roadmap-completo.md` (sección
-   Sprint 4) + este archivo + el resto de `memory/` como contexto. Usar
-   `specs/sprint-03-galpones-lotes-mudanzas/` como referencia de
-   estructura más reciente (incluye el patrón de verificación con
-   scripts temporales contra Neon real + curl que se usó al cerrar
-   Sprint 3). Sprint 4 va a necesitar leer la ubicación actual de un lote
-   (`server/repositories/lote.ts`, `buscarUbicacionActual`) y su
-   `avesVivas` — ya existen desde este sprint, no hace falta reinventarlos.
-   `Lote.edadInicialSemanas` y `calcularEdadEnSemanas()` (agregados
-   después de cerrar Sprint 3, ver sección de arriba) también ya
-   existen — si Mortalidad/Bitácora necesita mostrar la edad de un lote
-   en algún lado, reusar esa función, no reinventarla.
-2. Toda Server Action nueva que mute datos debe envolverse con
+1. Sprint 5 (Recolección e Inventario) es el siguiente — roadmap lo marca
+   ⚠️ NÚCLEO, riesgo alto. Su `spec.md` aún no existe — generarlo usando
+   `specs/roadmap-completo.md` (sección Sprint 5) + este archivo + el
+   resto de `memory/` como contexto. Usar
+   `specs/sprint-04-mortalidad-bitacora/` como referencia de estructura
+   más reciente. **Este es el primer sprint con el Contrato Offline-Ready
+   obligatorio** (`memory/convenciones.md`) — a diferencia de Sprint 4
+   (mobile-first, pero online-only, sin cola offline), Sprint 5 necesita
+   IDs generados en el cliente, Server Actions idempotentes (upsert, no
+   `create` puro) y los dos timestamps (`creadoEnCliente`/`creadoEn`).
+   Confirmar con el Product Owner antes de ejecutar si esto implica
+   adelantar algo de la infraestructura de Sprint 13/14 (PWA/cola offline)
+   o si por ahora solo se cumple el contrato de datos sin la cola real.
+2. Toda Server Action nueva que **mute** datos debe envolverse con
    `withAuth(config, handler)` (`server/auth/with-auth.ts`, Sprint 2) — es
    la pieza de mayor apalancamiento del proyecto, ya trae auth + rol + Zod
-   + AuditLog automático. No reinventar ese chequeo a mano.
+   + AuditLog automático. No reinventar ese chequeo a mano. Una lectura
+   adicional disparada desde un Client Component (scroll infinito,
+   Sprint 4) NO pasa por `withAuth` — ver `memory/convenciones.md`,
+   sección "Server Actions", y `server/actions/bitacora.ts`
+   (`obtenerMasBitacora`) como referencia.
 3. El guard por rol de rutas nuevas se resuelve agregando el prefijo a
    `RUTAS_POR_ROL` en `server/auth/rbac.ts` — no escribir lógica de rol
-   nueva en `proxy.ts` directamente.
-4. Cualquier link de navegación nuevo (pantallas de Sprint 3 en adelante)
-   se agrega a `NAV_ITEMS` en `components/layout/nav-items.ts` — el Shell
-   ya filtra automáticamente por rol contra `rolPermitidoParaRuta()`, no
-   hace falta tocar `Sidebar` (ya no existe `BottomNav`, ver sección
-   "Identidad visual, shell y UX de mobile" más abajo). Toda pantalla
-   nueva usa `<PageHeader title=... actions=... />` en vez de armar un
-   `<h1>` a mano — si no lo usa, se queda sin forma de abrir el Sidebar en
-   mobile. Toda tabla ancha usa `<TableScrollArea>`, no un
-   `<div overflow-x-auto>` a mano.
-5. Mantener el mismo patrón de Sprints 0-2: ejecutar tarea por tarea,
+   nueva en `proxy.ts` directamente. **No toda pantalla nueva necesita
+   entrada ahí** — Mortalidad y Bitácora (Sprint 4) quedaron abiertas a
+   ambos roles a propósito, sin restricción.
+4. Cualquier link de navegación nuevo se agrega a `NAV_ITEMS` en
+   `components/layout/nav-items.ts` — el Shell ya filtra automáticamente
+   por rol contra `rolPermitidoParaRuta()`, no hace falta tocar `Sidebar`.
+   Toda pantalla nueva usa `<PageHeader title=... actions=... />` en vez
+   de armar un `<h1>` a mano. Toda tabla ancha usa `<TableScrollArea>`.
+   **Todo formulario de alta/edición, sea pantalla de campo (Operario) o
+   de gestión de escritorio (Gerente), usa `<Dialog>` centrado** (`ui/dialog.tsx`,
+   mismo esqueleto que `LoteFormDialog`/`GalponFormDialog`) — no
+   `<Sheet side="bottom">`. Sprint 4 probó el `<Sheet>` como formulario
+   para Mortalidad/Bitácora y se revirtió a `<Dialog>` a pedido del
+   Product Owner (se veía mal en escritorio) — no repetir ese experimento
+   sin validarlo visualmente primero. `<Sheet>` sigue existiendo solo
+   para el drawer del Sidebar mobile. Ver
+   `components/domain/mortalidad/registrar-mortalidad-dialog.tsx`
+   como referencia de formulario compacto (`INPUT_COMPACTO`/`LABEL_COMPACTO`,
+   botones `size="md"`) reusable en pantallas de campo. Un listado que es
+   un **feed cronológico** (no una tabla de gestión) usa paginación por
+   cursor + scroll infinito, no `<DataTablePagination>` — ver "Tabla
+   paginada vs. muro con scroll infinito" en `memory/convenciones.md`. Un
+   grupo de filtros sueltos (no una tabla) se envuelve en un marco chico
+   con rótulo (`rounded-lg border border-border bg-muted/30` + un ícono +
+   "Filtros"), no en un `<Card>` de sección grande — ver
+   `components/domain/bitacora/bitacora-filtros.tsx`.
+5. Si una mutación necesita un guard atómico anti-carrera (`UPDATE ...
+   WHERE condicion`) que decida si ejecutar una segunda operación según
+   el resultado de la primera, usar una transacción interactiva
+   (`prisma.$transaction(async (tx) => {...})`) — precedente real en
+   `server/repositories/mortalidad.ts` (`registrarMortalidadYDescontarAves`,
+   Sprint 4), no el array-form que usan las transacciones más simples.
+   Sprint 9 (`Update condicional anti-doble-venta`) va a necesitar
+   exactamente este mismo patrón.
+6. Mantener el mismo patrón de Sprints 0-3: ejecutar tarea por tarea,
    verificar en código real (no solo tests) antes de marcar como completa.
    Cuando la extensión Claude in Chrome esté conectada, no editar archivos
    de código mientras hay una batería de acciones de browser en curso
@@ -851,6 +879,142 @@ priorizado). Una vez separados:
   verificación clic a clic en navegador real de `/galpones`/`/lotes`
   — no se hizo en esta sesión (se usaron scripts en su lugar, decisión
   explícita), ver detalle arriba.
+- **Sprint 4** — cerrado (2026-08-08). 155 tests (34 nuevos sobre los 121
+  heredados de Sprint 3), dos migraciones no destructivas aplicadas
+  contra Neon real (`RegistroMortalidad.revertido`/`revertidoEn`,
+  `BitacoraGlobal.eliminada`), verificado con scripts temporales contra
+  Neon real, curl+cookie jar (403 real a Operario en `/usuarios`,
+  control) y clic a clic en navegador real (registro y reversión de
+  mortalidad, alta/edición/eliminación de notas, scroll infinito,
+  filtros). Primeras dos transacciones interactivas del proyecto
+  (decremento y reversión de `avesVivas`), primer módulo sin restricción
+  de rol, `<Dialog>` compacto reusado también para pantallas de campo del
+  Operario. Detalle completo en la sección "Sprint 4 — Mortalidad y
+  Bitácora" más abajo. **Deuda pendiente explícita:** verificación en
+  celular físico real, y datos de prueba en Neon pendientes de limpieza
+  (dejados a propósito para que el Product Owner siga probando).
+
+## Sprint 4 — Mortalidad y Bitácora (cerrado, 2026-08-08)
+155 tests (34 nuevos sobre los 121 heredados de Sprint 3), dos
+migraciones no destructivas aplicadas contra Neon real, verificado con
+scripts temporales contra Neon, curl+cookie jar y clic a clic en
+navegador real. `specs/sprint-04-mortalidad-bitacora/` tiene la
+planificación original; este registro documenta el estado final tal como
+quedó entregado.
+
+**Decisiones de negocio confirmadas por el Product Owner:**
+1. MUERTE y DESCARTE decrementan `avesVivas` exactamente igual — `tipo`
+   es informativo, no cambia la aritmética.
+2. Sobregiro (cantidad > avesVivas) se rechaza, no se limita a 0.
+3. El galpón de un `RegistroMortalidad` se resuelve automático vía
+   `buscarUbicacionActual(loteId)` — el operario nunca elige un galpón a
+   mano.
+4. Solo se puede registrar mortalidad de un lote ACTIVO.
+5. Mortalidad solo se corrige dentro de una ventana de gracia de 10
+   minutos (afecta `avesVivas`, un contador con efectos en cascada);
+   Bitácora se puede editar o eliminar sin ventana de tiempo ni
+   restricción de autoría (una nota es texto suelto, sin efecto sobre
+   otro dato).
+
+**Arquitectura y patrones nuevos que sprints futuros deben reusar:**
+- **Transacciones interactivas** (`prisma.$transaction(async (tx) =>
+  {...})`, no el array-form de Sprints 2-3): dos casos en
+  `server/repositories/mortalidad.ts`
+  (`registrarMortalidadYDescontarAves` y `revertirMortalidad`) — ambas
+  necesitan decidir si ejecutan una segunda operación según el resultado
+  de un `UPDATE` condicional (`WHERE avesVivas >= cantidad` / `WHERE
+  revertido = false`), algo que el array-form no puede expresar.
+  Verificado en vivo contra Neon real —incluido el connection pooler
+  (`-pooler`, PgBouncer modo *transaction*)— con llamadas concurrentes
+  reales. Sprint 9 (`Update condicional anti-doble-venta`) va a necesitar
+  el mismo patrón.
+- **Primer módulo sin restricción de rol**: `/mortalidad` y `/bitacora`
+  quedan abiertas a GERENTE y OPERARIO por igual, sin entrada en
+  `RUTAS_POR_ROL`.
+- **`withAuth` es para mutaciones, no lecturas**: el "cargar más" del
+  scroll infinito de Bitácora (`obtenerMasBitacora`) verifica sesión a
+  mano con `auth()`, sin pasar por `withAuth` — ver
+  `memory/convenciones.md`, sección "Server Actions".
+- **Muro cronológico con scroll infinito** (paginación por cursor, no
+  `?page=N`) para listados tipo feed — ver "Tabla paginada vs. muro con
+  scroll infinito" en `memory/convenciones.md`. Un componente que
+  **dispara su propia navegación** (como el filtro de Bitácora) nunca
+  lleva un `key` derivado de esa misma navegación — remontarse a mitad de
+  su propia transición deja instancias viejas visibles; un consumidor
+  pasivo como `BitacoraMuro` sí puede usar ese `key` sin problema. La
+  navegación de un filtro usa `startTransition(() => router.replace(...))`,
+  no `router.push` suelto.
+- **`<Dialog>` centrado y compacto para todo formulario**, sea pantalla
+  de campo (Operario) o de gestión de escritorio (Gerente) —
+  `INPUT_COMPACTO`/`LABEL_COMPACTO` (`h-10`, `text-sm`), botones
+  `size="md"`. `<Sheet side="bottom">` queda reservado exclusivamente
+  para el drawer del Sidebar mobile.
+
+**Lo que construye este sprint:**
+- **Mortalidad**: registrar mortalidad (`RegistroMortalidad` +
+  decremento atómico de `avesVivas`, galpón resuelto automático, guard de
+  sobregiro), listado paginado con badge de color por tipo (`.badge-tipo-*`
+  en `globals.css`: Muerte = rojo, Descarte = naranja — distintos del
+  rojo de `--destructive`, reservado para acciones peligrosas como
+  "Desactivar", y del amber de "Activo"), y ventana de gracia de 10
+  minutos para deshacer un registro (botón con countdown real vía
+  `setInterval`, restaura `avesVivas`, la fila queda visible y atenuada
+  como "Revertido" — nunca desaparece del historial). El "ajuste manual
+  del Gerente pasado el plazo" que Sprint 6 sí contempla para Recolección
+  queda fuera de alcance acá — solo la reversión dentro de los 10
+  minutos.
+- **Bitácora**: alta de nota con categoría (sin galpón, D2), muro
+  cronológico con scroll infinito y badge de color por categoría
+  (`.badge-categoria-*`: Alimentación = lima, Vacunación = azul,
+  Observación = violeta), filtro de categoría/fecha en un marco
+  colapsable (`<button>` con `aria-expanded` + `ChevronDown`, arranca
+  colapsado salvo que ya haya un filtro activo) con límites de fecha
+  nativos del `<input type="date">` (nunca futura; "Desde" no puede
+  superar a "Hasta" y viceversa, vía `min`/`max` controlados), y
+  edición/eliminación de cualquier nota (`BitacoraGlobal.eliminada`,
+  soft-delete, nunca `DELETE`) — actualiza el `items` local de
+  `BitacoraMuro` vía callbacks en vez de depender de `router.refresh()`.
+- Fechas de ambos módulos sin segundos (`lib/fecha.ts`,
+  `formatearFechaHora()` — día/mes/año + hora:minuto, América/Lima).
+
+**Migraciones aplicadas contra Neon real** (no destructivas, `ADD COLUMN
+... DEFAULT`): `RegistroMortalidad.revertido`/`revertidoEn` y
+`BitacoraGlobal.eliminada`
+(`20260808024615_mortalidad_revertido_bitacora_eliminada`).
+
+**Verificado en vivo contra Neon real** (scripts temporales): decremento
+atómico con ambos tipos de mortalidad; sobregiro rechazado sin modificar
+nada; guard anti-carrera forzado con llamadas concurrentes reales
+(registro y reversión); `galponId` correcto antes/después de una
+mudanza; lote INACTIVO real rechazado; nota de Bitácora real sin campo de
+galpón; paginación por cursor con datos reales; filas reales de
+`AuditLog` para las cinco acciones (`CREAR`/`REVERTIR` en Mortalidad,
+`CREAR`/`EDITAR`/`ELIMINAR` en Bitácora).
+
+**Verificado con curl+cookie jar**: Operario y Gerente acceden por igual
+a `/mortalidad`/`/bitacora` (200), mientras `/usuarios` sigue 403 para
+Operario (control) — confirma que el acceso abierto es intencional.
+
+**Verificado clic a clic en navegador real** (extensión Claude in Chrome
+y, para las piezas agregadas al final, un servidor temporal): alta y
+reversión de mortalidad (`avesVivas` vuelve exactamente al valor
+previo), alta/edición/eliminación de notas (toasts correctos, muro y
+tabla se actualizan sin recargar), filtro de categoría y de fecha,
+scroll infinito de punta a punta con datos reales, badges de colores
+distinguibles, `<Select>` siempre con etiquetas legibles (el Bug 2 de
+Sprint 3 no se repitió).
+
+**Pendiente explícito:**
+- Verificación en un celular físico real — lo hecho con la extensión fue
+  clic a clic funcional, no pixel-perfect en viewport móvil exacto
+  (`resize_window` sigue sin efecto en este entorno). Mismo camino que
+  Sprints 1-2: Product Owner probando desde su celular.
+- Datos de prueba (`operario.browser.s4`, lote `VERIF-BROWSER-S4`, notas
+  de Bitácora de prueba) siguen en la base compartida con producción —
+  dejados a propósito para que el Product Owner terminara de probar;
+  borrarlos con un script antes de cargar datos reales de la granja (ver
+  "Riesgo operativo: local y producción comparten la misma base de
+  datos").
 
 ## Cierre de cabos sueltos post-Sprint 2 (2026-08-03)
 Al re-verificar el estado de Sprints 0-2 en una sesión nueva (typecheck,

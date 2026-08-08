@@ -106,3 +106,15 @@ export function listarLotesConUbicacion(params: { skip: number; take: number }) 
 export function contarLotes() {
   return prisma.lote.count();
 }
+
+// Para poblar el <Select> de lote en el formulario de mortalidad (Sprint
+// 4) — sin paginar, mismo criterio que listarGalponesActivos(). avesVivas
+// viaja junto para que el formulario pueda mostrar "quedan N vivas" sin
+// una segunda consulta.
+export function listarLotesActivos() {
+  return prisma.lote.findMany({
+    where: { estado: "ACTIVO" },
+    orderBy: { codigo: "asc" },
+    select: { id: true, codigo: true, avesVivas: true },
+  });
+}

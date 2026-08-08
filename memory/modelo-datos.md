@@ -30,7 +30,14 @@ duplicar la fuente de verdad en dos lugares que se puedan desincronizar.
   sentido propio fuera de su padre (HistorialUbicacionLote, PaqueteOrigen,
   BandejaOrigen, DetalleVenta, HistorialAbonos).
 - **Ningún `DELETE` físico** en producción sobre entidades de negocio —
-  siempre cambio de `estado` o registro de tipo `ANULADO`.
+  siempre cambio de `estado` o registro de tipo `ANULADO`. Ejemplos reales
+  (post-Sprint 4): `BitacoraGlobal.eliminada` (soft-delete de una nota,
+  sin ventana de tiempo — editar/eliminar una nota es seguro en cualquier
+  momento porque no tiene efecto en cascada sobre otro dato) y
+  `RegistroMortalidad.revertido`/`revertidoEn` (ventana de gracia de 10
+  minutos: revertir restaura `Lote.avesVivas` y marca el registro, nunca
+  lo borra — mismo criterio que `RegistroRecoleccion.revertido`, Sprint 6
+  del roadmap, adelantado a Mortalidad a pedido del Product Owner).
 - **IDs siempre UUID**, nunca autoincrement — es requisito del contrato
   offline-ready (ver `convenciones.md`).
 

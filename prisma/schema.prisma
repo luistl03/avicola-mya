@@ -171,6 +171,10 @@ model BitacoraGlobal {
   usuarioId String
   categoria CategoriaBitacora
   contenido String
+  // Soft-delete (post-Sprint 4, sin ventana de tiempo: una nota se puede
+  // editar/eliminar en cualquier momento) — nunca DELETE físico, misma
+  // regla no negociable que el resto de entidades de negocio.
+  eliminada Boolean           @default(false)
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
 
@@ -188,13 +192,18 @@ enum TipoMortalidad {
 }
 
 model RegistroMortalidad {
-  id        String         @id @default(uuid())
-  loteId    String
-  galponId  String
-  usuarioId String
-  tipo      TipoMortalidad
-  cantidad  Int
-  fecha     DateTime       @default(now())
+  id          String         @id @default(uuid())
+  loteId      String
+  galponId    String
+  usuarioId   String
+  tipo        TipoMortalidad
+  cantidad    Int
+  fecha       DateTime       @default(now())
+  // Ventana de gracia de 10 minutos (post-Sprint 4): revertir un registro
+  // restaura avesVivas y marca revertido — nunca DELETE físico, mismo
+  // criterio que RegistroRecoleccion.revertido (Sprint 6 del roadmap).
+  revertido   Boolean        @default(false)
+  revertidoEn DateTime?
 
   lote    Lote    @relation(fields: [loteId], references: [id], onDelete: Restrict)
   galpon  Galpon  @relation(fields: [galponId], references: [id], onDelete: Restrict)

@@ -243,4 +243,36 @@
   .badge-estado-inactivo {
     @apply border-border! bg-muted! text-muted-foreground!;
   }
+
+  /* Badges de categoría de BitacoraGlobal — a diferencia de
+     Activo/Inactivo, esto no es un "estado" con semántica de
+     bueno/malo, es una clasificación (a qué se refiere la nota), pero el
+     Product Owner pidió un color por categoría para ubicarla de un
+     vistazo en un muro con muchas notas. Un tono por categoría, sin
+     relación con los tonos ya usados para otra cosa (amber = Activo,
+     verde = éxito, rojo = error/Muerte) para que no se lean como "esto
+     también es un estado". Mismo `!` obligatorio que `.badge-estado-*`
+     (ver comentario arriba): se usan junto con `<Badge variant="outline">`. */
+  .badge-categoria-alimentacion {
+    @apply border-lime-300! bg-lime-100! text-lime-800! dark:border-lime-800! dark:bg-lime-950! dark:text-lime-200!;
+  }
+  .badge-categoria-vacunacion {
+    @apply border-blue-300! bg-blue-100! text-blue-800! dark:border-blue-800! dark:bg-blue-950! dark:text-blue-200!;
+  }
+  .badge-categoria-observacion {
+    @apply border-violet-300! bg-violet-100! text-violet-800! dark:border-violet-800! dark:bg-violet-950! dark:text-violet-200!;
+  }
+
+  /* Badges de TipoMortalidad — mismo criterio de arriba. MUERTE en rojo
+     (coincide con la severidad real, distinto del rojo de
+     `--destructive` que el proyecto reserva para acciones peligrosas
+     tipo "Desactivar", no para datos). DESCARTE en naranja: distinto del
+     rojo de Muerte y del amber que ya usa `.badge-estado-activo`, para
+     no leerse como "esto está activo". */
+  .badge-tipo-muerte {
+    @apply border-red-300! bg-red-100! text-red-800! dark:border-red-800! dark:bg-red-950! dark:text-red-200!;
+  }
+  .badge-tipo-descarte {
+    @apply border-orange-300! bg-orange-100! text-orange-800! dark:border-orange-800! dark:bg-orange-950! dark:text-orange-200!;
+  }
 }
