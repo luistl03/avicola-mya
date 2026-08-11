@@ -77,6 +77,11 @@ function NuevaNotaBitacoraForm({ onExito }: { onExito: () => void }) {
   // (Bug 2 de Sprint 3): sin esto, Base UI puede caer en un fallback que
   // muestra el value crudo en vez de la etiqueta legible.
   const [categoria, setCategoria] = useState<string | null>(null);
+  // Generado una sola vez por apertura del diálogo — mismo fix que el
+  // bug real de Recolección (S5-13): un doble clic reusa el mismo id, así
+  // que el segundo envío colisiona con P2002 en vez de crear una nota
+  // duplicada.
+  const [id] = useState(() => crypto.randomUUID());
 
   const [state, formAction, pending] = useActionState<Estado, FormData>(async (_prev, formData) => {
     const resultado = await crearNotaBitacora(formData);
@@ -95,6 +100,7 @@ function NuevaNotaBitacoraForm({ onExito }: { onExito: () => void }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      <input type="hidden" name="id" value={id} />
       {state && !state.ok ? (
         <p role="alert" className="text-sm text-destructive">
           {state.error}
@@ -107,7 +113,7 @@ function NuevaNotaBitacoraForm({ onExito }: { onExito: () => void }) {
         </Label>
         <Select name="categoria" value={categoria} onValueChange={setCategoria}>
           <SelectTrigger id="categoria" className="h-10 w-full">
-            <SelectValue placeholder="Elegí una categoría">
+            <SelectValue placeholder="Selecciona una categoría">
               {categoriaSeleccionada?.label}
             </SelectValue>
           </SelectTrigger>

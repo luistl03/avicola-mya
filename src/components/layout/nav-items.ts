@@ -1,4 +1,4 @@
-import { Home, Layers3, NotebookPen, Skull, Users, Warehouse } from "lucide-react";
+import { Egg, Home, Layers3, NotebookPen, Skull, Users, Warehouse } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
@@ -19,4 +19,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/lotes", label: "Lotes", icon: Layers3 },
   { href: "/mortalidad", label: "Mortalidad", icon: Skull },
   { href: "/bitacora", label: "Bitácora", icon: NotebookPen },
+  { href: "/recoleccion", label: "Recolección", icon: Egg },
 ];

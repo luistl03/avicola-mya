@@ -7,7 +7,13 @@ const categoria = z.enum(["ALIMENTACION", "VACUNACION", "OBSERVACION"], {
 });
 const contenido = z.string().trim().min(1, "La nota no puede estar vacía.").max(2000);
 
-export const crearNotaBitacoraSchema = z.object({ categoria, contenido });
+// Generado en el cliente (crypto.randomUUID()), no por Prisma — mismo
+// patrón de idempotencia que Recolección/Galpón: sin unicidad de negocio
+// posible sobre `contenido`, este id es la única defensa real contra un
+// doble envío. Nunca lo elige el usuario a mano.
+const id = idUuid();
+
+export const crearNotaBitacoraSchema = z.object({ id, categoria, contenido });
 
 export type CrearNotaBitacoraInput = z.infer<typeof crearNotaBitacoraSchema>;
 

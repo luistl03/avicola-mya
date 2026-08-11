@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // vi.hoisted: mismo patrón que tests/integration/actions/lote.test.ts. La
@@ -93,7 +94,7 @@ function sessionOperario() {
 }
 
 describe("registrarMortalidad", () => {
-  const inputValido = { loteId: LOTE_1_ID, tipo: "MUERTE", cantidad: 3 };
+  const inputValido = { id: REGISTRO_1_ID, loteId: LOTE_1_ID, tipo: "MUERTE", cantidad: 3 };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -194,6 +195,7 @@ describe("registrarMortalidad", () => {
 
     expect(resultado).toEqual({ ok: true, data: { id: REGISTRO_1_ID } });
     expect(registrarMortalidadYDescontarAvesMock).toHaveBeenCalledWith({
+      id: REGISTRO_1_ID,
       loteId: LOTE_1_ID,
       galponId: GALPON_A_ID,
       usuarioId: GERENTE_1_ID,
@@ -232,6 +234,63 @@ describe("registrarMortalidad", () => {
     expect(registrarMortalidadYDescontarAvesMock).toHaveBeenCalledWith(
       expect.objectContaining({ usuarioId: OPERARIO_1_ID }),
     );
+  });
+
+  // Idempotencia por id de cliente (auditoría post-Sprint 5, ver
+  // memory/estado-proyecto.md — el hallazgo de mayor severidad de los
+  // auditados: sin esto, un doble envío decrementaba avesVivas dos
+  // veces, no solo duplicaba la fila).
+  describe("idempotencia por id de cliente", () => {
+    function erroDeUnicidad() {
+      return new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "6.19.3",
+      });
+    }
+
+    it("reintento con el mismo id y los mismos datos devuelve el registro ya existente, sin volver a decrementar avesVivas", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      buscarLotePorIdMock.mockResolvedValue({ id: LOTE_1_ID, estado: "ACTIVO", avesVivas: 200 });
+      buscarUbicacionActualMock.mockResolvedValue({ galponId: GALPON_A_ID });
+      registrarMortalidadYDescontarAvesMock.mockRejectedValue(erroDeUnicidad());
+      buscarRegistroMortalidadPorIdMock.mockResolvedValue({
+        id: REGISTRO_1_ID,
+        loteId: LOTE_1_ID,
+        tipo: "MUERTE",
+        cantidad: 3,
+      });
+
+      const resultado = await registrarMortalidad(inputValido);
+
+      expect(resultado).toEqual({ ok: true, data: { id: REGISTRO_1_ID } });
+      expect(registrarMortalidadYDescontarAvesMock).toHaveBeenCalledTimes(1);
+      expect(crearAuditLogMock).toHaveBeenCalledWith(
+        expect.objectContaining({ entidad: "RegistroMortalidad", entidadId: REGISTRO_1_ID }),
+      );
+    });
+
+    it("rechaza explícito si el mismo id ya existe pero con datos distintos", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      buscarLotePorIdMock.mockResolvedValue({ id: LOTE_1_ID, estado: "ACTIVO", avesVivas: 200 });
+      buscarUbicacionActualMock.mockResolvedValue({ galponId: GALPON_A_ID });
+      registrarMortalidadYDescontarAvesMock.mockRejectedValue(erroDeUnicidad());
+      buscarRegistroMortalidadPorIdMock.mockResolvedValue({
+        id: REGISTRO_1_ID,
+        loteId: LOTE_1_ID,
+        tipo: "DESCARTE", // distinto del "MUERTE" de inputValido
+        cantidad: 3,
+      });
+
+      const resultado = await registrarMortalidad(inputValido);
+
+      expect(resultado).toEqual({
+        ok: false,
+        error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+      });
+      expect(crearAuditLogMock).not.toHaveBeenCalled();
+    });
   });
 });
 

@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 4 completado, verificado contra Neon real y clic a clic con Claude in Chrome (pendiente verificación en celular físico — ver `memory/estado-proyecto.md`).
-**Progreso:** 5 de 16 sprints (31%)
+**Última actualización:** Sprint 5 completado, verificado contra Neon real y clic a clic en navegador por el Product Owner (pendiente verificación en celular físico, y auditoría de idempotencia en el resto de los dialogs de mutación — ver `memory/estado-proyecto.md`).
+**Progreso:** 6 de 16 sprints (37.5%)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -21,7 +21,7 @@ resumen + `memory/` como base — no inventar alcance nuevo.
 
 | Release | Sprints | Estado | Entrega de valor |
 |---|---|---|---|
-| R1 — Operación básica | 0–7 | 🟡 En curso (5/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
+| R1 — Operación básica | 0–7 | 🟡 En curso (6/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
 | R2 — Finanzas | 8–11 | ⬜ Pendiente | Créditos, cobranza, egresos, planilla. |
 | R3 — Campo real | 12–13 | ⬜ Pendiente | Funciona sin señal. Instalable. |
 | R4 — Inteligencia | 14–15 | ⬜ Pendiente | Dashboard, reportes, push. |
@@ -91,13 +91,18 @@ cierre de la deuda de Sprint 1):** `memory/estado-proyecto.md`
 **Specs:** `specs/sprint-04-mortalidad-bitacora/`
 **Detalle de ejecución (sin bugs de negocio; un ajuste real de UI marcado por el linter de React):** `memory/estado-proyecto.md`
 
-### Sprint 5 — Recolección e Inventario (29 pts) ⚠️ NÚCLEO, riesgo alto
+### ✅ Sprint 5 — Recolección e Inventario (29 pts) — COMPLETADO
 **Goal:** operario ingresa conteo del día, sistema genera paquetes + sueltos con ledger auditable.
-- Service puro calcularEmpaque(total) con tests exhaustivos
+- Service puro calcularEmpaque(total), cobertura 100% (services/recoleccion.ts e inventario.ts)
 - UI reactiva de despliegue dinámico de campos de peso
-- Transacción: RegistroRecoleccion + N Paquete + N PaqueteOrigen + MovimientoSueltos
-- Ledger MovimientoSueltos + reconstruirSaldo() (auditoría)
-- Cobertura ≥90% exigida en services/recoleccion.ts e inventario.ts
+- Transacción: RegistroRecoleccion + N Paquete + N PaqueteOrigen + InventarioSueltos/MovimientoSueltos
+  condicionales (primera transacción del proyecto con escritura en cascada real)
+- Ledger MovimientoSueltos + reconstruirSaldo() (auditoría, sin pantalla propia todavía)
+- Primer Contrato Offline-Ready real: id generado en cliente, idempotencia por
+  create+captura de P2002 (no upsert)
+**Specs:** `specs/sprint-05-recoleccion-inventario/`
+**Detalle de ejecución (1 bug real encontrado y corregido en vivo — doble clic duplicaba un registro;
+deuda pendiente: auditar idempotencia en el resto de los dialogs de mutación):** `memory/estado-proyecto.md`
 
 ### Sprint 6 — Ventana de gracia y reversión (28 pts)
 **Goal:** un error de tipeo se corrige en 10 min sin llamar al gerente.

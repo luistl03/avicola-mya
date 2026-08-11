@@ -10,7 +10,14 @@ const capacidadMaxima = z.coerce.number().int().positive("Debe ser mayor a 0");
 
 const galponId = idUuid();
 
-export const crearGalponSchema = z.object({ nombre, capacidadMaxima });
+// Generado en el cliente (crypto.randomUUID()), no por Prisma — mismo
+// patrón de idempotencia que Recolección (Sprint 5): la Server Action
+// intenta un create y, si el id ya existe (reintento por doble clic o
+// reintento de red), responde con el registro ya persistido en vez de
+// duplicar. Nunca lo elige el usuario a mano.
+const id = idUuid();
+
+export const crearGalponSchema = z.object({ id, nombre, capacidadMaxima });
 
 export type CrearGalponInput = z.infer<typeof crearGalponSchema>;
 

@@ -116,7 +116,7 @@ function EditarNotaBitacoraForm({ nota, onExito }: Props) {
         </Label>
         <Select name="categoria" value={categoria} onValueChange={setCategoria}>
           <SelectTrigger id="categoria-editar" className="h-10 w-full">
-            <SelectValue placeholder="Elegí una categoría">
+            <SelectValue placeholder="Selecciona una categoría">
               {categoriaSeleccionada?.label}
             </SelectValue>
           </SelectTrigger>

@@ -217,7 +217,7 @@ function LoteForm({
         </Label>
         <Select name="galponId" value={galponId} onValueChange={setGalponId}>
           <SelectTrigger id="galponId" className="h-10 w-full">
-            <SelectValue placeholder="Seleccioná un galpón">
+            <SelectValue placeholder="Selecciona un galpón">
               {galponSeleccionado?.nombre}
             </SelectValue>
           </SelectTrigger>

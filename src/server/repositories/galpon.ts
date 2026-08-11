@@ -2,7 +2,7 @@ import type { EstadoGalpon } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
-export function crearGalpon(data: { nombre: string; capacidadMaxima: number }) {
+export function crearGalpon(data: { id: string; nombre: string; capacidadMaxima: number }) {
   return prisma.galpon.create({ data });
 }
 

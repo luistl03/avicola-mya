@@ -122,6 +122,17 @@ en `components/ui/data-table-pagination.tsx`:
 - Cualquier cambio de estilo o de criterio (tamaño de página, mostrar
   números de página en vez de "Página X de Y", etc.) se hace una vez en
   `data-table-pagination.tsx`, no módulo por módulo.
+- **Tabla paginada CON filtros** (post-Sprint 5: Mortalidad, Recolección):
+  `<DataTablePagination>` acepta una prop opcional `filtros?: Record<string,
+  string | undefined>` que se combina con `page` en cada link — sin esto,
+  cambiar de página perdería los filtros activos de la URL (el componente
+  original solo sabía construir `${basePath}?page=N`, a secas). El
+  componente de filtro correspondiente (`MortalidadFiltros`,
+  `RecoleccionFiltros`, mismo patrón que `BitacoraFiltros` de Sprint 4,
+  pero con `page` borrado de la URL en cada cambio — a diferencia de
+  Bitácora, que pagina por cursor y no tiene ese problema) vive aparte del
+  `<DataTablePagination>`, ambos leyendo/escribiendo la misma URL. Ver
+  `app/(app)/mortalidad/page.tsx` como referencia completa del patrón.
 
 ## Tabla paginada vs. muro con scroll infinito
 No todo listado del proyecto es una tabla de gestión. Dos patrones
@@ -231,3 +242,64 @@ Toda entidad que un Operario pueda crear en campo sin señal debe cumplir:
    de gracia de 10 minutos).
 4. El payload es JSON puro serializable — los `Decimal` de Prisma se
    convierten a `string` antes de encolarse en IndexedDB.
+
+## Idempotencia por id de cliente: obligatoria en TODA creación, no solo en las offline-ready
+Distinto del contrato de arriba (que además exige los dos timestamps y
+pensar en la cola de IndexedDB) — esto es más chico y aplica siempre:
+**cualquier Server Action que haga un `create` de una entidad nueva desde
+un formulario debe poder recibir un doble envío (doble clic, reintento de
+red) sin duplicar la fila.** Encontrado como deuda real en una auditoría
+post-Sprint 5 (2026-08-11, ver `memory/estado-proyecto.md` para el
+detalle completo) — Mortalidad, Bitácora y Galpón no tenían ninguna
+protección; el caso de Mortalidad era grave de verdad (un doble envío no
+solo duplicaba la fila, decrementaba `avesVivas` dos veces).
+
+**Regla:** antes de asumir que una entidad nueva necesita este patrón,
+revisar si ya está protegida gratis por una restricción de negocio
+existente:
+- Si el modelo ya tiene un campo `@unique` que el formulario llena
+  siempre (`Usuario.usuario`, `Lote.codigo`), un doble envío ya choca
+  solo contra ese índice — alcanza con que la action atrape `P2002` y
+  traduzca el mensaje (patrón ya usado desde Sprint 2/3, ver
+  `crearUsuario`/`crearLote`). **No hace falta agregar un id de cliente
+  acá.**
+- Si la mutación no crea una fila nueva con identidad propia, sino que
+  actualiza/cierra algo existente y ya hay una guard de aplicación que se
+  vuelve a evaluar en cada invocación (`mudarLoteAction`: la guard
+  "el lote ya está en ese galpón" rechaza sola un reintento secuencial
+  una vez que el primero ya movió el lote), alcanza con un `catch` de
+  `P2002` de cortesía para el caso límite de una carrera verdaderamente
+  concurrente — no hace falta id de cliente tampoco.
+- **Si ninguna de las dos aplica** (no hay unicidad de negocio posible
+  sobre los campos del formulario, y la entidad es una fila nueva
+  independiente) — ahí sí hace falta el patrón completo:
+  1. El schema Zod de "crear" lleva un campo `id: idUuid()`.
+  2. El repository acepta `id` y lo pasa a `data: { id, ... }` del
+     `create` (nunca se deja que Prisma lo genere solo con
+     `@default(uuid())`).
+  3. La Server Action envuelve el `create` en `try/catch`: si es `P2002`,
+     busca el registro existente por ese `id` (repository ya suele tener
+     un `buscar<Entidad>PorId`), compara los campos relevantes contra el
+     payload — si coinciden, responde éxito con el registro ya existente
+     (reintento idempotente, sin volver a escribir nada); si no
+     coinciden, `AccionError` explícito ("ya existe un registro con este
+     id pero con datos diferentes") en vez de sobrescribir en silencio.
+  4. El dialog genera el `id` **una sola vez por apertura** (`useState(()
+     => crypto.randomUUID())`), no en cada submit — es la parte que
+     realmente importa: si el id cambia en cada clic, la protección de
+     arriba nunca se activa porque, para la base, cada clic es un
+     registro legítimamente distinto. Ver el bug real que confirmó esto
+     (Recolección, Sprint 5, S5-13) en `memory/estado-proyecto.md`.
+  5. Si la mutación es una transacción interactiva que además decrementa
+     un contador (como `registrarMortalidadYDescontarAves`), el `create`
+     con `id` explícito puede ir DESPUÉS del decremento dentro de la
+     misma transacción sin problema — si revienta con `P2002`, Prisma
+     revierte la transacción completa, deshaciendo también el decremento
+     (verificado en vivo contra Neon, no solo asumido).
+
+Aplicado en Recolección (S5-6, el original), y retroactivamente en
+Galpón/Bitácora/Mortalidad (auditoría post-Sprint 5). **Todo sprint
+nuevo que agregue una pantalla de alta debe aplicar este patrón desde el
+diseño**, no esperar a otra auditoría — Usuario y Lote quedan como
+referencia de "ya protegido por unicidad de negocio, no hace falta
+tocar".

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -214,10 +215,9 @@ function UsuarioForm(props: Props & { onExito: () => void }) {
           <Lock className="size-4 text-muted-foreground" />
           {props.modo === "crear" ? "Contraseña" : "Nueva contraseña (opcional)"}
         </Label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           required={props.modo === "crear"}
           autoComplete="new-password"
           className={INPUT_COMPACTO}

@@ -92,6 +92,12 @@ function GalponForm(props: Props & { onExito: () => void }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const accion = props.modo === "crear" ? crearGalpon : editarGalpon;
+  // Generado una sola vez por apertura del diálogo, no en cada submit —
+  // mismo motivo (y mismo fix) que el bug real encontrado en Recolección
+  // (S5-13): reusar el mismo id ante un doble clic hace que el segundo
+  // envío colisione con P2002 en vez de crear un galpón duplicado. Solo
+  // hace falta en modo "crear" — editar apunta a un id que ya existe.
+  const [id] = useState(() => crypto.randomUUID());
 
   const [state, formAction, pending] = useActionState<Estado, FormData>(async (_prev, formData) => {
     const resultado = await accion(formData);
@@ -112,9 +118,11 @@ function GalponForm(props: Props & { onExito: () => void }) {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
-      {props.modo === "editar" ? (
+      {props.modo === "crear" ? (
+        <input type="hidden" name="id" value={id} />
+      ) : (
         <input type="hidden" name="galponId" value={props.galpon.id} />
-      ) : null}
+      )}
 
       {state && !state.ok ? (
         <p role="alert" className="text-sm text-destructive">

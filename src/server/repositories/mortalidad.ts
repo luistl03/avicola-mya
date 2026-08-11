@@ -26,7 +26,16 @@ export class AvesInsuficientesError extends Error {}
 // alcanza en este momento", sin importar qué decía esa lectura previa.
 // Sprint 9 (Update condicional anti-doble-venta) va a necesitar
 // exactamente este mismo patrón — reusar esta forma, no reinventarla.
+// El `id` viaja desde el cliente (Contrato de idempotencia, ver
+// lib/zod/mortalidad.ts) — si ya existe (reintento), el `create` de abajo
+// lanza P2002 y aborta la transacción COMPLETA, incluido el decremento de
+// avesVivas de arriba (mismas garantías de rollback que ya se verificaron
+// en vivo para Recolección, Sprint 5, S5-12) — así un doble envío nunca
+// puede dejar avesVivas decrementado dos veces. El catch de P2002 vive en
+// la Server Action (server/actions/mortalidad.ts), no acá, mismo
+// precedente que crearUsuario/crearGalpon/crearNotaBitacora.
 export function registrarMortalidadYDescontarAves(data: {
+  id: string;
   loteId: string;
   galponId: string;
   usuarioId: string;
@@ -43,6 +52,7 @@ export function registrarMortalidadYDescontarAves(data: {
     }
     return tx.registroMortalidad.create({
       data: {
+        id: data.id,
         loteId: data.loteId,
         galponId: data.galponId,
         usuarioId: data.usuarioId,
@@ -54,9 +64,23 @@ export function registrarMortalidadYDescontarAves(data: {
 }
 
 // Para la tabla de /mortalidad: una sola query con include (no N+1),
-// mismo criterio que listarLotesConUbicacion.
-export function listarRegistrosMortalidad(params: { skip: number; take: number }) {
+// mismo criterio que listarLotesConUbicacion. Filtros (post-Sprint 5,
+// mismo criterio que listarBitacoraPagina): quedan undefined en el where
+// cuando no se filtra por ellos — Prisma simplemente omite esa condición.
+export function listarRegistrosMortalidad(params: {
+  skip: number;
+  take: number;
+  tipo?: TipoMortalidad;
+  loteId?: string;
+  desde?: Date;
+  hasta?: Date;
+}) {
   return prisma.registroMortalidad.findMany({
+    where: {
+      tipo: params.tipo,
+      loteId: params.loteId,
+      fecha: { gte: params.desde, lte: params.hasta },
+    },
     orderBy: { fecha: "desc" },
     skip: params.skip,
     take: params.take,
@@ -68,8 +92,16 @@ export function listarRegistrosMortalidad(params: { skip: number; take: number }
   });
 }
 
-export function contarRegistrosMortalidad() {
-  return prisma.registroMortalidad.count();
+export function contarRegistrosMortalidad(
+  params: { tipo?: TipoMortalidad; loteId?: string; desde?: Date; hasta?: Date } = {},
+) {
+  return prisma.registroMortalidad.count({
+    where: {
+      tipo: params.tipo,
+      loteId: params.loteId,
+      fecha: { gte: params.desde, lte: params.hasta },
+    },
+  });
 }
 
 export function buscarRegistroMortalidadPorId(id: string) {

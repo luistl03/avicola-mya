@@ -9,9 +9,10 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 5 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+- **Sprint actual:** 6 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
   Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
-  Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora)
+  Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora, Sprint 5 —
+  Recolección e Inventario)
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -776,19 +777,27 @@ priorizado). Una vez separados:
   cliente registrado, tiene que existir también en producción.
 
 ## Cómo continuar desde acá
-1. Sprint 5 (Recolección e Inventario) es el siguiente — roadmap lo marca
-   ⚠️ NÚCLEO, riesgo alto. Su `spec.md` aún no existe — generarlo usando
-   `specs/roadmap-completo.md` (sección Sprint 5) + este archivo + el
+1. Sprint 6 (Ventana de gracia y reversión) es el siguiente — roadmap lo
+   marca 28 pts, sin advertencia de riesgo especial (a diferencia de
+   Sprint 5). Su `spec.md` aún no existe — generarlo usando
+   `specs/roadmap-completo.md` (sección Sprint 6) + este archivo + el
    resto de `memory/` como contexto. Usar
-   `specs/sprint-04-mortalidad-bitacora/` como referencia de estructura
-   más reciente. **Este es el primer sprint con el Contrato Offline-Ready
-   obligatorio** (`memory/convenciones.md`) — a diferencia de Sprint 4
-   (mobile-first, pero online-only, sin cola offline), Sprint 5 necesita
-   IDs generados en el cliente, Server Actions idempotentes (upsert, no
-   `create` puro) y los dos timestamps (`creadoEnCliente`/`creadoEn`).
-   Confirmar con el Product Owner antes de ejecutar si esto implica
-   adelantar algo de la infraestructura de Sprint 13/14 (PWA/cola offline)
-   o si por ahora solo se cumple el contrato de datos sin la cola real.
+   `specs/sprint-05-recoleccion-inventario/` como referencia de
+   estructura más reciente. Piezas que Sprint 5 ya dejó preparadas y que
+   Sprint 6 va a necesitar: `RegistroRecoleccion.revertido`/`creadoEn` ya
+   existen en el schema (sin migración nueva esperada); el patrón de
+   idempotencia por `create`+captura de `P2002`
+   (`server/repositories/recoleccion.ts`/`server/actions/recoleccion.ts`)
+   es el precedente a reusar si la reversión también necesita
+   idempotencia; `TipoMovimientoSueltos.REVERSION` existe en el enum pero
+   `reconstruirSaldo()` (`server/services/inventario.ts`) todavía no lo
+   suma/resta — ese signo hay que resolverlo en este sprint, no asumido
+   de antes. **Antes de arrancar, revisar el pendiente que dejó el cierre
+   de Sprint 5**: auditar si Usuarios/Galpones/Lotes/Bitácora/Mortalidad
+   pueden duplicar un registro ante un doble clic o un reintento de red
+   (ninguno tiene protección de idempotencia por id de cliente) — pedido
+   explícito del Product Owner, ver "Sprint 5 — Recolección e Inventario
+   (cerrado, 2026-08-11)" más abajo para el detalle completo.
 2. Toda Server Action nueva que **mute** datos debe envolverse con
    `withAuth(config, handler)` (`server/auth/with-auth.ts`, Sprint 2) — es
    la pieza de mayor apalancamiento del proyecto, ya trae auth + rol + Zod
@@ -893,6 +902,30 @@ priorizado). Una vez separados:
   Bitácora" más abajo. **Deuda pendiente explícita:** verificación en
   celular físico real, y datos de prueba en Neon pendientes de limpieza
   (dejados a propósito para que el Product Owner siga probando).
+- **Sprint 5** — cerrado (2026-08-11). 191 tests (36 nuevos sobre los 155
+  heredados de Sprint 4), sin migraciones nuevas (el schema ya estaba
+  completo desde Sprint 0), cobertura 100% en `services/recoleccion.ts`
+  e `services/inventario.ts` (exige ≥90%), verificado con un script
+  temporal contra Neon real (transacción con sueltos, sin sueltos,
+  múltiplo exacto de 180 sin ruido en el ledger, idempotencia real por
+  `P2002`, mudanza + galpón automático, `AuditLog` real) y clic a clic en
+  navegador real por el Product Owner. Primera transacción del proyecto
+  con escritura en cascada real (`RegistroRecoleccion` + N `Paquete` + N
+  `PaqueteOrigen` + `InventarioSueltos`/`MovimientoSueltos`
+  condicionales), primer contrato offline-ready real (id generado en
+  cliente + idempotencia por `create`+captura de `P2002`, no `upsert`).
+  **Un bug real encontrado y corregido en vivo durante la propia
+  verificación de S5-13** (doble clic duplicaba un `RegistroRecoleccion`
+  completo — `formAction` invocado fuera de `startTransition` + `id`
+  regenerado en cada clic en vez de una vez por apertura del diálogo):
+  detalle completo en "Bug real encontrado y corregido en vivo durante
+  Sprint 5" más abajo. Detalle completo del sprint en la sección
+  "Sprint 5 — Recolección e Inventario" más abajo. **Deuda pendiente
+  explícita:** auditar si el resto de los dialogs de mutación del
+  proyecto (Usuarios, Galpones, Lotes/Mudanza, Bitácora, Mortalidad)
+  puede duplicar un registro ante un doble clic o un reintento de red —
+  ninguno tiene protección de idempotencia por id de cliente todavía,
+  pedido explícito del Product Owner para revisar después de este cierre.
 
 ## Sprint 4 — Mortalidad y Bitácora (cerrado, 2026-08-08)
 155 tests (34 nuevos sobre los 121 heredados de Sprint 3), dos
@@ -1026,6 +1059,130 @@ borra esa fila para no perder historial real) — quedó en `INACTIVO`
 en su lugar, mismo criterio que "eliminar" un galpón en el resto del
 proyecto.
 
+## Sprint 5 — Recolección e Inventario (cerrado, 2026-08-11)
+191 tests (36 nuevos sobre los 155 heredados de Sprint 4), sin ninguna
+migración de schema (los 7 modelos del módulo ya existían desde
+Sprint 0), cobertura 100% en `server/services/recoleccion.ts` e
+`server/services/inventario.ts` (el roadmap exige ≥90%), verificado con
+un script temporal contra Neon real y clic a clic en navegador real por
+el Product Owner. `specs/sprint-05-recoleccion-inventario/` tiene la
+planificación completa (spec.md, plan.md, tasks.md con las 13 tareas
+documentadas al cerrarlas, incluidos los desvíos reales encontrados
+durante la ejecución).
+
+**Decisiones de negocio confirmadas por el Product Owner antes de
+ejecutar:**
+1. Este sprint implementa **solo el contrato de datos** del Contrato
+   Offline-Ready (id generado en cliente, Server Action idempotente, dos
+   timestamps) — sin cola real de IndexedDB/Dexie, que sigue siendo
+   Sprint 14.
+2. El registro se guarda **solo cuando todos los pesos están
+   completos** — no existe un estado "paquete sin pesar guardado para
+   completar después".
+3. `reconstruirSaldo()` es una función de servicio puro con tests, sin
+   pantalla propia en este sprint — la pantalla visible de saldos por
+   galpón/lote es Sprint 7 (Consolidación).
+4. `/recoleccion` queda abierta a GERENTE y OPERARIO por igual, mismo
+   criterio que Mortalidad/Bitácora.
+
+**Arquitectura y patrones nuevos que sprints futuros deben reusar:**
+- **Primera transacción del proyecto con escritura en cascada real**:
+  `RegistroRecoleccion` + N `Paquete` (con `PaqueteOrigen` anidado en el
+  mismo `create`) + `InventarioSueltos`/`MovimientoSueltos`
+  condicionales (solo si `sueltos > 0`, para no dejar ruido en el
+  ledger) — más tablas tocadas de una sola vez que cualquier transacción
+  anterior (`server/repositories/recoleccion.ts`,
+  `registrarRecoleccion`).
+- **Primer contrato offline-ready real del proyecto**: el `id` de
+  `RegistroRecoleccion` lo genera el cliente
+  (`crypto.randomUUID()`), no Prisma. Idempotencia por `create` +
+  capturar `P2002` (no por `prisma.upsert()`, que no puede expresar
+  "crear también N filas hijas atómicamente solo si el padre no existía
+  todavía") — el `catch` vive en la Server Action
+  (`server/actions/recoleccion.ts`), no en el repository, mismo
+  precedente que `crearUsuario`/`crearGalpon` ya establecían. Sprint 6
+  (ventana de gracia/reversión) y Sprint 14 (cola offline real) van a
+  reusar este patrón, no reinventarlo.
+- **"Campos calculados" aplicado por primera vez fuera de Lote**: la
+  columna "Sueltos" de `/recoleccion` no se persiste, se deriva llamando
+  `calcularEmpaque()` directo desde el Server Component de la tabla —
+  mismo criterio que `calcularEdadEnSemanas()` en Sprint 3.
+- **Un Client Component con un campo de longitud variable no puede usar
+  `<form action={formAction}>` + `FormData`** (`normalizarInput` de
+  `with-auth.ts` colapsa claves repetidas al último valor, no arma
+  arreglos) — se llama `formAction(payload)` directo desde `onSubmit`
+  con un objeto plano, **siempre envuelto en `startTransition()`** (ver
+  el bug real más abajo: sin ese envoltorio, `useActionState` no
+  actualiza `pending` a tiempo). `RegistrarRecoleccionDialog` es el
+  único dialog del proyecto con este patrón — los otros seis siguen
+  usando `<form action={formAction}>` normal.
+
+**Lo que construye este sprint:**
+- **Recolección**: `calcularEmpaque(cantidadTotal)` (paquetes de 180,
+  resto como sueltos, sin forzar paquetes incompletos), formulario con
+  despliegue reactivo de un campo de peso por paquete, transacción
+  completa (`RegistroRecoleccion` + `Paquete` + `PaqueteOrigen` +
+  ledger condicional), listado paginado (10 filas) con "Sueltos" como
+  campo calculado, sin restricción de rol.
+- **Inventario**: `reconstruirSaldo()` (función pura, clasifica cada
+  `TipoMovimientoSueltos` en entrada/salida; `REVERSION` queda sin
+  resolver a propósito, es Sprint 6) más
+  `listarMovimientosSueltos()`, sin pantalla propia todavía.
+
+**Sin migraciones** — a diferencia de Sprint 3/4, el schema de
+Recolección e Inventario ya estaba completo desde Sprint 0.
+
+**Verificado en vivo contra Neon real** (script temporal, borrado al
+terminar, datos de prueba reconfirmados en 0 antes de borrar el script):
+recolección con sueltos, recolección menor a 180 (0 paquetes),
+recolección múltiplo exacto de 180 (confirmado que NO se toca
+`InventarioSueltos`/`MovimientoSueltos` cuando sueltos = 0), idempotencia
+real (reenviar el mismo `id` lanza `P2002` de Postgres de verdad, la
+transacción aborta completa sin dejar nada a medias), mudanza + galpón
+resuelto automático (`@@unique([galponId, loteId])` mantiene separados
+los saldos de dos galpones), guard de lote INACTIVO, fila real de
+`AuditLog`. Sin bugs de código encontrados en esta verificación de
+repository/service.
+
+**Verificado con curl+cookie jar** (login real, no solo lectura de
+código): un usuario Gerente temporal accede a `/recoleccion` (200) y el
+HTML servido trae tanto el botón "Registrar recolección" como
+`LOTE-DEMO-01` — confirma que `listarLotesActivos()` llega hasta el
+diálogo antes incluso de probar en navegador real.
+
+**Verificado clic a clic en navegador real por el Product Owner**
+(la extensión Claude in Chrome no conectó en este entorno pese a
+reintentarlo — mismo camino de Sprints 1-2 cuando la herramienta no
+alcanzaba): campos de peso apareciendo/desapareciendo reactivamente,
+botón "Guardar" deshabilitado/habilitado correctamente, guardado exitoso
+con toast y tabla actualizada sin recargar, acceso sin 403 para un
+Operario de prueba.
+
+**Un bug real encontrado y corregido durante esta misma verificación**
+(doble clic dejó dos `RegistroRecoleccion` reales en vez de uno — la
+protección de idempotencia que este mismo sprint construyó no llegó a
+activarse): detalle completo de la causa raíz (dos bugs combinados,
+`formAction` fuera de `startTransition` + `id` regenerado en cada clic)
+y el fix en la sección "Bug real encontrado y corregido en vivo durante
+Sprint 5 (S5-13, 2026-08-11)" más abajo. Reverificado por el Product
+Owner tras el fix: doble clic deliberado, un solo registro.
+
+**Pendiente explícito, no resuelto en este cierre:**
+- Auditar si el resto de los dialogs de mutación del proyecto (Usuarios,
+  Galpones, Lotes/Mudanza, Bitácora, Mortalidad) puede duplicar un
+  registro ante un doble clic o un reintento de red — ninguno tiene
+  protección de idempotencia por id de cliente todavía (el Contrato
+  Offline-Ready recién es obligatorio desde este sprint, así que no es
+  una regresión, es una laguna preexistente). Pedido explícito del
+  Product Owner.
+- Verificación en celular físico real — lo hecho fue clic a clic en
+  escritorio (`npm run dev` + navegador del Product Owner), no
+  pixel-perfect en viewport móvil exacto.
+- Datos de prueba de esta sesión (`verif.s5.13.gerente`,
+  `verif.s5.13.operario`) y el servidor `npm run dev` local siguen
+  activos a propósito, para que el Product Owner pueda seguir probando
+  antes de dar el sprint por cerrado del todo — pendientes de limpiar.
+
 ## Cierre de cabos sueltos post-Sprint 2 (2026-08-03)
 Al re-verificar el estado de Sprints 0-2 en una sesión nueva (typecheck,
 lint, `prisma validate` y los 65 tests, todos en verde de forma independiente,
@@ -1045,3 +1202,182 @@ formalmente:
    es lo que estaba en discusión). Typecheck, lint y los 65 tests se
    corrieron de nuevo después del reformateo y siguen en verde. Sin deuda
    pendiente conocida en Sprints 0, 1 y 2 después de este cierre.
+
+## Bug real encontrado y corregido en vivo durante Sprint 5 (S5-13, 2026-08-11): doble clic duplicaba un RegistroRecoleccion completo
+Verificando `/recoleccion` en el navegador real (`npm run dev`, dos
+usuarios de prueba), el Product Owner hizo doble clic en "Guardar" sin
+querer (la acción demoró en responder) y quedaron dos registros reales
+en vez de uno — el mismo escenario que el Contrato Offline-Ready
+(`memory/convenciones.md`) está pensado para prevenir, fallando en la
+práctica. Detalle completo (causa raíz, fix, verificación) en
+`specs/sprint-05-recoleccion-inventario/tasks.md`, tarea S5-13 — acá solo
+el resumen y el pendiente que abre para el resto del proyecto.
+
+**Causa raíz (dos bugs reales combinados, confirmados leyendo el log del
+propio dev server, no adivinados):**
+1. `RegistrarRecoleccionDialog` es el único dialog del proyecto que NO
+   usa `<form action={formAction}>` — porque su campo `pesos` es un
+   arreglo de longitud variable que `FormData` no puede representar (ver
+   S5-8). Llamaba a `formAction(payload)` a mano desde `onSubmit`, sin
+   envolverlo en `startTransition()`. React exige ese envoltorio para
+   cualquier invocación de un dispatcher de `useActionState` que no pase
+   por `<form action>` — sin él, `pending` no se actualiza a tiempo (React
+   lo advierte explícitamente en consola: "isPending will not update
+   correctly"), así que el botón "Guardar" seguía habilitado entre el
+   primer y el segundo clic.
+2. El `id` (el que hace idempotente al Contrato Offline-Ready) se
+   generaba con `crypto.randomUUID()` **dentro del propio `onSubmit`** —
+   cada clic, aunque fuera el mismo formulario con los mismos datos,
+   generaba un id distinto. La protección de idempotencia por `P2002`
+   (diseñada y probada en S5-4/S5-6/S5-10/S5-12) nunca llegó a activarse
+   porque, desde el punto de vista de la base, eran dos registros
+   legítimamente distintos, no un reintento del mismo.
+
+**Corregido:** `startTransition()` alrededor del `formAction(payload)`, y
+el `id` (más una guarda extra `if (pending) return`) generado una sola
+vez por apertura del diálogo (`useState(() => crypto.randomUUID())`), no
+por clic — el formulario se desmonta por completo al cerrar el diálogo
+(ya sea por éxito o cancelación), así que reusar el mismo id mientras
+sigue abierto es seguro: un reintento genuino (mismos datos, doble clic o
+reintento de red) ahora sí colisiona con `P2002` y la action responde con
+el registro ya existente en vez de crear uno nuevo. Reverificado en el
+mismo navegador por el Product Owner: doble clic deliberado, un solo
+registro. Los 4 registros duplicados que había dejado el bug original se
+borraron de Neon con un script temporal antes de aplicar el fix.
+
+**Pendiente explícito para después de cerrar este sprint — auditar el
+resto de los dialogs del proyecto:** los otros seis dialogs de
+formulario (`RegistrarMortalidadDialog`, `NuevaNotaBitacoraDialog`,
+`EditarNotaBitacoraDialog`, `GalponFormDialog`, `LoteFormDialog`,
+`MudanzaDialog`, `UsuarioFormDialog`) sí usan `<form action={formAction}>`
+— confirmado con `grep`, ninguno repite el bug #1 de arriba (React
+maneja la transición sola en ese patrón). Pero **ninguno de ellos tiene
+protección de idempotencia contra un reintento genuino** (id generado en
+servidor, no en cliente) — es esperable, el Contrato Offline-Ready recién
+es obligatorio "desde Sprint 5 en adelante" (`memory/convenciones.md`),
+así que no es una regresión de hoy, es una laguna preexistente heredada
+del diseño de Sprints 1-4. El Product Owner pidió explícitamente
+dejarlo anotado para revisar en todos los sprints (no solo los ya
+cerrados, también los que faltan) si un doble clic o un reintento de red
+podría duplicar un registro en cada uno de esos módulos — Usuarios,
+Galpones, Lotes/Mudanza, Bitácora, Mortalidad. Queda pendiente, no
+resuelto en esta sesión.
+
+## Auditoría de idempotencia post-Sprint 5, resuelta (2026-08-11, misma sesión)
+Siguiendo el pedido explícito del Product Owner (ver sección anterior),
+se auditó cada dialog de mutación del proyecto para saber si un doble
+envío (doble clic, reintento de red) podía duplicar un registro, y se
+corrigieron los módulos que no tenían ninguna protección. Regla general
+resultante, ya documentada como convención permanente en
+`memory/convenciones.md` ("Idempotencia por id de cliente: obligatoria
+en TODA creación, no solo en las offline-ready") — este archivo solo
+guarda el resultado concreto de la auditoría y su verificación.
+
+**Resultado de la auditoría, módulo por módulo:**
+- **Usuario** (crear) y **Lote** (crear): ya protegidos de fábrica —
+  `Usuario.usuario` y `Lote.codigo` son `@unique`, y `crearUsuario`/
+  `crearLote` ya atrapaban `P2002` desde que se escribieron (Sprint 2 y
+  3). Sin cambios.
+- **Mudanza** (`mudarLoteAction`): sin riesgo de duplicación real — el
+  índice único parcial de S0-5 (una sola ubicación abierta por lote) lo
+  impide a nivel de base, y la guard `puedeMudarLote` ya rechaza sola un
+  reintento secuencial ("el lote ya está en ese galpón") una vez que el
+  primero se aplicó. Se agregó igual un `catch` de `P2002` con mensaje
+  claro para el caso límite de una carrera verdaderamente concurrente —
+  polish, no corrección de un bug real.
+- **Galpón** (crear), **Bitácora** (nueva nota) y **Mortalidad**
+  (registrar): sin ninguna protección — confirmado leyendo el código
+  (`Galpon.nombre` sin `@unique`, "nada lo pedía" desde Sprint 3;
+  `BitacoraGlobal.contenido` sin unicidad posible; `RegistroMortalidad`
+  sin ninguna restricción). **Mortalidad era el hallazgo más grave**: un
+  doble envío no solo dejaba una fila de más, decrementaba `avesVivas`
+  dos veces — mismo patrón de severidad que el bug real de Recolección
+  (S5-13), pero sobre un contador operativo en vivo en un módulo que ya
+  estaba en producción desde Sprint 4.
+
+**Corregido en los tres** (mismo patrón que Recolección, S5-6): `id`
+generado en el cliente agregado al schema Zod de "crear"
+(`lib/zod/galpon.ts`, `bitacora.ts`, `mortalidad.ts`), el repository
+correspondiente pasa ese `id` al `create` de Prisma en vez de dejarlo
+autogenerado, y la Server Action atrapa `P2002` — compara los campos
+relevantes contra el registro ya persistido (si coinciden, responde
+éxito idempotente sin volver a escribir; si no, `AccionError` explícito,
+no se sobrescribe en silencio). En el cliente, cada dialog
+(`GalponFormDialog`, `NuevaNotaBitacoraDialog`,
+`RegistrarMortalidadDialog`) genera el `id` **una sola vez por apertura**
+(`useState(() => crypto.randomUUID())`), como campo `<input type="hidden">`
+dentro del `<form action={formAction}>` normal — ninguno de los tres
+necesitó el bypass de `startTransition` que sí hizo falta en Recolección,
+porque los tres ya usaban `<form action={formAction}>` nativo desde el
+principio (ese patrón de React sí maneja `pending` solo).
+
+**Verificado, dos capas:**
+1. **11 tests de integración nuevos** (2 por módulo + 1 test de
+   `contenido` vacío ajustado en Bitácora), repositories mockeados —
+   reintento con mismos datos devuelve el registro existente sin
+   duplicar, reintento con datos distintos rechazado explícito. 197/197
+   tests en verde.
+2. **Script temporal contra Neon real** (mismo criterio que S5-12, no
+   solo confiar en los mocks): para cada uno de los tres módulos, crear
+   con un `id` fijo, reenviar el mismo `id` y confirmar `P2002` real de
+   Postgres — y para Mortalidad específicamente, confirmar que
+   `Lote.avesVivas` queda en el mismo valor después del reintento
+   fallido (490, no 480) porque la transacción completa abortó, no solo
+   el `create`. Los tres casos pasaron a la primera. Datos de prueba
+   borrados al terminar, script descartado.
+
+**De paso, en la misma sesión:** se agregó un componente
+`components/ui/password-input.tsx` (toggle de "ver/ocultar contraseña",
+ícono `Eye`/`EyeOff`) usado en `/login` y en el campo de contraseña de
+`UsuarioFormDialog` (crear y editar comparten el mismo campo) — pedido
+explícito del Product Owner, sin relación con la auditoría de
+idempotencia.
+
+**Filtros en Mortalidad y Recolección — analizado primero, implementado
+después en la misma sesión** (el Product Owner pidió explícitamente
+"implementemos también el punto 3" después de ver el análisis).
+Confirmado que tenía sentido en estos dos (historiales cronológicos que
+crecen, mismo criterio que ya justificaba los filtros de Bitácora), no
+en Usuarios/Galpones/Lotes (catálogos chicos, un filtro ahí resolvería
+un problema que todavía no existe) — esos quedan sin tocar.
+
+**`MortalidadFiltros`** (tipo + lote + rango de fecha) y
+**`RecoleccionFiltros`** (lote + rango de fecha, sin `tipo` — Recolección
+no tiene una clasificación categórica) — mismo patrón que
+`BitacoraFiltros` (marco colapsable, filtros dirigidos por URL,
+`startTransition` + `router.replace`), con un desvío real:
+Mortalidad/Recolección paginan por página (`?page=N`, no por cursor como
+Bitácora), así que **cambiar cualquier filtro también borra `page` de
+la URL** — quedarse en "página 3" de un resultado ya filtrado (que capaz
+solo tiene una página) mostraría una tabla vacía sin explicación.
+
+**Pieza nueva no anticipada, encontrada al conectar filtros + paginación
+por primera vez en el mismo módulo:** `<DataTablePagination>` construía
+sus links `${basePath}?page=N` a secas — ninguna tabla anterior
+(Usuarios/Galpones/Lotes/Mortalidad sin filtros) necesitaba preservar
+otros parámetros de la URL entre páginas. Se le agregó una prop opcional
+`filtros?: Record<string, string | undefined>` que se combina con `page`
+al armar cada link — retrocompatible (los módulos que no la pasan siguen
+funcionando exactamente igual), documentado en el propio componente para
+que cualquier tabla futura con filtros + paginación por página lo reuse
+sin tener que redescubrirlo.
+
+**`listarLotesParaFiltro()` nuevo** en `server/repositories/lote.ts` —
+a propósito NO reusa `listarLotesActivos()` (que ya existía para poblar
+el `<Select>` de los formularios de alta): un filtro de historial
+necesita poder elegir también un lote ya `INACTIVO` (finalizado), algo
+que un formulario de alta nunca necesita.
+
+**Verificado:** 197/197 tests sin roturas (los repositories nuevos con
+parámetros opcionales no rompieron ningún test existente, y no hay tests
+de repository en este proyecto por convención — ver
+`memory/convenciones.md`), `npm run build` limpio, y un script temporal
+contra Neon real con datos de dos lotes distintos confirmando que
+`tipo`, `loteId` y el rango de fecha filtran exactamente lo esperado (no
+de más, no de menos) tanto en Mortalidad como en Recolección — datos de
+prueba borrados al terminar. Smoke test adicional con `curl`+cookie jar
+confirmando que ambas rutas responden 200 con query params de filtro,
+incluido un `loteId` con formato inválido a propósito (no rompe nada,
+Prisma simplemente no encuentra coincidencias — mismo criterio que
+`categoria`/`fecha` en Bitácora, `searchParams` es un límite de entrada
+externo, no pasa por Zod).

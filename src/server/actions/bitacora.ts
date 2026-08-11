@@ -1,5 +1,7 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
+
 import { PAGE_SIZE_MURO } from "@/lib/constants";
 import {
   crearNotaBitacoraSchema,
@@ -17,16 +19,45 @@ import {
   listarBitacoraPagina,
 } from "@/server/repositories/bitacora";
 
+// Mismo helper que usuario.ts/lote.ts/galpon.ts/recoleccion.ts.
+function esErrorDeUnicidad(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
 // Mutación real → pasa por withAuth, sin `rol` (GERENTE y OPERARIO
 // escriben notas por igual, mismo criterio que registrarMortalidad).
+//
+// Idempotencia por id de cliente (mismo patrón que
+// server/actions/recoleccion.ts, Sprint 5): sin unicidad de negocio
+// posible sobre `contenido`, el id generado en el cliente es la única
+// defensa contra un doble envío. Auditoría post-Sprint 5, ver
+// memory/estado-proyecto.md.
 export const crearNotaBitacora = withAuth(
   { schema: crearNotaBitacoraSchema, entidad: "BitacoraGlobal", accion: "CREAR" },
   async (input, ctx) => {
-    const nota = await crearNotaBitacoraRepo({
-      categoria: input.categoria,
-      contenido: input.contenido,
-      usuarioId: ctx.usuarioId,
-    });
+    let nota;
+    try {
+      nota = await crearNotaBitacoraRepo({
+        id: input.id,
+        categoria: input.categoria,
+        contenido: input.contenido,
+        usuarioId: ctx.usuarioId,
+      });
+    } catch (error) {
+      if (!esErrorDeUnicidad(error)) {
+        throw error;
+      }
+      const existente = await buscarNotaBitacoraPorId(input.id);
+      if (!existente) {
+        throw error;
+      }
+      if (existente.categoria !== input.categoria || existente.contenido !== input.contenido) {
+        throw new AccionError(
+          "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+        );
+      }
+      nota = existente;
+    }
 
     return {
       data: { id: nota.id },

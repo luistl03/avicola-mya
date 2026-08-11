@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // vi.hoisted: las factories de vi.mock se izan por encima de cualquier
@@ -100,7 +101,7 @@ describe("Server Actions de galpón (Sprint 3)", () => {
   });
 
   describe("crearGalpon", () => {
-    const inputValido = { nombre: "Galpón 1", capacidadMaxima: 500 };
+    const inputValido = { id: GALPON_1_ID, nombre: "Galpón 1", capacidadMaxima: 500 };
 
     it("rechaza si quien invoca no es GERENTE, sin llegar a tocar el repository", async () => {
       authMock.mockResolvedValue(sessionOperario());
@@ -128,6 +129,55 @@ describe("Server Actions de galpón (Sprint 3)", () => {
       expect(crearAuditLogMock).toHaveBeenCalledWith(
         expect.objectContaining({ entidad: "Galpon", accion: "CREAR", entidadId: GALPON_1_ID }),
       );
+    });
+
+    // Idempotencia por id de cliente (auditoría post-Sprint 5, ver
+    // memory/estado-proyecto.md — Galpon.nombre no tiene @unique, así que
+    // este id es la única defensa real contra un doble envío).
+    describe("idempotencia por id de cliente", () => {
+      function erroDeUnicidad() {
+        return new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+          code: "P2002",
+          clientVersion: "6.19.3",
+        });
+      }
+
+      it("reintento con el mismo id y los mismos datos devuelve el galpón ya existente, sin duplicar", async () => {
+        authMock.mockResolvedValue(sessionGerente());
+        buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+        crearGalponRepoMock.mockRejectedValue(erroDeUnicidad());
+        buscarGalponPorIdMock.mockResolvedValue({
+          id: GALPON_1_ID,
+          nombre: "Galpón 1",
+          capacidadMaxima: 500,
+        });
+
+        const resultado = await crearGalpon(inputValido);
+
+        expect(resultado).toEqual({ ok: true, data: { id: GALPON_1_ID } });
+        expect(crearAuditLogMock).toHaveBeenCalledWith(
+          expect.objectContaining({ entidad: "Galpon", entidadId: GALPON_1_ID }),
+        );
+      });
+
+      it("rechaza explícito si el mismo id ya existe pero con datos distintos", async () => {
+        authMock.mockResolvedValue(sessionGerente());
+        buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+        crearGalponRepoMock.mockRejectedValue(erroDeUnicidad());
+        buscarGalponPorIdMock.mockResolvedValue({
+          id: GALPON_1_ID,
+          nombre: "Galpón distinto",
+          capacidadMaxima: 999,
+        });
+
+        const resultado = await crearGalpon(inputValido);
+
+        expect(resultado).toEqual({
+          ok: false,
+          error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+        });
+        expect(crearAuditLogMock).not.toHaveBeenCalled();
+      });
     });
   });
 

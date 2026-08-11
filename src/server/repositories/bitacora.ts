@@ -3,6 +3,7 @@ import type { CategoriaBitacora } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export function crearNotaBitacora(data: {
+  id: string;
   categoria: CategoriaBitacora;
   contenido: string;
   usuarioId: string;

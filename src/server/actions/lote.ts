@@ -114,7 +114,26 @@ export const mudarLoteAction = withAuth(
       throw new AccionError(guardCapacidad.motivo);
     }
 
-    await mudarLote(input.loteId, input.galponDestinoId, new Date());
+    // No necesita idempotencia por id de cliente como
+    // Recolección/Galpón/Bitácora/Mortalidad (auditoría post-Sprint 5,
+    // ver memory/estado-proyecto.md): un reintento secuencial genuino ya
+    // queda cubierto por la guard de arriba (galponOrigenId ===
+    // galponDestinoId, "El lote ya está en ese galpón" tras la primera
+    // mudanza exitosa). Solo una carrera verdaderamente concurrente
+    // podría chocar contra el índice único parcial de S0-5 (una sola
+    // ubicación abierta por lote) — este catch solo le da un mensaje
+    // claro a ese caso límite, no protege contra duplicación real de
+    // datos (esa ya la da el índice de la base).
+    try {
+      await mudarLote(input.loteId, input.galponDestinoId, new Date());
+    } catch (error) {
+      if (esErrorDeUnicidad(error)) {
+        throw new AccionError(
+          "Este lote ya fue mudado — actualizá la pantalla antes de reintentar.",
+        );
+      }
+      throw error;
+    }
 
     return {
       data: { id: lote.id },

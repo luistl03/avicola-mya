@@ -95,6 +95,11 @@ function RegistrarMortalidadForm({
   // de ítems no lo tiene registrado en ese momento.
   const [loteId, setLoteId] = useState<string | null>(null);
   const [tipo, setTipo] = useState<string | null>(null);
+  // Generado una sola vez por apertura del diálogo — mismo fix que el bug
+  // real de Recolección (S5-13), acá con más motivo: un doble clic sin
+  // esto no solo duplicaba el registro, decrementaba avesVivas dos veces
+  // (hallazgo real de la auditoría post-Sprint 5).
+  const [id] = useState(() => crypto.randomUUID());
 
   const [state, formAction, pending] = useActionState<Estado, FormData>(async (_prev, formData) => {
     const resultado = await registrarMortalidad(formData);
@@ -118,6 +123,7 @@ function RegistrarMortalidadForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      <input type="hidden" name="id" value={id} />
       {state && !state.ok ? (
         <p role="alert" className="text-sm text-destructive">
           {state.error}
@@ -130,7 +136,7 @@ function RegistrarMortalidadForm({
         </Label>
         <Select name="loteId" value={loteId} onValueChange={setLoteId}>
           <SelectTrigger id="loteId" className="h-10 w-full">
-            <SelectValue placeholder="Seleccioná un lote">
+            <SelectValue placeholder="Selecciona un lote">
               {loteSeleccionado
                 ? `${loteSeleccionado.codigo} — ${loteSeleccionado.avesVivas} vivas`
                 : undefined}
@@ -157,7 +163,7 @@ function RegistrarMortalidadForm({
         </Label>
         <Select name="tipo" value={tipo} onValueChange={setTipo}>
           <SelectTrigger id="tipo" className="h-10 w-full">
-            <SelectValue placeholder="Elegí un tipo">{tipoSeleccionado?.label}</SelectValue>
+            <SelectValue placeholder="Selecciona un tipo">{tipoSeleccionado?.label}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {TIPOS.map((opcion) => (

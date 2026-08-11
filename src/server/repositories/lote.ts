@@ -118,3 +118,15 @@ export function listarLotesActivos() {
     select: { id: true, codigo: true, avesVivas: true },
   });
 }
+
+// Para poblar el <Select> de lote en los filtros de Mortalidad/Recolección
+// (post-Sprint 5) — a diferencia de listarLotesActivos(), incluye también
+// lotes INACTIVO: un Gerente puede querer filtrar el historial de
+// mortalidad/recolección de un lote ya finalizado, no solo de los
+// vigentes. Sin paginar (mismo criterio, son pocos lotes por granja).
+export function listarLotesParaFiltro() {
+  return prisma.lote.findMany({
+    orderBy: { codigo: "asc" },
+    select: { id: true, codigo: true },
+  });
+}

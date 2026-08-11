@@ -1,5 +1,7 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
+
 import { crearRegistroMortalidadSchema, revertirMortalidadSchema } from "@/lib/zod/mortalidad";
 import { AccionError, withAuth } from "@/server/auth/with-auth";
 import { buscarLotePorId, buscarUbicacionActual } from "@/server/repositories/lote";
@@ -11,6 +13,11 @@ import {
   YaRevertidoError,
 } from "@/server/repositories/mortalidad";
 import { puedeRegistrarMortalidad, puedeRevertirMortalidad } from "@/server/services/mortalidad";
+
+// Mismo helper que usuario.ts/lote.ts/galpon.ts/bitacora.ts/recoleccion.ts.
+function esErrorDeUnicidad(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
 
 // Sin `rol`: GERENTE y OPERARIO pueden registrar mortalidad por igual
 // (decisión de negocio confirmada en spec.md) — withAuth ya soporta
@@ -39,9 +46,19 @@ export const registrarMortalidad = withAuth(
       throw new AccionError("El lote no tiene una ubicación registrada.");
     }
 
+    // Idempotencia por id de cliente (mismo patrón que
+    // server/actions/recoleccion.ts, Sprint 5): acá importa más que en
+    // ningún otro módulo auditado — un doble envío sin esta protección no
+    // solo duplicaba la fila, decrementaba avesVivas dos veces (hallazgo
+    // real de la auditoría post-Sprint 5, ver memory/estado-proyecto.md).
+    // El `create` con `id` explícito vive dentro de la misma transacción
+    // interactiva que el decremento — si lanza P2002, Prisma revierte la
+    // transacción COMPLETA, así que un reintento nunca puede dejar
+    // avesVivas decrementado sin su RegistroMortalidad correspondiente.
     let registro;
     try {
       registro = await registrarMortalidadYDescontarAves({
+        id: input.id,
         loteId: input.loteId,
         galponId: ubicacion.galponId,
         usuarioId: ctx.usuarioId,
@@ -54,7 +71,24 @@ export const registrarMortalidad = withAuth(
           "Ya no quedan suficientes aves vivas para este registro — actualizá la pantalla e intentá de nuevo.",
         );
       }
-      throw error;
+      if (esErrorDeUnicidad(error)) {
+        const existente = await buscarRegistroMortalidadPorId(input.id);
+        if (!existente) {
+          throw error;
+        }
+        if (
+          existente.loteId !== input.loteId ||
+          existente.tipo !== input.tipo ||
+          existente.cantidad !== input.cantidad
+        ) {
+          throw new AccionError(
+            "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+          );
+        }
+        registro = existente;
+      } else {
+        throw error;
+      }
     }
 
     return {

@@ -137,7 +137,7 @@ function MudanzaForm({
         </Label>
         <Select name="galponDestinoId" value={galponDestinoId} onValueChange={setGalponDestinoId}>
           <SelectTrigger id="galponDestinoId" className="h-10 w-full">
-            <SelectValue placeholder="Seleccioná un galpón">
+            <SelectValue placeholder="Selecciona un galpón">
               {destinoSeleccionado?.nombre}
             </SelectValue>
           </SelectTrigger>

@@ -1,5 +1,7 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
+
 import {
   cambiarEstadoGalponSchema,
   crearGalponSchema,
@@ -19,10 +21,39 @@ function sumarAvesAlojadas(ocupacion: { lote: { avesVivas: number } }[]): number
   return ocupacion.reduce((suma, fila) => suma + fila.lote.avesVivas, 0);
 }
 
+// Mismo helper que usuario.ts/lote.ts/recoleccion.ts.
+function esErrorDeUnicidad(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
+// Idempotencia por id de cliente (mismo patrón que
+// server/actions/recoleccion.ts, Sprint 5): Galpon.nombre no tiene
+// @unique ("nada lo pedía" en Sprint 3), así que a diferencia de
+// Usuario/Lote acá no hay ninguna restricción de negocio que
+// incidentalmente proteja contra un doble envío — el id generado en el
+// cliente es la única defensa real. Auditoría post-Sprint 5, ver
+// memory/estado-proyecto.md.
 export const crearGalpon = withAuth(
   { schema: crearGalponSchema, rol: "GERENTE", entidad: "Galpon", accion: "CREAR" },
   async (input) => {
-    const galpon = await crearGalponRepo(input);
+    let galpon;
+    try {
+      galpon = await crearGalponRepo(input);
+    } catch (error) {
+      if (!esErrorDeUnicidad(error)) {
+        throw error;
+      }
+      const existente = await buscarGalponPorId(input.id);
+      if (!existente) {
+        throw error;
+      }
+      if (existente.nombre !== input.nombre || existente.capacidadMaxima !== input.capacidadMaxima) {
+        throw new AccionError(
+          "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+        );
+      }
+      galpon = existente;
+    }
     return {
       data: { id: galpon.id },
       entidadId: galpon.id,

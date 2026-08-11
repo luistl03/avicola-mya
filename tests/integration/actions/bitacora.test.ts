@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PAGE_SIZE_MURO } from "@/lib/constants";
@@ -98,7 +99,11 @@ describe("crearNotaBitacora", () => {
     authMock.mockResolvedValue(sessionGerente());
     buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
 
-    const resultado = await crearNotaBitacora({ categoria: "OBSERVACION", contenido: "   " });
+    const resultado = await crearNotaBitacora({
+      id: crypto.randomUUID(),
+      categoria: "OBSERVACION",
+      contenido: "   ",
+    });
 
     expect(resultado.ok).toBe(false);
     if (!resultado.ok) {
@@ -117,12 +122,14 @@ describe("crearNotaBitacora", () => {
     });
 
     const resultado = await crearNotaBitacora({
+      id: NOTA_1_ID,
       categoria: "VACUNACION",
       contenido: "Vacuna Newcastle aplicada",
     });
 
     expect(resultado).toEqual({ ok: true, data: { id: NOTA_1_ID } });
     expect(crearNotaBitacoraMock).toHaveBeenCalledWith({
+      id: NOTA_1_ID,
       categoria: "VACUNACION",
       contenido: "Vacuna Newcastle aplicada",
       usuarioId: GERENTE_1_ID,
@@ -148,6 +155,7 @@ describe("crearNotaBitacora", () => {
     });
 
     const resultado = await crearNotaBitacora({
+      id: NOTA_1_ID,
       categoria: "ALIMENTACION",
       contenido: "Reparto normal",
     });
@@ -156,6 +164,63 @@ describe("crearNotaBitacora", () => {
     expect(crearNotaBitacoraMock).toHaveBeenCalledWith(
       expect.objectContaining({ usuarioId: OPERARIO_1_ID }),
     );
+  });
+
+  // Idempotencia por id de cliente (auditoría post-Sprint 5, ver
+  // memory/estado-proyecto.md — sin unicidad de negocio posible sobre
+  // `contenido`, este id es la única defensa real contra un doble envío).
+  describe("idempotencia por id de cliente", () => {
+    function erroDeUnicidad() {
+      return new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "6.19.3",
+      });
+    }
+
+    it("reintento con el mismo id y los mismos datos devuelve la nota ya existente, sin duplicar", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      crearNotaBitacoraMock.mockRejectedValue(erroDeUnicidad());
+      buscarNotaBitacoraPorIdMock.mockResolvedValue({
+        id: NOTA_1_ID,
+        categoria: "OBSERVACION",
+        contenido: "Nota original",
+      });
+
+      const resultado = await crearNotaBitacora({
+        id: NOTA_1_ID,
+        categoria: "OBSERVACION",
+        contenido: "Nota original",
+      });
+
+      expect(resultado).toEqual({ ok: true, data: { id: NOTA_1_ID } });
+      expect(crearAuditLogMock).toHaveBeenCalledWith(
+        expect.objectContaining({ entidad: "BitacoraGlobal", entidadId: NOTA_1_ID }),
+      );
+    });
+
+    it("rechaza explícito si el mismo id ya existe pero con datos distintos", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      crearNotaBitacoraMock.mockRejectedValue(erroDeUnicidad());
+      buscarNotaBitacoraPorIdMock.mockResolvedValue({
+        id: NOTA_1_ID,
+        categoria: "VACUNACION",
+        contenido: "Otra nota distinta",
+      });
+
+      const resultado = await crearNotaBitacora({
+        id: NOTA_1_ID,
+        categoria: "OBSERVACION",
+        contenido: "Nota original",
+      });
+
+      expect(resultado).toEqual({
+        ok: false,
+        error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+      });
+      expect(crearAuditLogMock).not.toHaveBeenCalled();
+    });
   });
 });
 
