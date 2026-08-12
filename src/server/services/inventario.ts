@@ -1,27 +1,43 @@
 import type { TipoMovimientoSueltos } from "@prisma/client";
 
-// Clasificación de cada tipo de MovimientoSueltos para reconstruirSaldo().
-// Los tipos que Sprint 5 todavía no escribe (CONSOLIDACION_SALIDA,
-// ROTURA_PAQUETE_ENTRADA, VENTA_SUELTO) ya quedan clasificados acá para
-// que Sprint 7/9/10 no tengan que tocar esta función — solo empezar a
-// generar esos movimientos.
-const TIPOS_ENTRADA: readonly TipoMovimientoSueltos[] = ["RECOLECCION", "ROTURA_PAQUETE_ENTRADA", "AJUSTE_GERENTE"];
-const TIPOS_SALIDA: readonly TipoMovimientoSueltos[] = ["CONSOLIDACION_SALIDA", "VENTA_SUELTO"];
+type ClasificacionMovimiento = "ENTRADA" | "SALIDA" | "AJUSTE";
 
-// AJUSTE_GERENTE (el "ajuste manual pasado el plazo" que el roadmap de
-// Sprint 6 le da al Gerente) se clasifica como entrada por ahora. Si en la
-// práctica también necesita restar (corregir un exceso, no solo un
-// faltante), Sprint 6 tiene que resolver el signo explícito antes de reusar
-// esta función tal cual — no asumido de más acá.
+// Clasificación EXHAUSTIVA de cada tipo de MovimientoSueltos para
+// reconstruirSaldo(), vía Record<TipoMovimientoSueltos, ...> en vez de la
+// cadena de if/arrays de Sprint 5 — TypeScript exige que las 6 claves del
+// enum aparezcan todas acá; agregar un tipo nuevo al enum sin clasificarlo
+// es un error de compilación, no una rama silenciosa sin cubrir en
+// producción (ni un fallback sin test real, que es lo que tenía la
+// versión anterior una vez que Sprint 6 terminó de clasificar los 6
+// tipos — ver git history si hace falta el porqué del cambio).
 //
-// REVERSION no suma ni resta directamente: invierte el movimiento que
-// referencia vía `referenciaId`, no tiene un signo propio fijo — queda sin
-// caso de prueba real en este sprint (ningún RegistroRecoleccion se
-// revierte todavía, eso es Sprint 6), así que por ahora no mueve el saldo.
+// REVERSION (resuelto en Sprint 6): siempre deshace un MovimientoSueltos
+// RECOLECCION anterior — server/repositories/recoleccion.ts
+// (revertirRecoleccion) lo crea con la misma cantidad que el sueltos
+// original (recalculada vía calcularEmpaque, no leída por referenciaId),
+// así que acá alcanza con clasificarlo como SALIDA, sin necesidad de
+// mirar qué movimiento referencia.
+//
+// AJUSTE_GERENTE (resuelto en Sprint 6): es el único MovimientoSueltos
+// cuyo `cantidad` NO es siempre positivo — server/repositories/inventario.ts
+// (ajustarInventarioSueltos) lo guarda con el signo real del delta que
+// eligió el Gerente (positivo compensa un faltante, negativo corrige un
+// excedente), así que se suma directo al saldo (mismo signo que ENTRADA,
+// clasificación separada solo para que el comentario de arriba quede
+// explícito). Cualquier código futuro que lea MovimientoSueltos.cantidad
+// asumiendo que siempre es positivo tiene que tratar este tipo aparte.
+const CLASIFICACION: Record<TipoMovimientoSueltos, ClasificacionMovimiento> = {
+  RECOLECCION: "ENTRADA",
+  ROTURA_PAQUETE_ENTRADA: "ENTRADA",
+  CONSOLIDACION_SALIDA: "SALIDA",
+  VENTA_SUELTO: "SALIDA",
+  REVERSION: "SALIDA",
+  AJUSTE_GERENTE: "AJUSTE",
+};
+
 export function reconstruirSaldo(movimientos: { tipo: TipoMovimientoSueltos; cantidad: number }[]): number {
   return movimientos.reduce((saldo, movimiento) => {
-    if (TIPOS_ENTRADA.includes(movimiento.tipo)) return saldo + movimiento.cantidad;
-    if (TIPOS_SALIDA.includes(movimiento.tipo)) return saldo - movimiento.cantidad;
-    return saldo;
+    if (CLASIFICACION[movimiento.tipo] === "SALIDA") return saldo - movimiento.cantidad;
+    return saldo + movimiento.cantidad; // ENTRADA y AJUSTE: AJUSTE ya trae su signo real
   }, 0);
 }

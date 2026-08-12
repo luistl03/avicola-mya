@@ -9,10 +9,10 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 6 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+- **Sprint actual:** 7 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
   Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
   Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora, Sprint 5 —
-  Recolección e Inventario)
+  Recolección e Inventario, Sprint 6 — Ventana de gracia y reversión)
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -777,27 +777,36 @@ priorizado). Una vez separados:
   cliente registrado, tiene que existir también en producción.
 
 ## Cómo continuar desde acá
-1. Sprint 6 (Ventana de gracia y reversión) es el siguiente — roadmap lo
-   marca 28 pts, sin advertencia de riesgo especial (a diferencia de
-   Sprint 5). Su `spec.md` aún no existe — generarlo usando
-   `specs/roadmap-completo.md` (sección Sprint 6) + este archivo + el
-   resto de `memory/` como contexto. Usar
-   `specs/sprint-05-recoleccion-inventario/` como referencia de
-   estructura más reciente. Piezas que Sprint 5 ya dejó preparadas y que
-   Sprint 6 va a necesitar: `RegistroRecoleccion.revertido`/`creadoEn` ya
-   existen en el schema (sin migración nueva esperada); el patrón de
-   idempotencia por `create`+captura de `P2002`
-   (`server/repositories/recoleccion.ts`/`server/actions/recoleccion.ts`)
-   es el precedente a reusar si la reversión también necesita
-   idempotencia; `TipoMovimientoSueltos.REVERSION` existe en el enum pero
-   `reconstruirSaldo()` (`server/services/inventario.ts`) todavía no lo
-   suma/resta — ese signo hay que resolverlo en este sprint, no asumido
-   de antes. **Antes de arrancar, revisar el pendiente que dejó el cierre
-   de Sprint 5**: auditar si Usuarios/Galpones/Lotes/Bitácora/Mortalidad
-   pueden duplicar un registro ante un doble clic o un reintento de red
-   (ninguno tiene protección de idempotencia por id de cliente) — pedido
-   explícito del Product Owner, ver "Sprint 5 — Recolección e Inventario
-   (cerrado, 2026-08-11)" más abajo para el detalle completo.
+1. Sprint 7 (Consolidación de residuos) es el siguiente — roadmap lo
+   marca 24 pts: pantalla de saldos por galpón/lote (`reconstruirSaldo()`,
+   ya construida y con tests desde Sprint 5, todavía sin pantalla propia
+   — este sprint le da la primera), Wizard "Paquete Mixto" (multi-origen,
+   suma exacta 180 — primer `Paquete` con más de un `PaqueteOrigen`),
+   Wizard "Armar Bandeja" (30u, multi-origen, primer uso real de
+   `BandejaSuelta`/`BandejaOrigen`, sin tocar desde Sprint 0), y un guard
+   anti-sobregiro (`UPDATE` condicional) para no dejar `InventarioSueltos`
+   negativo al consolidar. Piezas que Sprint 6 ya dejó preparadas y que
+   Sprint 7 va a necesitar: `reconstruirSaldo()` ya sabe clasificar los 6
+   tipos de `TipoMovimientoSueltos` (incluidos `REVERSION`/
+   `AJUSTE_GERENTE`, resueltos en Sprint 6) vía un `Record<TipoMovimientoSueltos,
+   ...>` exhaustivo (`server/services/inventario.ts`) — Sprint 7 solo
+   necesita empezar a generar movimientos `CONSOLIDACION_SALIDA`, no
+   tocar la clasificación; el patrón de guard "todo o nada" sobre un
+   conjunto de filas (`server/repositories/recoleccion.ts`,
+   `revertirRecoleccion`, `count` + `updateMany` + comparación) es el
+   precedente directo para el guard anti-sobregiro de Consolidación, que
+   también necesita decidir atómicamente sobre varias filas a la vez; el
+   patrón de idempotencia por `create`+captura de `P2002`
+   (`server/repositories/inventario.ts`, `ajustarInventarioSueltos`) es
+   el precedente a reusar para los dos wizards, que también crean
+   entidades nuevas desde formularios de campo. **Deuda explícita
+   heredada de Sprint 6, no resuelta:** el "ajuste manual del Gerente"
+   solo existe para el ledger de sueltos de Recolección — Mortalidad
+   sigue sin ningún camino para corregir un registro después de que su
+   ventana de 10 minutos cerró (no hay ledger equivalente a
+   `MovimientoSueltos` para `avesVivas`); no es parte de Sprint 7, pero
+   hay que priorizarlo en algún sprint futuro si el Product Owner lo pide
+   en producción.
 2. Toda Server Action nueva que **mute** datos debe envolverse con
    `withAuth(config, handler)` (`server/auth/with-auth.ts`, Sprint 2) — es
    la pieza de mayor apalancamiento del proyecto, ya trae auth + rol + Zod
@@ -926,6 +935,50 @@ priorizado). Una vez separados:
   puede duplicar un registro ante un doble clic o un reintento de red —
   ninguno tiene protección de idempotencia por id de cliente todavía,
   pedido explícito del Product Owner para revisar después de este cierre.
+- **Sprint 6** — cerrado (2026-08-12). 240 tests (20 nuevos sobre los
+  220 heredados de Sprint 5), una migración no destructiva aplicada
+  contra Neon real (`RegistroRecoleccion.revertidoEn`), cobertura 100%
+  en `server/services/recoleccion.ts` e `server/services/inventario.ts`,
+  verificado con dos scripts temporales contra Neon real (carrera
+  concurrente forzada, mismo criterio que Mortalidad en Sprint 4, más el
+  camino feliz secuencial) y clic a clic en navegador real por el
+  Product Owner. Cuarta y quinta transacción interactiva del proyecto
+  (`revertirRecoleccion`, `ajustarInventarioSueltos`), primera vez que un
+  guard anti-carrera protege un CONJUNTO de filas (`Paquete`) en vez de
+  una sola, primera Server Action del proyecto restringida a un solo rol
+  dentro de un módulo por lo demás abierto a ambos
+  (`ajustarInventarioSueltosAction`, `rol: "GERENTE"`). Detalle completo
+  en `specs/sprint-06-ventana-gracia-reversion/` (spec.md, plan.md,
+  tasks.md con las 16 tareas documentadas al cerrarlas, incluidos los
+  desvíos y hallazgos reales). **Dos hallazgos reales durante la
+  ejecución, los dos corregidos en el momento:**
+  1. El brief inicial de planificación asumía que
+     `RegistroRecoleccion.revertidoEn` ya existía "desde Sprint 0" (igual
+     que `revertido`) — verificado releyendo el schema real, era falso:
+     solo `RegistroMortalidad` lo tenía. Se agregó la migración que
+     faltaba (S6-1) antes de escribir cualquier código que dependiera del
+     campo.
+  2. Una brecha real de cobertura en `reconstruirSaldo()` (S6-14): una
+     vez que S6-4 terminó de clasificar los 6 valores de
+     `TipoMovimientoSueltos`, el `return saldo` de respaldo de la cadena
+     de `if` original quedó inalcanzable para cualquier valor válido del
+     enum. Corregido de raíz reescribiendo la función con un
+     `Record<TipoMovimientoSueltos, ...>` exhaustivo (TypeScript exige
+     las 6 claves), no con un test artificial que casteara un tipo
+     inválido solo para inflar el número.
+  **Corrección real de diseño encontrada probando en vivo (S6-16):** el
+  diálogo "Ajustar inventario" pedía galpón y lote en dos `<Select>`
+  independientes — el Product Owner señaló que un lote ya sabe su galpón
+  actual (mismo patrón que Registrar Recolección/Mortalidad), así que se
+  simplificó a un solo `<Select>` de lote con `galponId` resuelto
+  automático vía `buscarUbicacionActual()` en la Server Action. Detalle
+  completo en `tasks.md`, tarea S6-16.
+  **Deuda explícita, no resuelta en este sprint:** el "ajuste manual del
+  Gerente" solo existe para el ledger de sueltos de Recolección —
+  Mortalidad sigue sin ningún camino para corregir un registro después
+  de que su ventana de 10 minutos cerró (no hay ledger equivalente a
+  `MovimientoSueltos` para `avesVivas`). Ver "Cómo continuar desde acá"
+  más arriba.
 
 ## Sprint 4 — Mortalidad y Bitácora (cerrado, 2026-08-08)
 155 tests (34 nuevos sobre los 121 heredados de Sprint 3), dos

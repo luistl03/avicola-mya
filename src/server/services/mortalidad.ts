@@ -1,6 +1,6 @@
 import type { EstadoLote } from "@prisma/client";
 
-import { MORTALIDAD_VENTANA_GRACIA_MIN } from "@/lib/constants";
+import { VENTANA_GRACIA_MIN } from "@/lib/constants";
 import type { GuardResultado } from "@/server/services/galpon";
 
 // Guard de aplicación: da el mensaje rápido y preciso ("solo quedan N
@@ -44,10 +44,10 @@ export function puedeRevertirMortalidad(params: {
     return { permitido: false, motivo: "Este registro ya fue revertido." };
   }
   const minutosTranscurridos = (params.ahora.getTime() - params.fecha.getTime()) / 60_000;
-  if (minutosTranscurridos > MORTALIDAD_VENTANA_GRACIA_MIN) {
+  if (minutosTranscurridos > VENTANA_GRACIA_MIN) {
     return {
       permitido: false,
-      motivo: `La ventana de ${MORTALIDAD_VENTANA_GRACIA_MIN} minutos para deshacer este registro ya pasó.`,
+      motivo: `La ventana de ${VENTANA_GRACIA_MIN} minutos para deshacer este registro ya pasó.`,
     };
   }
   return { permitido: true };

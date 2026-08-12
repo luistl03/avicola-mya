@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { crearRecoleccionSchema } from "@/lib/zod/recoleccion";
+import { crearRecoleccionSchema, revertirRecoleccionSchema } from "@/lib/zod/recoleccion";
 
 const inputBase = {
   id: crypto.randomUUID(),
@@ -76,5 +76,19 @@ describe("crearRecoleccionSchema", () => {
     const resultado = crearRecoleccionSchema.safeParse({ ...inputBase, pesos: [999.999] });
 
     expect(resultado.success).toBe(true);
+  });
+});
+
+describe("revertirRecoleccionSchema", () => {
+  it("acepta un registroId con forma de UUID", () => {
+    expect(revertirRecoleccionSchema.safeParse({ registroId: crypto.randomUUID() }).success).toBe(true);
+  });
+
+  it("rechaza un registroId sin forma de UUID", () => {
+    expect(revertirRecoleccionSchema.safeParse({ registroId: "no-es-un-uuid" }).success).toBe(false);
+  });
+
+  it("rechaza si falta registroId", () => {
+    expect(revertirRecoleccionSchema.safeParse({}).success).toBe(false);
   });
 });

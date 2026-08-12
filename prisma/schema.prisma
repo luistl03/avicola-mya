@@ -334,7 +334,11 @@ model RegistroRecoleccion {
   cantidadTotal   Int
   creadoEnCliente DateTime?
   creadoEn        DateTime  @default(now())
+  // Ventana de gracia de 10 minutos (Sprint 6, mismo criterio que
+  // RegistroMortalidad.revertido/revertidoEn): revertir restaura Paquete →
+  // ANULADO y el ledger de sueltos, nunca DELETE físico.
   revertido       Boolean   @default(false)
+  revertidoEn     DateTime?
 
   lote     Lote      @relation(fields: [loteId], references: [id], onDelete: Restrict)
   galpon   Galpon    @relation(fields: [galponId], references: [id], onDelete: Restrict)

@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 5 completado, verificado contra Neon real y clic a clic en navegador por el Product Owner (pendiente verificación en celular físico, y auditoría de idempotencia en el resto de los dialogs de mutación — ver `memory/estado-proyecto.md`).
-**Progreso:** 6 de 16 sprints (37.5%)
+**Última actualización:** Sprint 6 completado, verificado contra Neon real (incluida carrera concurrente forzada) y clic a clic en navegador por el Product Owner (pendiente verificación en celular físico; deuda explícita: ajuste manual del Gerente solo existe para Recolección, Mortalidad todavía sin él — ver `memory/estado-proyecto.md`).
+**Progreso:** 7 de 16 sprints (43.75%)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -21,7 +21,7 @@ resumen + `memory/` como base — no inventar alcance nuevo.
 
 | Release | Sprints | Estado | Entrega de valor |
 |---|---|---|---|
-| R1 — Operación básica | 0–7 | 🟡 En curso (6/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
+| R1 — Operación básica | 0–7 | 🟡 En curso (7/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
 | R2 — Finanzas | 8–11 | ⬜ Pendiente | Créditos, cobranza, egresos, planilla. |
 | R3 — Campo real | 12–13 | ⬜ Pendiente | Funciona sin señal. Instalable. |
 | R4 — Inteligencia | 14–15 | ⬜ Pendiente | Dashboard, reportes, push. |
@@ -104,13 +104,15 @@ cierre de la deuda de Sprint 1):** `memory/estado-proyecto.md`
 **Detalle de ejecución (1 bug real encontrado y corregido en vivo — doble clic duplicaba un registro;
 deuda pendiente: auditar idempotencia en el resto de los dialogs de mutación):** `memory/estado-proyecto.md`
 
-### Sprint 6 — Ventana de gracia y reversión (28 pts)
+### ✅ Sprint 6 — Ventana de gracia y reversión (28 pts) — COMPLETADO
 **Goal:** un error de tipeo se corrige en 10 min sin llamar al gerente.
-- Botón "Corregir último registro" con countdown (basado en creadoEn del servidor)
-- Guard de elegibilidad (bloquea si algo ya se vendió/rompió)
-- Reversión transaccional (paquetes → ANULADO, nunca DELETE)
-- Ajuste manual del Gerente pasado el plazo
-- Tests de carrera (reversión concurrente con venta)
+- Botón "Deshacer" por fila con countdown real (basado en `creadoEn` del servidor), clon del patrón que Mortalidad ya tenía desde Sprint 4
+- Guard de elegibilidad todo-o-nada (bloquea la reversión completa si algún `Paquete` ya se vendió/rompió), atómico vía `updateMany` + comparación de conteo — primer guard del proyecto sobre un conjunto de filas, no una sola
+- Reversión transaccional (`Paquete` → `ANULADO`, nunca `DELETE`; `InventarioSueltos`/`MovimientoSueltos` `REVERSION` condicionales)
+- Ajuste manual del Gerente (`rol: "GERENTE"`, primera Server Action del proyecto restringida a un solo rol dentro de un módulo abierto a ambos) — implementado completo para el ledger de sueltos de Recolección; Mortalidad queda como deuda explícita, sin ledger equivalente para `avesVivas`
+- Tests de carrera reales contra Neon (doble reversión concurrente, reversión vs. venta simulada, doble ajuste concurrente)
+**Specs:** `specs/sprint-06-ventana-gracia-reversion/`
+**Detalle de ejecución (schema real no coincidía con el brief inicial — faltaba una migración; una brecha de cobertura real corregida reescribiendo `reconstruirSaldo()`; una corrección de UX en vivo, el ajuste ya no pide galpón a mano):** `memory/estado-proyecto.md`
 
 ### Sprint 7 — Consolidación de residuos (24 pts)
 **Goal:** sueltos acumulados se convierten en paquetes mixtos y bandejas.

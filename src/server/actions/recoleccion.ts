@@ -2,14 +2,22 @@
 
 import { Prisma } from "@prisma/client";
 
-import { crearRecoleccionSchema } from "@/lib/zod/recoleccion";
+import { crearRecoleccionSchema, revertirRecoleccionSchema } from "@/lib/zod/recoleccion";
 import { AccionError, withAuth } from "@/server/auth/with-auth";
 import { buscarLotePorId, buscarUbicacionActual } from "@/server/repositories/lote";
 import {
   buscarRecoleccionConPaquetesPorId,
+  PaquetesNoDisponiblesError,
   registrarRecoleccion as registrarRecoleccionRepo,
+  revertirRecoleccion as revertirRecoleccionRepo,
+  SaldoInsuficienteError,
+  YaRevertidoError,
 } from "@/server/repositories/recoleccion";
-import { calcularEmpaque, puedeRegistrarRecoleccion } from "@/server/services/recoleccion";
+import {
+  calcularEmpaque,
+  puedeRegistrarRecoleccion,
+  puedeRevertirRecoleccion,
+} from "@/server/services/recoleccion";
 
 // Mismo criterio que server/actions/usuario.ts y lote.ts: P2002 se atrapa
 // acá, en la capa de action, no en el repository (ver la nota completa en
@@ -106,6 +114,71 @@ export const registrarRecoleccion = withAuth(
         cantidadTotal: input.cantidadTotal,
         paquetesCreados: resultado.paquetes.length,
         sueltos,
+      },
+    };
+  },
+);
+
+// Ventana de gracia de 10 minutos (Sprint 6). Sin `rol`, mismo criterio
+// que revertirMortalidadAction: cualquier usuario autenticado puede
+// deshacer cualquier registro, no solo el propio.
+export const revertirRecoleccionAction = withAuth(
+  { schema: revertirRecoleccionSchema, entidad: "RegistroRecoleccion", accion: "REVERTIR" },
+  async (input, ctx) => {
+    const registro = await buscarRecoleccionConPaquetesPorId(input.registroId);
+    if (!registro) {
+      throw new AccionError("El registro no existe.");
+    }
+
+    const paquetesNoDisponibles = registro.paquetes.filter((p) => p.estado !== "DISPONIBLE").length;
+    const guard = puedeRevertirRecoleccion({
+      revertido: registro.revertido,
+      creadoEn: registro.creadoEn,
+      ahora: new Date(),
+      paquetesNoDisponibles,
+    });
+    if (!guard.permitido) {
+      throw new AccionError(guard.motivo);
+    }
+
+    // Recalculado en el servidor, nunca leído de una columna persistida
+    // (sigue siendo un campo calculado, ver memory/modelo-datos.md) — la
+    // misma fórmula que generó el MovimientoSueltos RECOLECCION original.
+    const { sueltos } = calcularEmpaque(registro.cantidadTotal);
+    const ahora = new Date();
+
+    try {
+      await revertirRecoleccionRepo({
+        id: registro.id,
+        galponId: registro.galponId,
+        loteId: registro.loteId,
+        sueltos,
+        usuarioId: ctx.usuarioId,
+        ahora,
+      });
+    } catch (error) {
+      if (error instanceof YaRevertidoError) {
+        throw new AccionError("Este registro ya fue revertido — actualizá la pantalla.");
+      }
+      if (error instanceof PaquetesNoDisponiblesError) {
+        throw new AccionError(
+          "Ya se vendió o rompió al menos un paquete de este registro — actualizá la pantalla e intentá de nuevo.",
+        );
+      }
+      if (error instanceof SaldoInsuficienteError) {
+        throw new AccionError("El saldo de sueltos ya no alcanza para deshacer este registro.");
+      }
+      throw error;
+    }
+
+    return {
+      data: { id: registro.id },
+      entidadId: registro.id,
+      estadoAntes: { revertido: false },
+      estadoDespues: {
+        revertido: true,
+        paquetesAnulados: registro.paquetes.length,
+        sueltosRevertidos: sueltos,
       },
     };
   },

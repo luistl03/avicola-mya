@@ -1,8 +1,10 @@
+import { AjustarInventarioSueltosDialog } from "@/components/domain/inventario/ajustar-inventario-sueltos-dialog";
 import { RecoleccionFiltros } from "@/components/domain/recoleccion/recoleccion-filtros";
 import { RecoleccionesTabla } from "@/components/domain/recoleccion/recolecciones-tabla";
 import { RegistrarRecoleccionDialog } from "@/components/domain/recoleccion/registrar-recoleccion-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { auth } from "@/server/auth";
 import { listarLotesActivos, listarLotesParaFiltro } from "@/server/repositories/lote";
 import { contarRecolecciones, listarRecolecciones } from "@/server/repositories/recoleccion";
 
@@ -43,18 +45,32 @@ export default async function RecoleccionPage({
   const filtrosPagina = { skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, loteId, desde, hasta };
   const filtrosConteo = { loteId, desde, hasta };
 
-  const [registros, total, lotesActivos, lotesParaFiltro] = await Promise.all([
+  const [registros, total, lotesActivos, lotesParaFiltro, session] = await Promise.all([
     listarRecolecciones(filtrosPagina),
     contarRecolecciones(filtrosConteo),
     listarLotesActivos(),
     listarLotesParaFiltro(),
+    auth(),
   ]);
+
+  // Ajuste manual del Gerente (Sprint 6): visible solo cuando
+  // session.user.rol === "GERENTE" — chequeo hecho acá, en el Server
+  // Component, no con un hook de sesión en cliente (auth() solo se llama
+  // en servidor en todo el proyecto). withAuth (rol: "GERENTE" en
+  // server/actions/inventario.ts) es la defensa real; esto es solo para
+  // no mostrarle a un Operario un botón que el servidor siempre rechaza.
+  const esGerente = session?.user?.rol === "GERENTE";
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-8">
       <PageHeader
         title="Recolección"
-        actions={<RegistrarRecoleccionDialog lotesActivos={lotesActivos} />}
+        actions={
+          <div className="flex gap-2">
+            {esGerente ? <AjustarInventarioSueltosDialog lotesActivos={lotesActivos} /> : null}
+            <RegistrarRecoleccionDialog lotesActivos={lotesActivos} />
+          </div>
+        }
       />
       <RecoleccionFiltros
         loteId={loteIdParam}

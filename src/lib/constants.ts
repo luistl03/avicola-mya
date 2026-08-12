@@ -13,8 +13,8 @@ export const SESION_HEARTBEAT_THROTTLE_MS = 60_000;
 /** Tamaño de tanda del muro cronológico de Bitácora (scroll infinito) — no son las 10 filas de una tabla paginada de gestión (ver memory/convenciones.md, "Tabla paginada vs. muro con scroll infinito"): es un feed, conviene traer más por tanda. Compartida entre server/actions/bitacora.ts, app/(app)/bitacora/page.tsx y bitacora-muro.tsx para que las tres no puedan desincronizarse. */
 export const PAGE_SIZE_MURO = 20;
 
-/** Minutos de ventana de gracia para revertir un RegistroMortalidad (restaura avesVivas) — mismo plazo que el roadmap ya fija para la ventana de gracia de Recolección (Sprint 6), por consistencia entre módulos. Compartida entre server/services/mortalidad.ts (guard real) y el countdown de la UI. */
-export const MORTALIDAD_VENTANA_GRACIA_MIN = 10;
+/** Minutos de ventana de gracia para revertir un registro (RegistroMortalidad restaura avesVivas, RegistroRecoleccion restaura Paquete/InventarioSueltos — Sprint 6). Antes MORTALIDAD_VENTANA_GRACIA_MIN, exclusiva de Mortalidad; renombrada al pasar a ser compartida por los dos módulos. Compartida entre server/services/mortalidad.ts, server/services/recoleccion.ts (guards reales) y el countdown de ambas UI. */
+export const VENTANA_GRACIA_MIN = 10;
 
 /** Unidades por paquete cerrado de Recolección (Sprint 5) — un paquete PURO siempre suma exactamente esta cantidad (ver "suma exacta 180" de Paquete Mixto, Sprint 7, mismo tamaño). Compartida entre server/services/recoleccion.ts (calcularEmpaque, autoritativo) y el helper de preview reactivo del formulario en el cliente, que debe coincidir exactamente. */
 export const UNIDADES_POR_PAQUETE = 180;

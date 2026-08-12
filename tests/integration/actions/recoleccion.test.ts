@@ -15,6 +15,7 @@ const {
   buscarUbicacionActualMock,
   registrarRecoleccionRepoMock,
   buscarRecoleccionConPaquetesPorIdMock,
+  revertirRecoleccionRepoMock,
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
   buscarSesionPorJtiMock: vi.fn(),
@@ -25,6 +26,7 @@ const {
   buscarUbicacionActualMock: vi.fn(),
   registrarRecoleccionRepoMock: vi.fn(),
   buscarRecoleccionConPaquetesPorIdMock: vi.fn(),
+  revertirRecoleccionRepoMock: vi.fn(),
 }));
 
 vi.mock("@/server/auth", () => ({ auth: authMock }));
@@ -43,12 +45,26 @@ vi.mock("@/server/repositories/lote", () => ({
   buscarUbicacionActual: buscarUbicacionActualMock,
 }));
 
+// Sprint 6: las tres clases de error se re-declaran acá (no se importa la
+// clase real) porque el mock completo del módulo reemplaza también esas
+// exportaciones — la action importa la misma clase mockeada, así que el
+// `instanceof` de los catch de server/actions/recoleccion.ts sigue
+// funcionando. Mismo patrón que YaRevertidoError en mortalidad.test.ts.
 vi.mock("@/server/repositories/recoleccion", () => ({
   registrarRecoleccion: registrarRecoleccionRepoMock,
   buscarRecoleccionConPaquetesPorId: buscarRecoleccionConPaquetesPorIdMock,
+  revertirRecoleccion: revertirRecoleccionRepoMock,
+  YaRevertidoError: class YaRevertidoError extends Error {},
+  PaquetesNoDisponiblesError: class PaquetesNoDisponiblesError extends Error {},
+  SaldoInsuficienteError: class SaldoInsuficienteError extends Error {},
 }));
 
-import { registrarRecoleccion } from "@/server/actions/recoleccion";
+import { registrarRecoleccion, revertirRecoleccionAction } from "@/server/actions/recoleccion";
+import {
+  PaquetesNoDisponiblesError,
+  SaldoInsuficienteError,
+  YaRevertidoError,
+} from "@/server/repositories/recoleccion";
 
 const AHORA = new Date("2026-01-01T00:00:00.000Z");
 
@@ -318,5 +334,207 @@ describe("registrarRecoleccion", () => {
       expect(buscarRecoleccionConPaquetesPorIdMock).not.toHaveBeenCalled();
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("revertirRecoleccionAction", () => {
+  const REGISTRO_INEXISTENTE_ID = crypto.randomUUID();
+
+  // 470 -> calcularEmpaque = { paquetes: 2, sueltos: 110 }, mismo
+  // cantidadTotal que inputValido de registrarRecoleccion arriba.
+  function registroBase(overrides: Partial<{
+    revertido: boolean;
+    creadoEn: Date;
+    cantidadTotal: number;
+    paquetes: { id: string; estado: string }[];
+  }> = {}) {
+    return {
+      id: REGISTRO_1_ID,
+      galponId: GALPON_A_ID,
+      loteId: LOTE_1_ID,
+      cantidadTotal: 470,
+      creadoEn: AHORA,
+      revertido: false,
+      paquetes: [
+        { id: "p1", estado: "DISPONIBLE" },
+        { id: "p2", estado: "DISPONIBLE" },
+      ],
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    headersMock.mockResolvedValue(new Headers());
+    vi.useFakeTimers();
+    vi.setSystemTime(AHORA);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("rechaza si el registro no existe", async () => {
+    authMock.mockResolvedValue(sessionGerente());
+    buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+    buscarRecoleccionConPaquetesPorIdMock.mockResolvedValue(null);
+
+    const resultado = await revertirRecoleccionAction({ registroId: REGISTRO_INEXISTENTE_ID });
+
+    expect(resultado).toEqual({ ok: false, error: "El registro no existe." });
+    expect(revertirRecoleccionRepoMock).not.toHaveBeenCalled();
+  });
+
+  it("rechaza un registro ya revertido, sin llamar al repository", async () => {
+    authMock.mockResolvedValue(sessionGerente());
+    buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+    buscarRecoleccionConPaquetesPorIdMock.mockResolvedValue(
+      registroBase({ revertido: true, creadoEn: new Date(AHORA.getTime() - 60_000) }),
+    );
+
+    const resultado = await revertirRecoleccionAction({ registroId: REGISTRO_1_ID });
+
+    expect(resultado).toEqual({ ok: false, error: "Este registro ya fue revertido." });
+    expect(revertirRecoleccionRepoMock).not.toHaveBeenCalled();
+  });
+
+  it("rechaza por completo si algún paquete ya no está DISPONIBLE, sin llamar al repository (todo o nada)", async () => {
+    authMock.mockResolvedValue(sessionGerente());
+    buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+    buscarRecoleccionConPaquetesPorIdMock.mockResolvedValue(
+      registroBase({
+        paquetes: [
+          { id: "p1", estado: "VENDIDO" },
+          { id: "p2", estado: "DISPONIBLE" },
+        ],
+      }),
+    );
+
+    const resultado = await revertirRecoleccionAction({ registroId: REGISTRO_1_ID });
+
+    expect(resultado).toEqual({
+      ok: false,
+      error:
+        "Ya se vendió o rompió al menos un paquete de este registro — no se puede corregir automáticamente.",
+    });
+    expect(revertirRecoleccionRepoMock).not.toHaveBeenCalled();
+  });
+
+  it("rechaza revertir pasada la ventana de 10 minutos", async () => {
+    authMock.mockResolvedValue(sessionGerente());
+    buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+    const hace11min = new Date(AHORA.getTime() - 11 * 60_000);
+    buscarRecoleccionConPaquetesPorIdMock.mockResolvedValue(registroBase({ creadoEn: hace11min }));
+
+    const resultado = await revertirRecoleccionAction({ registroId: REGISTRO_1_ID });
+
+    expect(resultado).toEqual({
+      ok: false,
+      error: "La ventana de 10 minutos para deshacer este registro ya pasó.",
+    });
+    expect(revertirRecoleccionRepoMock).not.toHaveBeenCalled();
+  });
+
+  it("traduce YaRevertidoError (carrera detectada por el UPDATE condicional) a un mensaje claro", async () => {
+    authMock.mockResolvedValue(sessionGerente());
+    buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+    buscarRecoleccionConPaquetesPorIdMock.mockResolvedValue(registroBase());
+    revertirRecoleccionRepoMock.mockRejectedValue(new YaRevertidoError());
+
+    const resultado = await revertirRecoleccionAction({ registroId: REGISTRO_1_ID });
+
+    expect(resultado).toEqual({
+      ok: false,
+      error: "Este registro ya fue revertido — actualizá la pantalla.",
+    });
+    expect(crearAuditLogMock).not.toHaveBeenCalled();
+  });
+
+  it("traduce PaquetesNoDisponiblesError (carrera: un paquete se vendió justo en el medio) a un mensaje claro", async () => {
+    authMock.mockResolvedValue(sessionGerente());
+    buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+    buscarRecoleccionConPaquetesPorIdMock.mockResolvedValue(registroBase());
+    revertirRecoleccionRepoMock.mockRejectedValue(new PaquetesNoDisponiblesError());
+
+    const resultado = await revertirRecoleccionAction({ registroId: REGISTRO_1_ID });
+
+    expect(resultado).toEqual({
+      ok: false,
+      error:
+        "Ya se vendió o rompió al menos un paquete de este registro — actualizá la pantalla e intentá de nuevo.",
+    });
+    expect(crearAuditLogMock).not.toHaveBeenCalled();
+  });
+
+  it("traduce SaldoInsuficienteError a un mensaje claro", async () => {
+    authMock.mockResolvedValue(sessionGerente());
+    buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+    buscarRecoleccionConPaquetesPorIdMock.mockResolvedValue(registroBase());
+    revertirRecoleccionRepoMock.mockRejectedValue(new SaldoInsuficienteError());
+
+    const resultado = await revertirRecoleccionAction({ registroId: REGISTRO_1_ID });
+
+    expect(resultado).toEqual({
+      ok: false,
+      error: "El saldo de sueltos ya no alcanza para deshacer este registro.",
+    });
+    expect(crearAuditLogMock).not.toHaveBeenCalled();
+  });
+
+  it("revierte dentro de la ventana, recalcula sueltos vía calcularEmpaque y escribe AuditLog", async () => {
+    authMock.mockResolvedValue(sessionGerente());
+    buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+    const hace5min = new Date(AHORA.getTime() - 5 * 60_000);
+    buscarRecoleccionConPaquetesPorIdMock.mockResolvedValue(registroBase({ creadoEn: hace5min }));
+    revertirRecoleccionRepoMock.mockResolvedValue(undefined);
+
+    const resultado = await revertirRecoleccionAction({ registroId: REGISTRO_1_ID });
+
+    expect(resultado).toEqual({ ok: true, data: { id: REGISTRO_1_ID } });
+    expect(revertirRecoleccionRepoMock).toHaveBeenCalledWith({
+      id: REGISTRO_1_ID,
+      galponId: GALPON_A_ID,
+      loteId: LOTE_1_ID,
+      sueltos: 110, // calcularEmpaque(470).sueltos — real, no mockeado
+      usuarioId: GERENTE_1_ID,
+      ahora: AHORA,
+    });
+    expect(crearAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entidad: "RegistroRecoleccion",
+        accion: "REVERTIR",
+        entidadId: REGISTRO_1_ID,
+      }),
+    );
+  });
+
+  it("revierte un registro múltiplo exacto de 180 (sueltos = 0) pasando sueltos: 0 al repository", async () => {
+    authMock.mockResolvedValue(sessionGerente());
+    buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+    buscarRecoleccionConPaquetesPorIdMock.mockResolvedValue(registroBase({ cantidadTotal: 360 }));
+    revertirRecoleccionRepoMock.mockResolvedValue(undefined);
+
+    const resultado = await revertirRecoleccionAction({ registroId: REGISTRO_1_ID });
+
+    expect(resultado).toEqual({ ok: true, data: { id: REGISTRO_1_ID } });
+    expect(revertirRecoleccionRepoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ sueltos: 0 }),
+    );
+  });
+
+  // Sin restricción de rol (decisión de negocio en spec.md), mismo
+  // criterio que revertirMortalidadAction.
+  it("permite que un OPERARIO revierta, sin restricción de rol", async () => {
+    authMock.mockResolvedValue(sessionOperario());
+    buscarSesionPorJtiMock.mockResolvedValue({ ...sesionValida(), usuarioId: OPERARIO_1_ID });
+    buscarRecoleccionConPaquetesPorIdMock.mockResolvedValue(registroBase());
+    revertirRecoleccionRepoMock.mockResolvedValue(undefined);
+
+    const resultado = await revertirRecoleccionAction({ registroId: REGISTRO_1_ID });
+
+    expect(resultado).toEqual({ ok: true, data: { id: REGISTRO_1_ID } });
+    expect(revertirRecoleccionRepoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ usuarioId: OPERARIO_1_ID }),
+    );
   });
 });

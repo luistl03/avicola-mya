@@ -40,3 +40,11 @@ export const crearRecoleccionSchema = z.object({
 });
 
 export type CrearRecoleccionInput = z.infer<typeof crearRecoleccionSchema>;
+
+// Ventana de gracia de 10 minutos (Sprint 6) — mismo schema mínimo que
+// revertirMortalidadSchema (lib/zod/mortalidad.ts): la reversión es un
+// UPDATE condicional sobre un registro que ya existe, no una creación, así
+// que no lleva id de cliente ni ningún otro campo.
+export const revertirRecoleccionSchema = z.object({ registroId: idUuid() });
+
+export type RevertirRecoleccionInput = z.infer<typeof revertirRecoleccionSchema>;

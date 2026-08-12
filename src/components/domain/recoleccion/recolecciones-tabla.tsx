@@ -1,3 +1,5 @@
+import type { EstadoPaquete } from "@prisma/client";
+
 import {
   Table,
   TableBody,
@@ -8,20 +10,23 @@ import {
 } from "@/components/ui/table";
 import { TableScrollArea } from "@/components/ui/table-scroll-area";
 import { formatearFechaHora } from "@/lib/fecha";
+import { RevertirRecoleccionBoton } from "@/components/domain/recoleccion/revertir-recoleccion-boton";
 import { calcularEmpaque } from "@/server/services/recoleccion";
 
 // Forma exacta de lo que devuelve listarRecolecciones()
 // (server/repositories/recoleccion.ts), reconstruida a mano — mismo
 // criterio que MortalidadTabla/LotesTabla en vez de importar el tipo de
-// retorno del repository.
+// retorno del repository. `revertido` y `paquetes[].estado` agregados en
+// Sprint 6 (ventana de gracia).
 type RegistroRecoleccionConDatos = {
   id: string;
   creadoEn: Date;
   cantidadTotal: number;
+  revertido: boolean;
   lote: { codigo: string };
   galpon: { nombre: string };
   usuario: { nombre: string };
-  paquetes: { id: string }[];
+  paquetes: { id: string; estado: EstadoPaquete }[];
 };
 
 export function RecoleccionesTabla({ registros }: { registros: RegistroRecoleccionConDatos[] }) {
@@ -37,6 +42,7 @@ export function RecoleccionesTabla({ registros }: { registros: RegistroRecolecci
             <TableHead>Paquetes</TableHead>
             <TableHead>Sueltos</TableHead>
             <TableHead>Registrado por</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -51,9 +57,12 @@ export function RecoleccionesTabla({ registros }: { registros: RegistroRecolecci
             // de verdad quedó persistido, no solo lo que la fórmula diría
             // hoy.
             const { sueltos } = calcularEmpaque(registro.cantidadTotal);
+            const paquetesNoDisponibles = registro.paquetes.filter(
+              (p) => p.estado !== "DISPONIBLE",
+            ).length;
 
             return (
-              <TableRow key={registro.id}>
+              <TableRow key={registro.id} className={registro.revertido ? "opacity-60" : undefined}>
                 <TableCell>{formatearFechaHora(registro.creadoEn)}</TableCell>
                 <TableCell>{registro.lote.codigo}</TableCell>
                 <TableCell>{registro.galpon.nombre}</TableCell>
@@ -61,6 +70,16 @@ export function RecoleccionesTabla({ registros }: { registros: RegistroRecolecci
                 <TableCell>{registro.paquetes.length}</TableCell>
                 <TableCell>{sueltos}</TableCell>
                 <TableCell>{registro.usuario.nombre}</TableCell>
+                <TableCell className="text-right">
+                  <RevertirRecoleccionBoton
+                    registro={{
+                      id: registro.id,
+                      creadoEn: registro.creadoEn,
+                      revertido: registro.revertido,
+                      paquetesNoDisponibles,
+                    }}
+                  />
+                </TableCell>
               </TableRow>
             );
           })}

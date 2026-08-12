@@ -1,6 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { UNIDADES_POR_PAQUETE } from "@/lib/constants";
 
+// Errores "esperados" de la transacción de reversión (Sprint 6), lanzados
+// dentro de prisma.$transaction para forzar el rollback completo. No son
+// AccionError: este archivo es un repository (ADR-000, no conoce
+// server/auth/with-auth.ts) — la action los atrapa y los traduce al
+// mensaje que ve el usuario. Mismo criterio que AvesInsuficientesError/
+// YaRevertidoError de server/repositories/mortalidad.ts.
+export class YaRevertidoError extends Error {}
+export class PaquetesNoDisponiblesError extends Error {}
+export class SaldoInsuficienteError extends Error {}
+
 // Tercera transacción interactiva del proyecto (después de las dos de
 // server/repositories/mortalidad.ts, Sprint 4) — mismo `prisma.$transaction
 // (async (tx) => {...})`, no el array-form, porque esta es la primera vez
@@ -102,11 +112,98 @@ export function registrarRecoleccion(input: {
 // Usada por la Server Action solo en la rama de P2002 (reintento
 // idempotente) para comparar el `cantidadTotal` ya persistido contra el
 // del payload reenviado, y para poder responder con la cantidad real de
-// paquetes ya creados sin volver a ejecutar la transacción.
+// paquetes ya creados sin volver a ejecutar la transacción. Reusada
+// también por revertirRecoleccionAction (Sprint 6) para leer el registro
+// completo (con paquetes) antes de revertir.
 export function buscarRecoleccionConPaquetesPorId(id: string) {
   return prisma.registroRecoleccion.findUnique({
     where: { id },
     include: { paquetes: true },
+  });
+}
+
+// Cuarta transacción interactiva del proyecto (Sprint 6) — extiende el
+// patrón de UPDATE condicional de server/repositories/mortalidad.ts
+// (una sola fila) a un guard "todo o nada" sobre un CONJUNTO de filas
+// (Paquete), pieza nueva de arquitectura. Tres guards atómicos en orden,
+// cualquiera que falle aborta la transacción COMPLETA (incluidos los
+// pasos ya aplicados antes de él — Prisma revierte todo ante una
+// excepción):
+//
+// 1) "Ya revertido" — UPDATE condicional sobre RegistroRecoleccion
+//    (WHERE revertido = false), mismo patrón exacto que
+//    revertirMortalidad. Se chequea primero por ser el guard más barato
+//    y el que más frecuentemente falla en la práctica (doble clic).
+// 2) "Todo o nada" sobre Paquete — el total se cuenta DENTRO de esta
+//    misma transacción (no antes, no en la Server Action) para que la
+//    comparación sea consistente con el propio UPDATE de abajo. Se
+//    intenta anular TODOS los Paquete de este registro que sigan
+//    DISPONIBLE; si la cantidad de filas afectadas no coincide con el
+//    total, algún Paquete ya se vendió/rompió justo en el medio (la
+//    carrera real que pide el roadmap) — aborta.
+// 3) Saldo suficiente sobre InventarioSueltos — mismo patrón UPDATE
+//    condicional que avesVivas en Mortalidad, no un decrement a ciegas
+//    que dependa del CHECK (cantidad >= 0) de la base (S0-5).
+//
+// `sueltos` lo recalcula quien llama (la Server Action, vía
+// calcularEmpaque(registro.cantidadTotal)) — este repository no importa
+// server/services/recoleccion.ts, mismo criterio de ADR-000 que
+// registrarRecoleccion ya sigue arriba.
+export function revertirRecoleccion(params: {
+  id: string;
+  galponId: string;
+  loteId: string;
+  sueltos: number;
+  usuarioId: string;
+  ahora: Date;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const marcado = await tx.registroRecoleccion.updateMany({
+      where: { id: params.id, revertido: false },
+      data: { revertido: true, revertidoEn: params.ahora },
+    });
+    if (marcado.count === 0) {
+      throw new YaRevertidoError();
+    }
+
+    const totalPaquetes = await tx.paquete.count({
+      where: { registroRecoleccionId: params.id },
+    });
+    if (totalPaquetes > 0) {
+      const anulados = await tx.paquete.updateMany({
+        where: { registroRecoleccionId: params.id, estado: "DISPONIBLE" },
+        data: { estado: "ANULADO" },
+      });
+      if (anulados.count !== totalPaquetes) {
+        throw new PaquetesNoDisponiblesError();
+      }
+    }
+
+    if (params.sueltos > 0) {
+      const descontado = await tx.inventarioSueltos.updateMany({
+        where: {
+          galponId: params.galponId,
+          loteId: params.loteId,
+          cantidad: { gte: params.sueltos },
+        },
+        data: { cantidad: { decrement: params.sueltos } },
+      });
+      if (descontado.count === 0) {
+        throw new SaldoInsuficienteError();
+      }
+
+      await tx.movimientoSueltos.create({
+        data: {
+          galponId: params.galponId,
+          loteId: params.loteId,
+          tipo: "REVERSION",
+          cantidad: params.sueltos,
+          referenciaId: params.id,
+          usuarioId: params.usuarioId,
+          creadoEn: params.ahora,
+        },
+      });
+    }
   });
 }
 
@@ -137,7 +234,12 @@ export function listarRecolecciones(params: {
       lote: { select: { codigo: true } },
       galpon: { select: { nombre: true } },
       usuario: { select: { nombre: true } },
-      paquetes: { select: { id: true } },
+      // estado agregado en Sprint 6: RecoleccionesTabla lo necesita para
+      // saber si algún Paquete ya no está DISPONIBLE (vendido/roto) y así
+      // ocultar el botón "Deshacer" de forma consistente con la guard
+      // real del servidor (puedeRevertirRecoleccion), en vez de mostrar
+      // un botón que siempre va a ser rechazado al hacer clic.
+      paquetes: { select: { id: true, estado: true } },
     },
   });
 }

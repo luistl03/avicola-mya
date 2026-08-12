@@ -26,22 +26,55 @@ describe("reconstruirSaldo", () => {
     expect(reconstruirSaldo(movimientos)).toBe(155);
   });
 
-  it("suma ROTURA_PAQUETE_ENTRADA y AJUSTE_GERENTE como entradas", () => {
-    const movimientos = [
-      { tipo: "ROTURA_PAQUETE_ENTRADA" as const, cantidad: 12 },
-      { tipo: "AJUSTE_GERENTE" as const, cantidad: 8 },
-    ];
+  it("suma ROTURA_PAQUETE_ENTRADA como entrada", () => {
+    const movimientos = [{ tipo: "ROTURA_PAQUETE_ENTRADA" as const, cantidad: 12 }];
 
-    expect(reconstruirSaldo(movimientos)).toBe(20);
+    expect(reconstruirSaldo(movimientos)).toBe(12);
   });
 
-  it("ignora REVERSION — no tiene signo propio fijo, sin caso real todavía (Sprint 6)", () => {
+  it("resta REVERSION — deshace un RECOLECCION anterior (Sprint 6)", () => {
     const movimientos = [
-      { tipo: "RECOLECCION" as const, cantidad: 100 },
-      { tipo: "REVERSION" as const, cantidad: 100 },
+      { tipo: "RECOLECCION" as const, cantidad: 110 },
+      { tipo: "REVERSION" as const, cantidad: 110 },
     ];
 
-    expect(reconstruirSaldo(movimientos)).toBe(100);
+    expect(reconstruirSaldo(movimientos)).toBe(0);
+  });
+
+  it("suma AJUSTE_GERENTE con cantidad positiva (Sprint 6, compensa un faltante)", () => {
+    const movimientos = [
+      { tipo: "RECOLECCION" as const, cantidad: 100 },
+      { tipo: "AJUSTE_GERENTE" as const, cantidad: 15 },
+    ];
+
+    expect(reconstruirSaldo(movimientos)).toBe(115);
+  });
+
+  it("resta AJUSTE_GERENTE con cantidad negativa (Sprint 6, corrige un excedente) — se suma con signo, sin pasar por TIPOS_ENTRADA/TIPOS_SALIDA", () => {
+    const movimientos = [
+      { tipo: "RECOLECCION" as const, cantidad: 100 },
+      { tipo: "AJUSTE_GERENTE" as const, cantidad: -20 },
+    ];
+
+    expect(reconstruirSaldo(movimientos)).toBe(80);
+  });
+
+  it("reproduce el saldo real de InventarioSueltos con una recolección revertida por completo más un ajuste manual posterior", () => {
+    // Simula: una recolección con sueltos, revertida dentro de la ventana
+    // de gracia (RECOLECCION + REVERSION se cancelan exactamente), y un
+    // ajuste manual del Gerente después que corrige un faltante detectado
+    // en un conteo físico — ninguno de los dos pasos existía antes de
+    // Sprint 6.
+    const movimientos = [
+      { tipo: "RECOLECCION" as const, cantidad: 110 },
+      { tipo: "REVERSION" as const, cantidad: 110 },
+      { tipo: "RECOLECCION" as const, cantidad: 65 },
+      { tipo: "AJUSTE_GERENTE" as const, cantidad: 10 },
+    ];
+
+    const saldoEsperadoEnInventarioSueltos = 75; // 110 - 110 + 65 + 10
+
+    expect(reconstruirSaldo(movimientos)).toBe(saldoEsperadoEnInventarioSueltos);
   });
 
   it("reproduce el saldo real de InventarioSueltos a partir de una secuencia mixta realista", () => {
