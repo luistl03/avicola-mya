@@ -16,6 +16,19 @@ describe("rolPermitidoParaRuta", () => {
     expect(rolPermitidoParaRuta("/usuarios/nuevo", "OPERARIO")).toBe(false);
   });
 
+  it("permite a GERENTE acceder a /precio-kilo (Sprint 8)", () => {
+    expect(rolPermitidoParaRuta("/precio-kilo", "GERENTE")).toBe(true);
+  });
+
+  it("bloquea a OPERARIO acceder a /precio-kilo (Sprint 8)", () => {
+    expect(rolPermitidoParaRuta("/precio-kilo", "OPERARIO")).toBe(false);
+  });
+
+  it("no restringe /clientes a ningún rol (Sprint 8 — abierta a GERENTE y OPERARIO por igual)", () => {
+    expect(rolPermitidoParaRuta("/clientes", "GERENTE")).toBe(true);
+    expect(rolPermitidoParaRuta("/clientes", "OPERARIO")).toBe(true);
+  });
+
   it("no restringe rutas sin regla explícita en RUTAS_POR_ROL (p. ej. /dashboard, /operacion/recoleccion)", () => {
     expect(rolPermitidoParaRuta("/dashboard", "OPERARIO")).toBe(true);
     expect(rolPermitidoParaRuta("/operacion/recoleccion", "OPERARIO")).toBe(true);

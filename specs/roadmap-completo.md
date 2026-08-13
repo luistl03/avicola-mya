@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 7 completado, verificado contra Neon real (incluida carrera concurrente forzada del guard de saldo agregado por origen) y clic a clic en navegador por el Product Owner (deuda explícita: sin botón "Deshacer" para RegistroConsolidacion, ni ajuste manual del Gerente para Mortalidad — ver `memory/estado-proyecto.md`).
-**Progreso:** 8 de 16 sprints (50%)
+**Última actualización:** Sprint 8 completado, sin migración de schema, cobertura 100%/100% en services y actions, verificado con 25 asserts contra Neon real (idempotencia real por P2002 en Cliente y PrecioKilo, "Público General" intacto antes/después) y clic a clic en navegador por el Product Owner, sin hallazgos (deuda heredada sin cambios: sin botón "Deshacer" para RegistroConsolidacion, ni ajuste manual del Gerente para Mortalidad — ver `memory/estado-proyecto.md`).
+**Progreso:** 9 de 16 sprints (56%)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -22,7 +22,7 @@ resumen + `memory/` como base — no inventar alcance nuevo.
 | Release | Sprints | Estado | Entrega de valor |
 |---|---|---|---|
 | R1 — Operación básica | 0–7 | 🟢 Completo (8/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
-| R2 — Finanzas | 8–11 | ⬜ Pendiente | Créditos, cobranza, egresos, planilla. |
+| R2 — Finanzas | 8–11 | 🟡 En progreso (1/4) | Créditos, cobranza, egresos, planilla. |
 | R3 — Campo real | 12–13 | ⬜ Pendiente | Funciona sin señal. Instalable. |
 | R4 — Inteligencia | 14–15 | ⬜ Pendiente | Dashboard, reportes, push. |
 
@@ -124,11 +124,15 @@ deuda pendiente: auditar idempotencia en el resto de los dialogs de mutación):*
 **Specs:** `specs/sprint-07-consolidacion-residuos/`
 **Detalle de ejecución (hallazgo real de schema en la planificación — faltaba `loteId` y una entidad ancla; dos bugs reales de código corregidos por tests antes de producción; una corrección de UX en vivo — el wizard automático pasó a control manual del operario):** `memory/estado-proyecto.md`
 
-### Sprint 8 — Clientes y Precio por Kilo (19 pts) — sprint liviano
+### ✅ Sprint 8 — Clientes y Precio por Kilo (19 pts) — COMPLETADO
 **Goal:** catálogo comercial listo, precio vigente es histórico.
-- CRUD Cliente, "Público General" (id fijo, sin crédito, no editable)
-- PrecioKilo histórico (nueva fila, nunca UPDATE)
-- Búsqueda de clientes optimizada
+- CRUD Cliente (GERENTE y OPERARIO) con idempotencia completa por id de cliente (Cliente no tiene ningún campo @unique, mismo tratamiento que Galpón)
+- "Público General" (id fijo, sin crédito, no editable/no suspendible — guard por comparación de id, sin migración)
+- PrecioKilo histórico (nueva fila, nunca UPDATE, alta restringida a GERENTE)
+- Búsqueda de clientes por nombre/celular + filtro por TipoCliente, mismo patrón colapsable que Mortalidad/Recolección
+- Cero migraciones de schema (primera vez desde Sprint 5) — Cliente/PrecioKilo ya tenían todo lo necesario desde Sprint 0
+**Specs:** `specs/sprint-08-clientes-precio-kilo/`
+**Detalle de ejecución (sin bugs de lógica de negocio; una corrección real de diseño de filtros pedida en vivo por el Product Owner, resuelta temprano; un hallazgo real de cobertura en ambas Server Actions; una corrección de aritmética en el rango de Decimal(10,2)):** `memory/estado-proyecto.md`
 
 ---
 

@@ -276,6 +276,26 @@
     @apply border-orange-300! bg-orange-100! text-orange-800! dark:border-orange-800! dark:bg-orange-950! dark:text-orange-200!;
   }
 
+  /* Badges de TipoCliente (Sprint 8) — mismo criterio que
+     .badge-categoria-*: no es un estado bueno/malo, es una clasificación,
+     pero el brief de Sprint 8 señala que /clientes probablemente crece más
+     que Galpones/Lotes, así que un color por tipo ayuda a ubicar cada uno
+     de un vistazo (ver spec.md/plan.md, decisión de diseño "Badge de
+     tipo"). Tonos sin relación con los ya usados para estado/severidad
+     (amber = Activo, rojo = error/Muerte, naranja = Descarte, lime/azul/
+     violeta = categorías de Bitácora) — indigo/teal/púrpura, evitando
+     también el gris de `.badge-estado-inactivo` para que EVENTUAL no se
+     lea como "inactivo". */
+  .badge-tipo-cliente-mayorista {
+    @apply border-indigo-300! bg-indigo-100! text-indigo-800! dark:border-indigo-800! dark:bg-indigo-950! dark:text-indigo-200!;
+  }
+  .badge-tipo-cliente-minorista {
+    @apply border-teal-300! bg-teal-100! text-teal-800! dark:border-teal-800! dark:bg-teal-950! dark:text-teal-200!;
+  }
+  .badge-tipo-cliente-eventual {
+    @apply border-purple-300! bg-purple-100! text-purple-800! dark:border-purple-800! dark:bg-purple-950! dark:text-purple-200!;
+  }
+
   /* Fila de origen seleccionada en el wizard de Consolidación
      (components/domain/consolidacion/consolidar-sueltos-dialog.tsx, Sprint
      7) — filas clicables en vez de un Checkbox nuevo (decisión de diseño

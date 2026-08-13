@@ -23,6 +23,20 @@ type PageHeaderProps = {
 // pantalla, no solo del botón. Con flex-col, "acciones" cae a su propia
 // fila completa en vez de eso — no depende de que el navegador decida
 // "justo" en qué ancho envolver, es una decisión explícita por breakpoint.
+//
+// `actions` siempre va envuelto acá mismo en un contenedor `flex-wrap`
+// (bug real encontrado en Sprint 7, `/consolidacion`, reportado por el
+// Product Owner probando en mobile): una pantalla con DOS botones de
+// acción (`/consolidacion`, `/recoleccion`) los pasaba en su propio
+// `<div className="flex gap-2">` sin `flex-wrap` — ya resuelto el
+// quiebre título/acciones de arriba, pero los dos botones entre sí
+// seguían compitiendo por una sola fila y, si sus textos combinados no
+// entraban, empujaban el ancho real de toda la pantalla igual que el bug
+// original de "Nuevo usuario". Centralizado acá (no en cada página) para
+// que ninguna pantalla nueva con 2+ botones de acción tenga que
+// recordarlo a mano — una pantalla con un solo botón de acción (la
+// mayoría) no cambia en nada, envolver un único elemento en
+// `flex flex-wrap` es un no-op visual.
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -33,7 +47,7 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
           {description ? <p className="text-muted-foreground">{description}</p> : null}
         </div>
       </div>
-      {actions}
+      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   );
 }

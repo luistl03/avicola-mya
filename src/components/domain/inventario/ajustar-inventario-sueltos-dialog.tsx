@@ -73,7 +73,7 @@ export function AjustarInventarioSueltosDialog({ lotesActivos }: { lotesActivos:
             Ajustar inventario de sueltos
           </DialogTitle>
           <DialogDescription>
-            Corrige el saldo de sueltos de un lote fuera de la ventana automática de 10 minutos - el
+            Corrige el saldo de sueltos de un lote fuera de la ventana automática de 10 minutos. El
             galpón se resuelve solo, queda auditado con tu motivo.
           </DialogDescription>
         </DialogHeader>
@@ -200,7 +200,7 @@ function AjustarInventarioSueltosForm({
           required
           value={motivo}
           onChange={(evento) => setMotivo(evento.target.value)}
-          placeholder="Explicá por qué hace falta este ajuste"
+          placeholder="Explica por qué hace falta este ajuste"
         />
         <p className="text-xs text-muted-foreground">
           {motivo.trim().length}/{MOTIVO_MIN} caracteres mínimos

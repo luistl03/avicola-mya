@@ -200,6 +200,21 @@ solo del botón (encontrado en Usuarios, con "+ Nuevo usuario"). El quiebre
 a columna en mobile es una decisión explícita por breakpoint, no algo que
 dependa de que el navegador decida "justo" dónde envolver.
 
+`PageHeader` también envuelve internamente todo lo que reciba en
+`actions` en un `flex flex-wrap items-center gap-2` — mismo mecanismo de
+fondo que el bug de arriba, un nivel más adentro: una pantalla con **dos
+o más** botones de acción a la vez (`/consolidacion`, dos wizards;
+`/recoleccion`, "Ajustar inventario" + "Registrar recolección" para un
+Gerente) los competía entre sí por una sola fila sin quiebre, si antes
+cada `page.tsx` armaba ese grupo a mano con su propio
+`<div className="flex gap-2">` (bug real encontrado post-Sprint 7,
+2026-08-13, ver `memory/estado-proyecto.md`). Con el `flex-wrap` ya
+resuelto adentro de `PageHeader`, **ninguna pantalla nueva necesita
+envolver sus propios botones de acción** — pasar dos o más elementos
+sueltos (un Fragment `<>...</>` alcanza) ya queda protegido solo. Una
+pantalla con un único botón de acción (la mayoría) no cambia en nada:
+envolver un solo elemento en `flex flex-wrap` es un no-op visual.
+
 ## Tablas con scroll horizontal
 Envolver toda tabla ancha en `<TableScrollArea>`
 (`components/ui/table-scroll-area.tsx`), no en un `<div overflow-x-auto>`

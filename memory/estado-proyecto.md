@@ -9,11 +9,12 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 8 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+- **Sprint actual:** 9 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
   Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
   Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora, Sprint 5 —
   Recolección e Inventario, Sprint 6 — Ventana de gracia y reversión,
-  Sprint 7 — Consolidación de residuos)
+  Sprint 7 — Consolidación de residuos, Sprint 8 — Clientes y Precio por
+  Kilo)
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -778,14 +779,29 @@ priorizado). Una vez separados:
   cliente registrado, tiene que existir también en producción.
 
 ## Cómo continuar desde acá
-1. Sprint 8 (Clientes y Precio por Kilo, 19 pts, "sprint liviano") es el
-   siguiente — CRUD Cliente, "Público General" (id fijo, sin crédito, no
-   editable — `CLIENTE_PUBLICO_GENERAL_ID` en `lib/constants.ts` ya
-   existe desde Sprint 0), `PrecioKilo` histórico (nueva fila, nunca
-   `UPDATE`), búsqueda de clientes optimizada. Sin dependencia directa de
-   lo que construyó Sprint 7 (Consolidación) — es el primer sprint del
-   proyecto que no extiende Recolección/Inventario, empieza el módulo
-   comercial que Sprint 9/10 (POS) va a necesitar.
+1. **Sprint 8 (Clientes y Precio por Kilo) ya está cerrado** (ver el
+   registro completo en "Registro de cierre de sprints" más arriba y
+   `specs/sprint-08-clientes-precio-kilo/`). Sprint 9 (POS: carrito y
+   cierre, 31 pts, roadmap marca "⚠️ dividir en 9A/9B") es el siguiente —
+   primer consumidor real de `Cliente`/`PrecioKilo`: selector de items
+   `DISPONIBLE` (`Paquete`/`BandejaSuelta`, ya poblados desde Sprint 5/7),
+   carrito cliente-side, cierre de venta (`Venta`+`DetalleVenta` con
+   `precioKiloAplicado` **copiado** del vigente al momento de la venta, no
+   una referencia — el histórico de `PrecioKilo` de este sprint es
+   justamente lo que hace posible congelar ese valor), `Update`
+   condicional anti-doble-venta (mismo patrón de transacción interactiva
+   que `registrarMortalidadYDescontarAves`/`revertirRecoleccion`, ya
+   anticipado en la sección "Piezas y lecciones que Sprint 7 dejó", punto
+   5), descuento manual + `metodoPago`, comprobante en pantalla +
+   compartir por WhatsApp. **Piezas de Sprint 8 que Sprint 9 hereda tal
+   cual, sin reconstruir:** `crearCliente`/`listarClientes` (para el
+   selector de cliente del POS — la búsqueda por texto de Sprint 8 puede
+   necesitar ampliarse a un endpoint liviano de autocomplete recién ahora,
+   que existe el consumidor real, decisión que Sprint 8 dejó
+   explícitamente pospuesta), `obtenerPrecioKiloVigente()` (para calcular
+   el total de una venta por kilo), el guard `esClientePublicoGeneral()`
+   (Sprint 11 lo va a necesitar para bloquear venta a crédito a Público
+   General, no Sprint 9).
 
    Piezas y lecciones que Sprint 7 dejó y que sprints futuros deben
    reusar/tener presentes:
@@ -1079,6 +1095,151 @@ priorizado). Una vez separados:
   mal hecha. Si el Product Owner lo pide en producción, es una historia
   nueva para un sprint futuro (ver R4 en
   `specs/sprint-07-consolidacion-residuos/spec.md`).
+
+- **Sprint 8** — cerrado (2026-08-13). 324 tests (47 nuevos sobre los 277
+  heredados de Sprint 7), **cero migraciones de schema** (primera vez
+  desde Sprint 5 — `Cliente`/`PrecioKilo`/`TipoCliente`/`EstadoCliente` ya
+  tenían todo lo necesario desde Sprint 0, confirmado releyendo el schema
+  real antes de diseñar, no asumido), cobertura 100%/100% en
+  `server/services/cliente.ts` **y** en `server/actions/cliente.ts`/
+  `server/actions/precioKilo.ts` (por encima del umbral ≥90% que exige el
+  DoD, que solo pide services), verificado con un script temporal contra
+  Neon real (25 asserts: CRUD completo de Cliente, `Público General`
+  intacto antes/después, búsqueda + filtro de tipo, idempotencia real por
+  `P2002` en Cliente y PrecioKilo, dos altas sucesivas de PrecioKilo
+  dejando dos filas reales — nunca un `UPDATE` — y `PrecioKilo` de prueba
+  limpiado con cuidado extra para no mezclarse con el histórico real) y
+  clic a clic en navegador real por el Product Owner, sin hallazgos.
+  Primer sprint del proyecto que no depende de Recolección/Inventario —
+  arranca el módulo comercial que Sprint 9 (POS) va a necesitar. Detalle
+  completo en `specs/sprint-08-clientes-precio-kilo/` (spec.md, plan.md,
+  tasks.md con las 17 tareas documentadas al cerrarlas, incluidos los
+  desvíos y hallazgos reales).
+
+  **Decisiones de negocio confirmadas por el Product Owner antes de
+  ejecutar** (cinco preguntas explícitas, mismo criterio de
+  `definition-of-ready.md` de Sprints 3-7): CRUD de Cliente abierto a
+  GERENTE y OPERARIO (Recolección/Consolidación, no Usuarios/Galpones);
+  alta de `PrecioKilo` restringida a GERENTE (`/precio-kilo` entra en
+  `RUTAS_POR_ROL`); guard de "Público General" resuelto comparando el id
+  contra `CLIENTE_PUBLICO_GENERAL_ID` a mano en la Server Action, sin
+  campo nuevo en el schema; los 3 valores de `TipoCliente` expuestos desde
+  este sprint (`MAYORISTA`/`MINORISTA` para clientes registrados con datos
+  propios, `EVENTUAL` para ventas ocasionales/de mostrador — el mismo tipo
+  que ya usa "Público General" en el seed); búsqueda de clientes como
+  filtro de texto en la tabla de gestión, no un endpoint de autocomplete
+  para el POS (eso queda para Sprint 9 cuando exista ese consumidor real);
+  sin pantalla de historial completo de `PrecioKilo` este sprint (solo el
+  vigente).
+
+  **Decisión de diseño (no de negocio) documentada para que el Product
+  Owner pueda objetarla:** `Cliente` NO gana campos `creadoEn`/
+  `creadoEnCliente` este sprint, pese a que un Operario sí puede crearlo
+  en campo — sigue el mismo tratamiento que `Galpon` (id de cliente +
+  idempotencia completa, sin el contrato Offline-Ready completo) porque no
+  hay ninguna ventana de tiempo real (tipo la de 10 minutos de Mortalidad/
+  Recolección) que dependa de esos campos todavía. Si un sprint futuro
+  necesita ordenar clientes por fecha de alta, hace falta una migración
+  chica en ese momento — no se anticipó sin un consumidor real (ver R4,
+  `spec.md`).
+
+  **Corrección real de diseño pedida en vivo por el Product Owner, a
+  mitad de la ejecución (no en la verificación final, como en Sprints
+  6/7):** la primera versión de `ClienteFiltros` (S8-10) era un único
+  `<Input>` de búsqueda siempre visible, sin marco colapsable ni filtro de
+  tipo — el Product Owner pidió alinearlo con el patrón que el resto de
+  tablas de gestión con filtros ya usa (`MortalidadFiltros`/
+  `RecoleccionFiltros`: marco "Filtros" colapsable + más de un filtro).
+  Corregido de punta a punta: `server/repositories/cliente.ts` gana un
+  filtro combinado (`busqueda` + `tipo`, unidos con `AND`),
+  `ClienteFiltros` se reescribió clonando el esqueleto completo de
+  `MortalidadFiltros` con un `<Select>` de `TipoCliente` agregado, y
+  `app/(app)/clientes/page.tsx` valida `tipo` contra los 3 valores reales
+  del enum (mismo patrón que `tipoValido()` de `MortalidadPage` — no Zod,
+  es un filtro de lectura). Como esta corrección llegó temprano, la
+  verificación clic a clic final (S8-17) no encontró ningún hallazgo
+  nuevo — a diferencia de Sprints 6/7, donde la corrección de UX en vivo
+  fue lo último que pasó antes de cerrar.
+
+  **Hallazgo real de cobertura (S8-15), mismo patrón que S7-13:** forzando
+  `--coverage.all --coverage.include` sobre `server/actions/cliente.ts`/
+  `precioKilo.ts`, aparecieron dos ramas reales sin cubrir en cada una (el
+  `catch` de idempotencia repropagando un error que NO es `P2002` — un
+  `P1017` de Neon cerrando la conexión, visto realmente en Sprint 1, sería
+  ese caso — y el caso límite de `P2002` con el registro ya no encontrado
+  al releer). Corregido con 4 tests reales nuevos (2 por archivo), no
+  casos artificiales — recobertura 100%/100% en las tres piezas.
+
+  **Corrección de aritmética real encontrada al implementar (S8-3):** el
+  límite de precio propuesto en `plan.md` para `Decimal(10,2)` era
+  `9_999_999.99` (7 dígitos enteros) — incorrecto: precisión 10 − escala 2
+  = **8** dígitos enteros, el máximo real es `99999999.99`. Corregido con
+  un comentario explicando la aritmética, para no repetir el error.
+
+  **Hallazgo de herramienta, no de código, útil para scripts de
+  verificación futuros (S8-16):** `tsx` (usado para correr los scripts
+  temporales de verificación contra Neon real desde Sprint 5) **no carga
+  `.env` automáticamente** — a diferencia de lo que el resto de la
+  ejecución del proyecto había asumido sin problema hasta ahora (los
+  scripts anteriores probablemente corrían con variables ya exportadas en
+  la sesión, o nunca se verificó explícitamente). Resuelto con el flag
+  nativo de Node 24 (`npx tsx --env-file=.env script.ts`), sin agregar
+  `dotenv` como dependencia nueva del proyecto solo para scripts
+  descartables. **Tenerlo presente en cualquier script temporal futuro**
+  contra Neon real — sin este flag, `DATABASE_URL` llega `undefined` y
+  Prisma falla con un error de conexión confuso, no un error claro de
+  "falta la variable de entorno".
+
+  **Sin bugs de código encontrados durante la ejecución** (a diferencia de
+  Sprints 1-3 y 7, que sí encontraron bugs reales) — todos los hallazgos
+  de este sprint fueron de diseño (corrección de filtros pedida en vivo),
+  de cobertura (ramas reales sin ejercitar) o de herramienta (`tsx`/`.env`),
+  ninguno de lógica de negocio incorrecta.
+
+## Bug real: `PageHeader` con 2+ botones de acción rompía el ancho en mobile (post-Sprint 7, 2026-08-13)
+El Product Owner probó `/consolidacion` en su celular real (los dos
+wizards, "Armar Bandeja" + "Armar Paquete Mixto", viven en el mismo
+`actions` de `PageHeader`) y reportó que la pantalla entera quedaba con
+scroll horizontal — no solo el botón, "todo" el layout se corría.
+
+**Causa raíz:** el quiebre `flex-col`/`sm:flex-row` que `PageHeader`
+(`components/layout/page-header.tsx`) ya tenía desde el bug original de
+"Nuevo usuario" (Sprint 2, ver "Identidad visual, shell y UX de mobile"
+más arriba) resuelve la competencia entre el **título** y el bloque de
+**acciones** — pero no protege a los botones **entre sí** cuando una
+pantalla pasa más de uno. Tanto `/consolidacion` como `/recoleccion`
+(este último con "Ajustar inventario" + "Registrar recolección" para un
+Gerente, Sprint 6) armaban ese bloque a mano con
+`<div className="flex gap-2">` en cada `page.tsx`, sin `flex-wrap` — dos
+botones cuyo texto no puede partirse en dos líneas
+(`whitespace-nowrap`, de `ui/button.tsx`) y cuyo ancho combinado no entra
+en una pantalla angosta empujan el contenedor entero fuera del viewport,
+mismo mecanismo exacto que el bug de "Nuevo usuario", un nivel más
+adentro de lo que ese fix original cubría.
+
+**Corregido de raíz, centralizado en `PageHeader`, no página por
+página:** `actions` ahora se envuelve siempre en
+`<div className="flex flex-wrap items-center gap-2">` dentro del propio
+`PageHeader` — una pantalla con un solo botón de acción (la mayoría:
+Usuarios, Galpones, Lotes, Mortalidad, Bitácora) no cambia en nada
+visualmente (envolver un único elemento en `flex flex-wrap` es un
+no-op), y cualquier pantalla nueva con 2+ botones queda protegida sola,
+sin que su autor tenga que acordarse de agregar `flex-wrap` a mano.
+`/consolidacion` y `/recoleccion` se simplificaron: su wrapper `<div
+className="flex gap-2">` local ya no hace falta, ahora pasan los botones
+sueltos dentro de un Fragment (`<>...</>`).
+
+**Verificado:** `npm run typecheck && npm run lint && npm test` (277/277
+sin roturas) y `npm run build` limpio. Pendiente de reconfirmar en el
+celular físico del Product Owner (mismo camino que el resto del
+proyecto usa para verificación mobile pixel a pixel — `resize_window` de
+Claude in Chrome sigue sin cambiar el viewport lógico real en este
+entorno).
+
+**Lección para sprints futuros:** cualquier pantalla nueva con más de un
+botón de acción en `PageHeader` ya queda cubierta automáticamente por
+este fix — no hace falta (ni corresponde) volver a envolver los botones
+en un `<div>` propio dentro de `actions`.
 
 ## Sprint 4 — Mortalidad y Bitácora (cerrado, 2026-08-08)
 155 tests (34 nuevos sobre los 121 heredados de Sprint 3), dos

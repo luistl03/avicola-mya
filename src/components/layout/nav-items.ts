@@ -1,4 +1,15 @@
-import { Combine, Egg, Home, Layers3, NotebookPen, Skull, Users, Warehouse } from "lucide-react";
+import {
+  Combine,
+  Contact,
+  Egg,
+  Home,
+  Layers3,
+  NotebookPen,
+  Skull,
+  Tag,
+  Users,
+  Warehouse,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
@@ -21,4 +32,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/bitacora", label: "Bitácora", icon: NotebookPen },
   { href: "/recoleccion", label: "Recolección", icon: Egg },
   { href: "/consolidacion", label: "Consolidación", icon: Combine },
+  { href: "/clientes", label: "Clientes", icon: Contact },
+  { href: "/precio-kilo", label: "Precio por Kilo", icon: Tag },
 ];

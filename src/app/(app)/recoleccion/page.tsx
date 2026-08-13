@@ -66,10 +66,10 @@ export default async function RecoleccionPage({
       <PageHeader
         title="Recolección"
         actions={
-          <div className="flex gap-2">
+          <>
             {esGerente ? <AjustarInventarioSueltosDialog lotesActivos={lotesActivos} /> : null}
             <RegistrarRecoleccionDialog lotesActivos={lotesActivos} />
-          </div>
+          </>
         }
       />
       <RecoleccionFiltros

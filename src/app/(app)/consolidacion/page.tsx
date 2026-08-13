@@ -26,13 +26,13 @@ export default async function ConsolidacionPage() {
       <PageHeader
         title="Consolidación"
         actions={
-          <div className="flex gap-2">
+          <>
             <ConsolidarSueltosDialog
               tipo="BANDEJA"
               unidadDestino={UNIDADES_POR_BANDEJA}
               etiquetaUnidad="bandeja"
               titulo="Armar Bandeja"
-              descripcion="Elegí uno o más orígenes con sueltos disponibles — el sistema arma automáticamente todas las bandejas de 30 que el saldo permita."
+              descripcion="Elige uno o más orígenes con sueltos disponibles. El sistema arma automáticamente todas las bandejas de 30 que el saldo permita."
               variantTrigger="outline"
               saldos={saldosParaWizard}
             />
@@ -41,11 +41,11 @@ export default async function ConsolidacionPage() {
               unidadDestino={UNIDADES_POR_PAQUETE}
               etiquetaUnidad="paquete"
               titulo="Armar Paquete Mixto"
-              descripcion="Elegí uno o más orígenes con sueltos disponibles — el sistema arma automáticamente todos los paquetes de 180 que el saldo permita."
+              descripcion="Elige uno o más orígenes con sueltos disponibles. El sistema arma automáticamente todos los paquetes de 180 que el saldo permita."
               variantTrigger="default"
               saldos={saldosParaWizard}
             />
-          </div>
+          </>
         }
       />
       <SaldosTabla saldos={saldos} />
