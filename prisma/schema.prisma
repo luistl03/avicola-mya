@@ -33,18 +33,19 @@ model Usuario {
   estado       EstadoUsuario @default(ACTIVO)
   creadoEn     DateTime      @default(now())
 
-  sesiones           SesionActiva[]
-  auditLogs          AuditLog[]
-  bitacoras          BitacoraGlobal[]
-  mortalidades       RegistroMortalidad[]
-  recolecciones      RegistroRecoleccion[]
-  movimientosSueltos MovimientoSueltos[]
-  precios            PrecioKilo[]
-  ventas             Venta[]
-  abonosRecibidos    HistorialAbonos[]
-  egresosRegistrados Egreso[]
-  empleadoVinculado  Empleado?
-  pushSubscriptions  PushSubscription[]
+  sesiones               SesionActiva[]
+  auditLogs              AuditLog[]
+  bitacoras              BitacoraGlobal[]
+  mortalidades           RegistroMortalidad[]
+  recolecciones          RegistroRecoleccion[]
+  movimientosSueltos     MovimientoSueltos[]
+  registrosConsolidacion RegistroConsolidacion[] // Sprint 7
+  precios                PrecioKilo[]
+  ventas                 Venta[]
+  abonosRecibidos        HistorialAbonos[]
+  egresosRegistrados     Egreso[]
+  empleadoVinculado      Empleado?
+  pushSubscriptions      PushSubscription[]
 
   @@index([rol])
   @@index([estado])
@@ -136,6 +137,8 @@ model Lote {
   recolecciones        RegistroRecoleccion[]
   mortalidades         RegistroMortalidad[]
   detalleVentas        DetalleVenta[]
+  paqueteOrigenes      PaqueteOrigen[] // Sprint 7
+  bandejaOrigenes      BandejaOrigen[] // Sprint 7
 
   @@index([estado])
   @@index([fechaIngreso])
@@ -228,32 +231,73 @@ enum EstadoPaquete {
   ANULADO
 }
 
-model Paquete {
-  id                    String        @id @default(uuid())
-  peso                  Decimal       @db.Decimal(6, 3)
-  tipo                  TipoPaquete
-  estado                EstadoPaquete @default(DISPONIBLE)
-  registroRecoleccionId String?
-  creadoEn              DateTime      @default(now())
+// Sprint 7 — ancla de idempotencia + auditoría de una corrida del wizard de
+// Consolidación, que crea N Paquete (tipo MIXTO) o N BandejaSuelta a la vez.
+// Mismo rol que RegistroRecoleccion (id generado en el cliente, creado
+// primero dentro de la transacción — si colisiona con P2002, nada más se
+// ejecuta), pero un solo modelo sirve para los dos wizards, distinguidos
+// por `tipo` (solo una de las dos relaciones, paquetes o bandejas, queda
+// poblada según el caso).
+enum TipoConsolidacion {
+  PAQUETE_MIXTO
+  BANDEJA
+}
 
-  registroRecoleccion RegistroRecoleccion? @relation(fields: [registroRecoleccionId], references: [id], onDelete: SetNull)
-  origenes            PaqueteOrigen[]
-  detalleVentas       DetalleVenta[]
-  rotura              RoturaPaquete?
+model RegistroConsolidacion {
+  id              String            @id @default(uuid())
+  tipo            TipoConsolidacion
+  usuarioId       String
+  creadoEnCliente DateTime?
+  creadoEn        DateTime          @default(now())
+  // Campos calculados persistidos a propósito (excepción documentada en
+  // memory/modelo-datos.md): no se pueden recalcular después de leer sin
+  // volver a contar paquetes/bandejas — son una comodidad de lectura para
+  // AuditLog/reportes, no una fuente de verdad alternativa.
+  cantidadUnidadesFormadas Int
+  cantidadConsolidada      Int
+
+  usuario  Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  paquetes Paquete[]
+  bandejas BandejaSuelta[]
+
+  @@index([creadoEn])
+}
+
+model Paquete {
+  id                      String                 @id @default(uuid())
+  peso                    Decimal                @db.Decimal(6, 3)
+  tipo                    TipoPaquete
+  estado                  EstadoPaquete          @default(DISPONIBLE)
+  registroRecoleccionId   String?
+  registroConsolidacionId String? // Sprint 7
+  creadoEn                DateTime               @default(now())
+
+  registroRecoleccion   RegistroRecoleccion?   @relation(fields: [registroRecoleccionId], references: [id], onDelete: SetNull)
+  registroConsolidacion RegistroConsolidacion? @relation(fields: [registroConsolidacionId], references: [id], onDelete: SetNull)
+  origenes              PaqueteOrigen[]
+  detalleVentas         DetalleVenta[]
+  rotura                RoturaPaquete?
 
   @@index([estado])
   @@index([tipo])
   @@index([registroRecoleccionId])
+  @@index([registroConsolidacionId])
 }
 
 model PaqueteOrigen {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   paqueteId String
   galponId  String
+  // Nullable: filas creadas antes de Sprint 7 no tienen forma confiable de
+  // backfillearse (ver R5 en specs/sprint-07-consolidacion-residuos/spec.md).
+  // Todo código nuevo desde este sprint (Consolidación y también
+  // registrarRecoleccion) lo completa siempre.
+  loteId    String?
   cantidad  Int
 
   paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
   galpon  Galpon  @relation(fields: [galponId], references: [id], onDelete: Restrict)
+  lote    Lote?   @relation(fields: [loteId], references: [id], onDelete: Restrict)
 
   @@index([paqueteId])
 }
@@ -264,25 +308,30 @@ enum EstadoBandeja {
 }
 
 model BandejaSuelta {
-  id       String        @id @default(uuid())
-  peso     Decimal       @db.Decimal(6, 3)
-  estado   EstadoBandeja @default(DISPONIBLE)
-  creadoEn DateTime      @default(now())
+  id                      String        @id @default(uuid())
+  peso                    Decimal       @db.Decimal(6, 3)
+  estado                  EstadoBandeja @default(DISPONIBLE)
+  registroConsolidacionId String? // Sprint 7 — primer campo de procedencia real de este modelo
+  creadoEn                DateTime      @default(now())
 
-  origenes      BandejaOrigen[]
-  detalleVentas DetalleVenta[]
+  registroConsolidacion RegistroConsolidacion? @relation(fields: [registroConsolidacionId], references: [id], onDelete: SetNull)
+  origenes              BandejaOrigen[]
+  detalleVentas         DetalleVenta[]
 
   @@index([estado])
+  @@index([registroConsolidacionId])
 }
 
 model BandejaOrigen {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   bandejaId String
   galponId  String
+  loteId    String? // Sprint 7 — mismo criterio que PaqueteOrigen.loteId
   cantidad  Int
 
   bandeja BandejaSuelta @relation(fields: [bandejaId], references: [id], onDelete: Cascade)
   galpon  Galpon        @relation(fields: [galponId], references: [id], onDelete: Restrict)
+  lote    Lote?         @relation(fields: [loteId], references: [id], onDelete: Restrict)
 
   @@index([bandejaId])
 }

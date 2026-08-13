@@ -18,3 +18,6 @@ export const VENTANA_GRACIA_MIN = 10;
 
 /** Unidades por paquete cerrado de Recolección (Sprint 5) — un paquete PURO siempre suma exactamente esta cantidad (ver "suma exacta 180" de Paquete Mixto, Sprint 7, mismo tamaño). Compartida entre server/services/recoleccion.ts (calcularEmpaque, autoritativo) y el helper de preview reactivo del formulario en el cliente, que debe coincidir exactamente. */
 export const UNIDADES_POR_PAQUETE = 180;
+
+/** Unidades por bandeja suelta armada en Consolidación (Sprint 7) — mismo criterio que UNIDADES_POR_PAQUETE: constante compartida entre server/services/consolidacion.ts (calcularConsolidacion, autoritativo) y el preview reactivo del wizard "Armar Bandeja" en el cliente, que debe coincidir exactamente. */
+export const UNIDADES_POR_BANDEJA = 30;

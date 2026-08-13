@@ -9,10 +9,11 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 7 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+- **Sprint actual:** 8 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
   Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
   Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora, Sprint 5 —
-  Recolección e Inventario, Sprint 6 — Ventana de gracia y reversión)
+  Recolección e Inventario, Sprint 6 — Ventana de gracia y reversión,
+  Sprint 7 — Consolidación de residuos)
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -777,36 +778,63 @@ priorizado). Una vez separados:
   cliente registrado, tiene que existir también en producción.
 
 ## Cómo continuar desde acá
-1. Sprint 7 (Consolidación de residuos) es el siguiente — roadmap lo
-   marca 24 pts: pantalla de saldos por galpón/lote (`reconstruirSaldo()`,
-   ya construida y con tests desde Sprint 5, todavía sin pantalla propia
-   — este sprint le da la primera), Wizard "Paquete Mixto" (multi-origen,
-   suma exacta 180 — primer `Paquete` con más de un `PaqueteOrigen`),
-   Wizard "Armar Bandeja" (30u, multi-origen, primer uso real de
-   `BandejaSuelta`/`BandejaOrigen`, sin tocar desde Sprint 0), y un guard
-   anti-sobregiro (`UPDATE` condicional) para no dejar `InventarioSueltos`
-   negativo al consolidar. Piezas que Sprint 6 ya dejó preparadas y que
-   Sprint 7 va a necesitar: `reconstruirSaldo()` ya sabe clasificar los 6
-   tipos de `TipoMovimientoSueltos` (incluidos `REVERSION`/
-   `AJUSTE_GERENTE`, resueltos en Sprint 6) vía un `Record<TipoMovimientoSueltos,
-   ...>` exhaustivo (`server/services/inventario.ts`) — Sprint 7 solo
-   necesita empezar a generar movimientos `CONSOLIDACION_SALIDA`, no
-   tocar la clasificación; el patrón de guard "todo o nada" sobre un
-   conjunto de filas (`server/repositories/recoleccion.ts`,
-   `revertirRecoleccion`, `count` + `updateMany` + comparación) es el
-   precedente directo para el guard anti-sobregiro de Consolidación, que
-   también necesita decidir atómicamente sobre varias filas a la vez; el
-   patrón de idempotencia por `create`+captura de `P2002`
-   (`server/repositories/inventario.ts`, `ajustarInventarioSueltos`) es
-   el precedente a reusar para los dos wizards, que también crean
-   entidades nuevas desde formularios de campo. **Deuda explícita
-   heredada de Sprint 6, no resuelta:** el "ajuste manual del Gerente"
-   solo existe para el ledger de sueltos de Recolección — Mortalidad
-   sigue sin ningún camino para corregir un registro después de que su
-   ventana de 10 minutos cerró (no hay ledger equivalente a
-   `MovimientoSueltos` para `avesVivas`); no es parte de Sprint 7, pero
-   hay que priorizarlo en algún sprint futuro si el Product Owner lo pide
-   en producción.
+1. Sprint 8 (Clientes y Precio por Kilo, 19 pts, "sprint liviano") es el
+   siguiente — CRUD Cliente, "Público General" (id fijo, sin crédito, no
+   editable — `CLIENTE_PUBLICO_GENERAL_ID` en `lib/constants.ts` ya
+   existe desde Sprint 0), `PrecioKilo` histórico (nueva fila, nunca
+   `UPDATE`), búsqueda de clientes optimizada. Sin dependencia directa de
+   lo que construyó Sprint 7 (Consolidación) — es el primer sprint del
+   proyecto que no extiende Recolección/Inventario, empieza el módulo
+   comercial que Sprint 9/10 (POS) va a necesitar.
+
+   Piezas y lecciones que Sprint 7 dejó y que sprints futuros deben
+   reusar/tener presentes:
+   - **`RegistroConsolidacion`** (Sprint 7) confirma el patrón "ancla de
+     idempotencia para una corrida que crea N entidades hijas" (mismo rol
+     que `RegistroRecoleccion`, Sprint 5) — cualquier sprint futuro que
+     necesite una Server Action que cree múltiples filas nuevas a la vez
+     desde un solo envío de formulario debería considerar el mismo patrón
+     antes de intentar idempotencia por id de cliente en cada hija por
+     separado (mucho más frágil de comparar en la rama de reintento).
+   - **Guard "todo o nada" agregado por clave distinta** (`server/repositories/consolidacion.ts`,
+     `consolidarSueltos`): cuando un guard atómico protege N filas pero la
+     cantidad a aplicar sobre cada fila puede repetirse/sumarse desde
+     distintas fuentes de la misma operación (acá: un mismo origen
+     aportando a varias unidades de destino), hay que **agregar por clave
+     antes de tocar la base** (un `Map` sumando por `galponId:loteId`), no
+     iterar ingenuamente operación por operación — evita tanto UPDATEs
+     redundantes como una condición de guard mal evaluada.
+   - **Los componentes de ícono (`LucideIcon`) no se pueden pasar como
+     prop de un Server Component a un Client Component** — React solo
+     serializa objetos planos a través de ese límite ("Only plain objects
+     can be passed to Client Components from Server Components", bug real
+     encontrado en `app/(app)/consolidacion/page.tsx`, S7-15). Si un
+     Client Component necesita un ícono que depende de una prop, hay que
+     resolverlo ADENTRO del propio Client Component a partir de un valor
+     plano (string/enum), nunca recibir el componente de ícono ya elegido
+     desde el Server Component padre. Ningún test de este proyecto agarra
+     esta clase de bug (hace falta `npm run dev`/`build` real) — tenerlo
+     presente al diseñar cualquier componente compartido parametrizado con
+     un ícono variable.
+   - **"El techo que un cálculo determina" no es lo mismo que "lo que hay
+     que ejecutar".** Corrección real de diseño de S7-15: el Product
+     Owner probó un wizard que aplicaba automáticamente el máximo que un
+     cálculo (`calcularConsolidacion()`) permitía, y pidió control manual
+     en su lugar. La lección para sprints futuros con un cálculo similar
+     (ej. cualquier "arma todo lo que el saldo permita" de Sprint 9/10) es
+     probar el flujo automático en vivo con el Product Owner antes de
+     asumir que "calculado automáticamente" es lo que el usuario de campo
+     realmente quiere — más vale una pantalla que muestre el techo y deje
+     elegir, que una que decida sola.
+   - **Deuda explícita heredada de Sprint 6, todavía sin resolver:** el
+     "ajuste manual del Gerente" solo existe para el ledger de sueltos de
+     Recolección — Mortalidad sigue sin ningún camino para corregir un
+     registro después de que su ventana de 10 minutos cerró. Sprint 7 no
+     la resolvió (no era su alcance) y agregó una deuda del mismo tipo
+     propia: sin botón "Deshacer" para `RegistroConsolidacion` (ver R4 en
+     `specs/sprint-07-consolidacion-residuos/spec.md`). Ninguna de las dos
+     es parte de Sprint 8 — quedan para priorizar si el Product Owner las
+     pide en producción.
 2. Toda Server Action nueva que **mute** datos debe envolverse con
    `withAuth(config, handler)` (`server/auth/with-auth.ts`, Sprint 2) — es
    la pieza de mayor apalancamiento del proyecto, ya trae auth + rol + Zod
@@ -979,6 +1007,78 @@ priorizado). Una vez separados:
   de que su ventana de 10 minutos cerró (no hay ledger equivalente a
   `MovimientoSueltos` para `avesVivas`). Ver "Cómo continuar desde acá"
   más arriba.
+- **Sprint 7** — cerrado (2026-08-13). 277 tests (37 nuevos sobre los 240
+  heredados de Sprint 6), una migración no destructiva aplicada contra
+  Neon real (`PaqueteOrigen.loteId`/`BandejaOrigen.loteId` nullable +
+  modelo nuevo `RegistroConsolidacion`/enum `TipoConsolidacion` +
+  `registroConsolidacionId` en `Paquete`/`BandejaSuelta`), cobertura
+  100%/100% en `server/services/consolidacion.ts` y en
+  `server/actions/consolidacion.ts`, verificado con dos scripts
+  temporales contra Neon real (carrera concurrente forzada — guard de
+  saldo agregado por origen bajo dos consolidaciones simultáneas,
+  idempotencia real, un origen aportando a 2+ unidades — más el camino
+  feliz secuencial) y clic a clic en navegador real por el Product Owner.
+  Sexta transacción interactiva del proyecto (`consolidarSueltos`),
+  primer modelo nuevo desde Sprint 3 (`RegistroConsolidacion`, mismo rol
+  que `RegistroRecoleccion` — ancla de idempotencia para una corrida que
+  crea N entidades hijas), primera vez que `Paquete` sale tipo `MIXTO`
+  con más de un origen real y primera fila real de `BandejaSuelta`/
+  `BandejaOrigen` de todo el proyecto (sin usar desde Sprint 0). Detalle
+  completo en `specs/sprint-07-consolidacion-residuos/` (spec.md, plan.md,
+  tasks.md con las 15 tareas documentadas al cerrarlas, incluidos los
+  desvíos y hallazgos reales).
+
+  **Hallazgo real durante la planificación, resuelto con el Product
+  Owner antes de escribir código:** el brief inicial asumía "sin
+  migración de schema para este sprint" — verificado releyendo
+  `prisma/schema.prisma`, era falso en dos sentidos: `PaqueteOrigen`/
+  `BandejaOrigen` no tenían `loteId` (el Product Owner confirmó
+  agregarlo, para trazabilidad completa por origen), y no existía
+  ninguna entidad que pudiera anclar la idempotencia de una corrida que
+  crea N `Paquete`/`BandejaSuelta` a la vez (resuelto agregando
+  `RegistroConsolidacion`, simétrico a `RegistroRecoleccion`).
+
+  **Corrección real de diseño encontrada probando en vivo (S7-15), la
+  más grande del sprint:** el diseño original hacía que el wizard armara
+  **automáticamente** todas las unidades que el saldo seleccionado
+  permitía, sin intervención del operario — el Product Owner probó ese
+  flujo y pidió cambiarlo a control manual: `calcularConsolidacion()`
+  sigue calculando el techo (cuántas unidades caben), pero el operario
+  ahora elige cuántas arma de verdad (mínimo 1 por defecto, con
+  controles "+ Agregar", "Agregar todas (N)" y "Quitar"). El cambio quedó
+  contenido en la capa de Server Action (la guard de `pesos.length` pasa
+  de exigir igualdad exacta contra el techo a solo rechazar si se pide
+  MÁS del techo) y en el componente de wizard — `calcularConsolidacion()`
+  y `consolidarSueltos()` no necesitaron ningún cambio, ya estaban
+  diseñados para aceptar cualquier cantidad de unidades, no solo el
+  máximo. Detalle completo, con el Gherkin reescrito, en
+  `specs/sprint-07-consolidacion-residuos/spec.md` y `tasks.md` (S7-15).
+
+  **Dos bugs reales de código encontrados y corregidos durante la
+  ejecución:**
+  1. Concordancia de género en el mensaje de "saldo insuficiente" para
+     Bandeja — `server/actions/consolidacion.ts` armaba el string
+     concatenando `"completo" + "a"`, dando literalmente "...bandeja
+     completoa..." en vez de "...bandeja completa...". Encontrado por un
+     test de integración (S7-11), no en producción.
+  2. Bug real de RSC ("Only plain objects can be passed to Client
+     Components from Server Components") — `app/(app)/consolidacion/page.tsx`
+     pasaba un componente de ícono (referencia de función) como prop a
+     `ConsolidarSueltosDialog` (Client Component); un Server Component
+     solo puede pasar objetos planos serializables a través de ese
+     límite. Corregido resolviendo el ícono adentro del propio Client
+     Component a partir de `tipo` (string plano). Encontrado probando en
+     vivo (S7-15), no por ningún test — ninguna suite de este proyecto
+     ejercita el árbol real de Server→Client Components, es una
+     categoría de bug que solo aparece corriendo `npm run dev`/`build`
+     de verdad.
+
+  **Deuda explícita, no resuelta en este sprint:** sin botón "Deshacer"
+  para `RegistroConsolidacion` — a diferencia de Recolección (Sprint 6),
+  este sprint no agrega ventana de gracia para deshacer una consolidación
+  mal hecha. Si el Product Owner lo pide en producción, es una historia
+  nueva para un sprint futuro (ver R4 en
+  `specs/sprint-07-consolidacion-residuos/spec.md`).
 
 ## Sprint 4 — Mortalidad y Bitácora (cerrado, 2026-08-08)
 155 tests (34 nuevos sobre los 121 heredados de Sprint 3), dos

@@ -275,4 +275,16 @@
   .badge-tipo-descarte {
     @apply border-orange-300! bg-orange-100! text-orange-800! dark:border-orange-800! dark:bg-orange-950! dark:text-orange-200!;
   }
+
+  /* Fila de origen seleccionada en el wizard de Consolidación
+     (components/domain/consolidacion/consolidar-sueltos-dialog.tsx, Sprint
+     7) — filas clicables en vez de un Checkbox nuevo (decisión de diseño
+     documentada en specs/sprint-07-consolidacion-residuos/spec.md: evita
+     agregar infraestructura de shadcn/ui para un único caso de uso). Borde
+     + fondo de acento con --primary, sin `!`: a diferencia de los badges de
+     arriba, esta clase no compite con ningún `variant` de otro componente
+     en el mismo elemento. */
+  .origen-seleccionado {
+    @apply border-primary bg-primary/5;
+  }
 }

@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 6 completado, verificado contra Neon real (incluida carrera concurrente forzada) y clic a clic en navegador por el Product Owner (pendiente verificación en celular físico; deuda explícita: ajuste manual del Gerente solo existe para Recolección, Mortalidad todavía sin él — ver `memory/estado-proyecto.md`).
-**Progreso:** 7 de 16 sprints (43.75%)
+**Última actualización:** Sprint 7 completado, verificado contra Neon real (incluida carrera concurrente forzada del guard de saldo agregado por origen) y clic a clic en navegador por el Product Owner (deuda explícita: sin botón "Deshacer" para RegistroConsolidacion, ni ajuste manual del Gerente para Mortalidad — ver `memory/estado-proyecto.md`).
+**Progreso:** 8 de 16 sprints (50%)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -21,7 +21,7 @@ resumen + `memory/` como base — no inventar alcance nuevo.
 
 | Release | Sprints | Estado | Entrega de valor |
 |---|---|---|---|
-| R1 — Operación básica | 0–7 | 🟡 En curso (7/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
+| R1 — Operación básica | 0–7 | 🟢 Completo (8/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
 | R2 — Finanzas | 8–11 | ⬜ Pendiente | Créditos, cobranza, egresos, planilla. |
 | R3 — Campo real | 12–13 | ⬜ Pendiente | Funciona sin señal. Instalable. |
 | R4 — Inteligencia | 14–15 | ⬜ Pendiente | Dashboard, reportes, push. |
@@ -114,12 +114,15 @@ deuda pendiente: auditar idempotencia en el resto de los dialogs de mutación):*
 **Specs:** `specs/sprint-06-ventana-gracia-reversion/`
 **Detalle de ejecución (schema real no coincidía con el brief inicial — faltaba una migración; una brecha de cobertura real corregida reescribiendo `reconstruirSaldo()`; una corrección de UX en vivo, el ajuste ya no pide galpón a mano):** `memory/estado-proyecto.md`
 
-### Sprint 7 — Consolidación de residuos (24 pts)
+### ✅ Sprint 7 — Consolidación de residuos (24 pts) — COMPLETADO
 **Goal:** sueltos acumulados se convierten en paquetes mixtos y bandejas.
-- Pantalla de saldos por galpón/lote
-- Wizard "Paquete Mixto" (multi-origen, suma exacta 180)
-- Wizard "Armar Bandeja" (30u, multi-origen)
-- Guard anti-sobregiro (update condicional)
+- Pantalla de saldos por galpón/lote (`/consolidacion`, primera vista real de `reconstruirSaldo()`)
+- Wizard "Paquete Mixto" (multi-origen, techo calculado automático, cantidad a armar elegida por el operario — mínimo 1, incremental o "Agregar todas", corrección real de diseño post-S7-15)
+- Wizard "Armar Bandeja" (30u, mismo componente parametrizado, primer uso real de `BandejaSuelta`/`BandejaOrigen` desde Sprint 0)
+- Guard anti-sobregiro agregado por origen distinto (`updateMany` + suma por clave, no por unidad de destino), extendido de Sprint 6 a N filas de `InventarioSueltos` con cantidades distintas
+- Migración: `PaqueteOrigen.loteId`/`BandejaOrigen.loteId` + modelo nuevo `RegistroConsolidacion` (ancla de idempotencia, mismo rol que `RegistroRecoleccion`)
+**Specs:** `specs/sprint-07-consolidacion-residuos/`
+**Detalle de ejecución (hallazgo real de schema en la planificación — faltaba `loteId` y una entidad ancla; dos bugs reales de código corregidos por tests antes de producción; una corrección de UX en vivo — el wizard automático pasó a control manual del operario):** `memory/estado-proyecto.md`
 
 ### Sprint 8 — Clientes y Precio por Kilo (19 pts) — sprint liviano
 **Goal:** catálogo comercial listo, precio vigente es histórico.

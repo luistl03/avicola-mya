@@ -1,5 +1,20 @@
 import { prisma } from "@/lib/prisma";
 
+// Para la pantalla de saldos (/consolidacion, Sprint 7) y para poblar la
+// lista de orígenes seleccionables de ambos wizards (Paquete Mixto, Armar
+// Bandeja) — mismo dataset, una sola función. Sin paginar: son pocas
+// combinaciones galpón/lote por granja, mismo criterio que
+// listarGalponesActivos()/listarLotesActivos().
+export function listarInventarioSueltosConSaldo() {
+  return prisma.inventarioSueltos.findMany({
+    orderBy: [{ galpon: { nombre: "asc" } }, { lote: { codigo: "asc" } }],
+    include: {
+      galpon: { select: { id: true, nombre: true } },
+      lote: { select: { id: true, codigo: true } },
+    },
+  });
+}
+
 // Lectura simple: trae el historial completo de MovimientoSueltos de un
 // galpón+lote para que server/services/inventario.ts (reconstruirSaldo,
 // función pura, sin Prisma) lo reduzca a un saldo. Sin paginar — se usa
