@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { cambiarEstadoClienteSchema, crearClienteSchema, editarClienteSchema } from "@/lib/zod/cliente";
+import {
+  buscarClientesAutocompleteSchema,
+  cambiarEstadoClienteSchema,
+  crearClienteSchema,
+  editarClienteSchema,
+} from "@/lib/zod/cliente";
 
 const inputBase = {
   id: crypto.randomUUID(),
@@ -87,5 +92,19 @@ describe("cambiarEstadoClienteSchema", () => {
     });
 
     expect(resultado.success).toBe(false);
+  });
+});
+
+describe("buscarClientesAutocompleteSchema", () => {
+  it("acepta una búsqueda válida", () => {
+    expect(buscarClientesAutocompleteSchema.safeParse({ busqueda: "Sol" }).success).toBe(true);
+  });
+
+  it("rechaza una búsqueda vacía", () => {
+    expect(buscarClientesAutocompleteSchema.safeParse({ busqueda: "" }).success).toBe(false);
+  });
+
+  it("rechaza una búsqueda que excede el máximo de 120 caracteres", () => {
+    expect(buscarClientesAutocompleteSchema.safeParse({ busqueda: "A".repeat(121) }).success).toBe(false);
   });
 });

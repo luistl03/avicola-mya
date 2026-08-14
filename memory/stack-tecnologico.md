@@ -34,6 +34,23 @@
 - **Dexie** (wrapper de IndexedDB) — cola local de operaciones pendientes.
 - **Web Push (VAPID)** — notificaciones push para alertas de crédito vencido.
 
+## Comprobantes (Sprint 9)
+- **jsPDF** — genera el comprobante de venta del POS como PDF **enteramente
+  en el navegador**, sin backend ni servicio externo nuevo (mantiene el
+  presupuesto $0 de más abajo). Se evaluó generación en servidor
+  (Puppeteer/Playwright, o un servicio de PDF-as-a-service) y se descartó:
+  Puppeteer no corre bien en el runtime gratuito de Vercel sin configurar
+  binarios aparte, y un servicio externo de pago no se justifica para un
+  documento de texto simple (encabezado + tabla de ítems + totales). Ver
+  `specs/sprint-09-pos-carrito-cierre/plan.md` ("Decisión de diseño:
+  generación de PDF") para la comparación completa.
+- **Web Share API** (`navigator.share`/`navigator.canShare`, nativa del
+  navegador, sin dependencia nueva) — comparte el PDF ya generado
+  directamente a WhatsApp u otra app en los dispositivos que la soportan.
+  **No es universal** (varía por navegador/SO) y el protocolo `wa.me` no
+  soporta adjuntar archivos, solo texto — hay un camino de descarga simple
+  como respaldo cuando no está disponible.
+
 ## Testing
 - **Vitest** — unit tests de `services/` (lógica pura) e integración de
   Server Actions.

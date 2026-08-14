@@ -36,7 +36,18 @@ type ClienteEditable = {
   tipo: TipoCliente;
 };
 
-type Props = { modo: "crear" } | { modo: "editar"; cliente: ClienteEditable };
+type Props =
+  | {
+      modo: "crear";
+      // Sprint 9 (POS) — cuando el autocomplete de cliente no encuentra
+      // coincidencias, reusa este mismo dialog en vez de duplicar el
+      // formulario; onCreado deja el cliente recién creado seleccionado
+      // en la venta en curso, sin que el operario tenga que buscarlo de
+      // nuevo. Opcional: el resto de usos de este dialog (la pantalla
+      // /clientes) no lo necesita, ya refresca la tabla con router.refresh().
+      onCreado?: (cliente: { id: string; nombre: string }) => void;
+    }
+  | { modo: "editar"; cliente: ClienteEditable };
 
 type Estado = ActionResult<{ id: string }> | undefined;
 
@@ -127,6 +138,9 @@ function ClienteForm(props: Props & { onExito: () => void }) {
         title: props.modo === "crear" ? "Cliente creado" : "Cliente actualizado",
         description: `${formData.get("nombre")}`,
       });
+      if (props.modo === "crear") {
+        props.onCreado?.({ id: resultado.data.id, nombre: String(formData.get("nombre")) });
+      }
       props.onExito();
     }
     return resultado;

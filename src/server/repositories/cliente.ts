@@ -82,3 +82,25 @@ export function listarClientes(params: {
 export function contarClientes(params: { busqueda?: string; tipo?: TipoCliente }) {
   return prisma.cliente.count({ where: whereFiltros(params) });
 }
+
+// Sprint 9 — autocomplete liviano del selector de cliente del POS (Sprint 8
+// lo dejó pospuesto a propósito, "puede agregar un endpoint de autocomplete
+// si hace falta" — ahora existe el consumidor real). A diferencia de
+// listarClientes/contarClientes (tabla de gestión paginada), este NO pagina
+// — un límite fijo alcanza para tipeo en vivo — y siempre filtra por
+// ACTIVO (no tiene sentido venderle a un cliente SUSPENDIDO).
+const LIMITE_AUTOCOMPLETE_CLIENTES = 10;
+
+export function buscarClientesAutocomplete(busqueda: string) {
+  return prisma.cliente.findMany({
+    where: {
+      estado: "ACTIVO",
+      OR: [
+        { nombre: { contains: busqueda, mode: "insensitive" } },
+        { celular: { contains: busqueda, mode: "insensitive" } },
+      ],
+    },
+    orderBy: { nombre: "asc" },
+    take: LIMITE_AUTOCOMPLETE_CLIENTES,
+  });
+}

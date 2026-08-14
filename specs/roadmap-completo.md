@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 8 completado, sin migración de schema, cobertura 100%/100% en services y actions, verificado con 25 asserts contra Neon real (idempotencia real por P2002 en Cliente y PrecioKilo, "Público General" intacto antes/después) y clic a clic en navegador por el Product Owner, sin hallazgos (deuda heredada sin cambios: sin botón "Deshacer" para RegistroConsolidacion, ni ajuste manual del Gerente para Mortalidad — ver `memory/estado-proyecto.md`).
-**Progreso:** 9 de 16 sprints (56%)
+**Última actualización:** Sprint 9 completado (ejecutado como sprint único, sin dividir en 9A/9B), sin migración de schema, cobertura 100%/100% en services y actions, verificado con 16 asserts contra Neon real incluida una carrera concurrente real forzada (dos cierres de venta peleando por el mismo Paquete — exactamente uno gana) y clic a clic en navegador por el Product Owner incluido "Compartir" por WhatsApp en un celular real, sin bugs de lógica de negocio (deuda heredada sin cambios: sin botón "Deshacer" para RegistroConsolidacion, ni ajuste manual del Gerente para Mortalidad — ver `memory/estado-proyecto.md`).
+**Progreso:** 10 de 16 sprints (63%)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -22,7 +22,7 @@ resumen + `memory/` como base — no inventar alcance nuevo.
 | Release | Sprints | Estado | Entrega de valor |
 |---|---|---|---|
 | R1 — Operación básica | 0–7 | 🟢 Completo (8/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
-| R2 — Finanzas | 8–11 | 🟡 En progreso (1/4) | Créditos, cobranza, egresos, planilla. |
+| R2 — Finanzas | 8–11 | 🟡 En progreso (2/4) | Créditos, cobranza, egresos, planilla. |
 | R3 — Campo real | 12–13 | ⬜ Pendiente | Funciona sin señal. Instalable. |
 | R4 — Inteligencia | 14–15 | ⬜ Pendiente | Dashboard, reportes, push. |
 
@@ -138,13 +138,17 @@ deuda pendiente: auditar idempotencia en el resto de los dialogs de mutación):*
 
 ## 💰 RELEASE 2 — FINANZAS
 
-### Sprint 9 — POS: carrito y cierre (31 pts) ⚠️ dividir en 9A/9B
+### ✅ Sprint 9 — POS: Carrito y Cierre (31 pts) — COMPLETADO
 **Goal:** se vende paquete/bandeja y el stock se descuenta correctamente.
-- Selector de items DISPONIBLES, carrito cliente-side
-- Cierre de venta: Venta + DetalleVenta con precioKiloAplicado copiado
-- Update condicional anti-doble-venta (SET...WHERE estado='DISPONIBLE')
-- Descuento manual + metodoPago (EFECTIVO/YAPE/PLIN/TRANSFERENCIA)
-- Comprobante en pantalla + compartir por WhatsApp
+- Ejecutado como **sprint único**, sin dividir en 9A/9B (decisión confirmada por el Product Owner — el roadmap lo marcaba con "⚠️ dividir")
+- Selector de items DISPONIBLES (con recorte a los últimos creados + búsqueda por peso) y carrito cliente-side, orquestados por `PosWorkspace`
+- Cierre de venta transaccional: `Venta`+`DetalleVenta` con `precioKiloAplicado` copiado del vigente al momento de la venta (congelado, verificado que no cambia si el precio se actualiza después)
+- `Update` condicional anti-doble-venta (`updateMany ... WHERE estado='DISPONIBLE'`) — séptima transacción interactiva del proyecto, ancla `Venta` primero (mismo orden que `consolidarSueltos`, no el de `registrarMortalidadYDescontarAves` — el guard es sobre un estado de una sola dirección), verificada bajo una carrera concurrente real forzada contra Neon
+- Descuento manual con guard (no supera el bruto) + metodoPago (EFECTIVO/YAPE/PLIN/TRANSFERENCIA) — 100% al contado este sprint, sin adelantar Créditos
+- Selector de cliente con autocomplete real (el endpoint que Sprint 8 dejó pospuesto) + alta de cliente inline si no hay coincidencias
+- Comprobante: recibo térmico de 80mm en PDF (jsPDF, dependencia nueva) con el logo real de la granja, descargable y compartible por WhatsApp (Web Share API)
+**Specs:** `specs/sprint-09-pos-carrito-cierre/`
+**Detalle de ejecución (hallazgo de diseño del orden de idempotencia, una violación de ADR-000 corregida antes de implementar, tres correcciones reales de UX/diseño pedidas en vivo — incluidas dos vueltas del diseño del comprobante):** `memory/estado-proyecto.md`
 
 ### Sprint 10 — POS: Romper paquete y sueltos (26 pts)
 **Goal:** se vende cualquier cantidad, rompiendo paquete en vivo.

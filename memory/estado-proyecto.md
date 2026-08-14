@@ -9,12 +9,12 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 9 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+- **Sprint actual:** 10 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
   Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
   Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora, Sprint 5 —
   Recolección e Inventario, Sprint 6 — Ventana de gracia y reversión,
   Sprint 7 — Consolidación de residuos, Sprint 8 — Clientes y Precio por
-  Kilo)
+  Kilo, Sprint 9 — POS: Carrito y Cierre)
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -779,29 +779,20 @@ priorizado). Una vez separados:
   cliente registrado, tiene que existir también en producción.
 
 ## Cómo continuar desde acá
-1. **Sprint 8 (Clientes y Precio por Kilo) ya está cerrado** (ver el
-   registro completo en "Registro de cierre de sprints" más arriba y
-   `specs/sprint-08-clientes-precio-kilo/`). Sprint 9 (POS: carrito y
-   cierre, 31 pts, roadmap marca "⚠️ dividir en 9A/9B") es el siguiente —
-   primer consumidor real de `Cliente`/`PrecioKilo`: selector de items
-   `DISPONIBLE` (`Paquete`/`BandejaSuelta`, ya poblados desde Sprint 5/7),
-   carrito cliente-side, cierre de venta (`Venta`+`DetalleVenta` con
-   `precioKiloAplicado` **copiado** del vigente al momento de la venta, no
-   una referencia — el histórico de `PrecioKilo` de este sprint es
-   justamente lo que hace posible congelar ese valor), `Update`
-   condicional anti-doble-venta (mismo patrón de transacción interactiva
-   que `registrarMortalidadYDescontarAves`/`revertirRecoleccion`, ya
-   anticipado en la sección "Piezas y lecciones que Sprint 7 dejó", punto
-   5), descuento manual + `metodoPago`, comprobante en pantalla +
-   compartir por WhatsApp. **Piezas de Sprint 8 que Sprint 9 hereda tal
-   cual, sin reconstruir:** `crearCliente`/`listarClientes` (para el
-   selector de cliente del POS — la búsqueda por texto de Sprint 8 puede
-   necesitar ampliarse a un endpoint liviano de autocomplete recién ahora,
-   que existe el consumidor real, decisión que Sprint 8 dejó
-   explícitamente pospuesta), `obtenerPrecioKiloVigente()` (para calcular
-   el total de una venta por kilo), el guard `esClientePublicoGeneral()`
-   (Sprint 11 lo va a necesitar para bloquear venta a crédito a Público
-   General, no Sprint 9).
+1. **Sprint 9 (POS: Carrito y Cierre) ya está cerrado** (ver el registro
+   completo en "Registro de cierre de sprints" más abajo y
+   `specs/sprint-09-pos-carrito-cierre/`). Sprint 10 (POS: Romper Paquete
+   y sueltos, "se vende cualquier cantidad, rompiendo paquete en vivo") es
+   el siguiente. **Piezas de Sprint 9 que Sprint 10 hereda tal cual, sin
+   reconstruir:** `cerrarVenta()` (`server/repositories/venta.ts`) y su
+   guard anti-doble-venta (`updateMany` por lote de ids sobre
+   `Paquete`/`BandejaSuelta`) son la referencia directa para cualquier
+   guard nuevo sobre `RoturaPaquete`; `PosSelectorItems`/`PosCarrito`/
+   `PosWorkspace` (`components/domain/pos/`) son la base real sobre la que
+   Sprint 10 agrega el flujo "Romper Paquete" — no hace falta un POS
+   nuevo, se extiende el mismo; `DetalleVenta.tipo: SUELTO` sigue sin
+   ningún código real encima (confirmado explícitamente fuera de alcance
+   de Sprint 9), es lo primero que Sprint 10 puebla.
 
    Piezas y lecciones que Sprint 7 dejó y que sprints futuros deben
    reusar/tener presentes:
@@ -1195,6 +1186,131 @@ priorizado). Una vez separados:
   de este sprint fueron de diseño (corrección de filtros pedida en vivo),
   de cobertura (ramas reales sin ejercitar) o de herramienta (`tsx`/`.env`),
   ninguno de lógica de negocio incorrecta.
+
+- **Sprint 9** — cerrado (2026-08-13). 369 tests (45 nuevos sobre los 324
+  heredados de Sprint 8), **cero migraciones de schema** (`Venta`/
+  `DetalleVenta`/`Paquete`/`BandejaSuelta` ya tenían todo desde Sprint 0),
+  cobertura 100%/100% en `server/services/venta.ts` **y** en
+  `server/actions/venta.ts`/`server/actions/cliente.ts` (por encima del
+  umbral ≥90% que exige el DoD), verificado con un script temporal contra
+  Neon real (16 asserts, incluida una **carrera concurrente real
+  forzada** con `Promise.allSettled` — dos `cerrarVenta()` peleando por
+  el mismo `Paquete`: exactamente una tuvo éxito, la otra rechazó con
+  `ItemsNoDisponiblesError` real, sin ninguna `Venta` a medias) y clic a
+  clic en navegador real por el Product Owner (incluido "Compartir" por
+  WhatsApp en un celular real), sin bugs de lógica de negocio. **Ejecutado
+  como sprint único, sin dividir en 9A/9B** pese a que el roadmap lo
+  marcaba con "⚠️ dividir" (31 pts, el sprint operativo más grande del
+  proyecto hasta ahora) — decisión confirmada explícitamente por el
+  Product Owner antes de planificar. Séptima transacción interactiva del
+  proyecto (`cerrarVenta`), primera vez que el proyecto vende inventario
+  real (`Paquete`/`BandejaSuelta` pasan de `DISPONIBLE` a `VENDIDO`),
+  primera dependencia de UI nueva del stack (`jsPDF`, generación de PDF
+  100% client-side). Detalle completo en
+  `specs/sprint-09-pos-carrito-cierre/` (spec.md, plan.md, tasks.md con
+  las 17 tareas documentadas al cerrarlas, incluidos los desvíos y
+  hallazgos reales).
+
+  **Decisiones de negocio confirmadas por el Product Owner antes de
+  ejecutar** (siete preguntas explícitas vía `AskUserQuestion`, mismo
+  criterio de `definition-of-ready.md` de Sprints 3-8): sprint único, sin
+  dividir; POS completo (selector/carrito/cierre) abierto a GERENTE y
+  OPERARIO por igual, sin entrada en `RUTAS_POR_ROL`; toda venta de este
+  sprint 100% al contado (`Venta.montoContado = totalCobrado`,
+  `montoCredito = null`, sin fila de `Credito`, pese a que esos campos ya
+  existen en el schema desde Sprint 0 — Créditos sigue siendo Sprint 11);
+  selector de cliente con el endpoint de autocomplete liviano que Sprint 8
+  dejó pospuesto explícitamente (no la lista completa sin buscar);
+  `DetalleVenta.tipo` solo puebla `PAQUETE`/`BANDEJA` este sprint
+  (`SUELTO` sigue sin código real hasta Sprint 10); descuento manual con
+  guard de aplicación (no supera el bruto, no negativo); comprobante con
+  PDF descargable + compartir — **expandido en vivo por el Product Owner**
+  más allá de la opción simple que este documento había propuesto (un
+  link `wa.me` de solo texto), lo que agregó `jsPDF` como dependencia
+  nueva del stack (ver `memory/stack-tecnologico.md`, sección
+  "Comprobantes (Sprint 9)").
+
+  **Hallazgo de diseño real, el más delicado del sprint:** el orden de la
+  transacción interactiva de `cerrarVenta` sigue el precedente de
+  `consolidarSueltos` (Sprint 7 — ancla `Venta` primero, guard
+  anti-doble-venta después) y NO el de `registrarMortalidadYDescontarAves`
+  (Sprint 4 — guard primero, ancla después). El motivo real: el guard de
+  este sprint es sobre un estado binario de una sola dirección
+  (`DISPONIBLE → VENDIDO`, sin reversión este sprint) — si el guard
+  corriera antes del `create`, un reintento idempotente legítimo (mismo
+  `id`, mismo carrito, ya persistido con éxito antes) encontraría los
+  ítems YA en `VENDIDO` y lanzaría el error de "no disponible" por
+  error, confundiendo un reintento válido con una carrera real. **El
+  orden de `registrarMortalidadYDescontarAves` no generaliza a cualquier
+  guard sobre un estado de una sola dirección** — hay que evaluar caso
+  por caso cuál de los dos precedentes aplica, no copiar el más reciente
+  sin pensar por qué funciona. Detalle completo en `plan.md`, sección
+  "Hallazgo de diseño: el orden del anclaje de idempotencia".
+
+  **Violación real de ADR-000 detectada en el propio diseño, antes de
+  escribir código (no un bug encontrado después):** el primer borrador de
+  `plan.md` para `cerrarVentaAction` hacía que la Server Action importara
+  `prisma` directo para releer `Paquete`/`BandejaSuelta` — ninguna otra
+  `server/actions/*.ts` del proyecto lo hace. Corregido antes de
+  implementar, agregando 4 funciones de lectura a
+  `server/repositories/venta.ts` en su lugar.
+
+  **Corrección real de diseño encontrada al empezar la UI (S9-10), antes
+  de cualquier prueba en vivo:** `cerrarVentaAction` solo devolvía
+  `{ id, totalCobrado }` — insuficiente para el comprobante (H6). Se
+  descartó a propósito armar el comprobante con el estado del carrito en
+  memoria del cliente (sería solo un preview con el precio vigente al
+  cargar la página, no necesariamente el mismo que terminó aplicado) —
+  corregido ampliando el `include`/`data` de retorno para traer
+  cliente/vendedor/ítems reales, los mismos que quedaron persistidos.
+
+  **Componente nuevo no anticipado en el plan original:** `PosWorkspace`
+  (`components/domain/pos/`) — el selector de items y el carrito están
+  visibles simultáneamente (no un modal aislado como el resto de dialogs
+  del proyecto) y necesitan compartir estado; como `app/(app)/pos/page.tsx`
+  es un Server Component sin estado, hizo falta un orquestador Client
+  Component que el plan original no había explicitado.
+
+  **Tres correcciones reales de UX/diseño pedidas en vivo por el Product
+  Owner, probando contra datos y un usuario de prueba reales (no solo
+  `npm run build`):**
+  1. El selector de Paquete/Bandeja mostraba la lista completa de
+     `DISPONIBLE` sin recorte ni búsqueda. Corregido: preview de los
+     últimos creados (constante `PREVIEW_INICIAL`, ajustada por el
+     Product Owner a `3` mientras probaba) + aviso "Hay N más — buscá por
+     peso" + búsqueda en memoria por peso (sin round-trip al servidor).
+  2. El autocomplete de cliente no ofrecía ningún camino para dar de alta
+     un cliente nuevo cuando la búsqueda no encontraba nada. Corregido
+     reusando el mismo `ClienteFormDialog` de `/clientes` (Sprint 8, que
+     ganó un callback opcional `onCreado`) en vez de duplicar el
+     formulario — el cliente recién creado queda seleccionado de una en
+     la venta en curso.
+  3. **El diseño del comprobante en PDF se rehizo por completo dos veces**
+     tras probarlo de verdad: de un layout genérico tipo A4 a un recibo
+     térmico de 80mm con el logo real de la granja embebido
+     (`avicolamya-isotipo.png`, cargado por `fetch`+`FileReader` —
+     `generarComprobantePdf()` pasó a ser `async`), líneas separadoras
+     punteadas/sólidas, y un N° de referencia corto (primeros 8
+     caracteres del id de Venta, sin serie fiscal). Después de esa
+     primera vuelta, el Product Owner pidió sacar el aviso "No es boleta
+     ni factura electrónica — sin validez SUNAT" del pie del PDF, y
+     cambiar el nombre de archivo de un UUID crudo a uno legible (fecha +
+     hora + el mismo N° de referencia hex que aparece impreso en el
+     propio PDF).
+
+  **Hallazgo no-bug real durante S9-17 (verificación clic a clic):** al
+  compartir por WhatsApp desde un celular Android, el operario recibe DOS
+  mensajes seguidos (el texto de contexto, después el PDF) en vez de uno
+  solo — comportamiento real de WhatsApp al recibir un share con
+  `text`+`files` a la vez desde la Web Share API, no controlable desde el
+  código de la página. El Product Owner decidió dejarlo así (el texto da
+  contexto útil sin que el operario tenga que escribirlo a mano).
+
+  **Deuda pendiente explícita, no resuelta en este sprint:** ninguna
+  conocida — a diferencia de sprints anteriores, no quedó ningún hallazgo
+  sin resolver (el ajuste manual de Mortalidad y el botón "Deshacer" de
+  `RegistroConsolidacion`, heredados de Sprints 6/7, siguen sin resolver
+  pero no son de este sprint).
 
 ## Bug real: `PageHeader` con 2+ botones de acción rompía el ancho en mobile (post-Sprint 7, 2026-08-13)
 El Product Owner probó `/consolidacion` en su celular real (los dos

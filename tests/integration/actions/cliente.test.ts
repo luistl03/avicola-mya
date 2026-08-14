@@ -16,6 +16,7 @@ const {
   crearClienteRepoMock,
   actualizarClienteMock,
   cambiarEstadoClienteMock,
+  buscarClientesAutocompleteMock,
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
   buscarSesionPorJtiMock: vi.fn(),
@@ -25,6 +26,7 @@ const {
   crearClienteRepoMock: vi.fn(),
   actualizarClienteMock: vi.fn(),
   cambiarEstadoClienteMock: vi.fn(),
+  buscarClientesAutocompleteMock: vi.fn(),
 }));
 
 vi.mock("@/server/auth", () => ({ auth: authMock }));
@@ -43,9 +45,15 @@ vi.mock("@/server/repositories/cliente", () => ({
   crearCliente: crearClienteRepoMock,
   actualizarCliente: actualizarClienteMock,
   cambiarEstadoCliente: cambiarEstadoClienteMock,
+  buscarClientesAutocomplete: buscarClientesAutocompleteMock,
 }));
 
-import { cambiarEstadoClienteAction, crearCliente, editarCliente } from "@/server/actions/cliente";
+import {
+  buscarClientesAutocompleteAction,
+  cambiarEstadoClienteAction,
+  crearCliente,
+  editarCliente,
+} from "@/server/actions/cliente";
 
 const AHORA = new Date("2026-01-01T00:00:00.000Z");
 
@@ -367,6 +375,56 @@ describe("Server Actions de cliente (Sprint 8)", () => {
       });
 
       expect(resultado.ok).toBe(true);
+    });
+  });
+
+  // Sprint 9 (POS) — lectura disparada desde ClienteAutocomplete, sin
+  // withAuth (mismo criterio que obtenerMasBitacora).
+  describe("buscarClientesAutocompleteAction", () => {
+    it("rechaza sin sesión, sin tocar el repository", async () => {
+      authMock.mockResolvedValue(null);
+
+      const resultado = await buscarClientesAutocompleteAction("Sol");
+
+      expect(resultado).toEqual({ ok: false, error: "No autenticado." });
+      expect(buscarClientesAutocompleteMock).not.toHaveBeenCalled();
+    });
+
+    it("con sesión válida, devuelve las sugerencias del repository", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarClientesAutocompleteMock.mockResolvedValue([clienteBase({ nombre: "Distribuidora El Sol" })]);
+
+      const resultado = await buscarClientesAutocompleteAction("Sol");
+
+      expect(resultado).toEqual({ ok: true, data: [clienteBase({ nombre: "Distribuidora El Sol" })] });
+      expect(buscarClientesAutocompleteMock).toHaveBeenCalledWith("Sol");
+    });
+
+    it("un OPERARIO también puede buscar (sin restricción de rol)", async () => {
+      authMock.mockResolvedValue(sessionOperario());
+      buscarClientesAutocompleteMock.mockResolvedValue([]);
+
+      const resultado = await buscarClientesAutocompleteAction("Sol");
+
+      expect(resultado.ok).toBe(true);
+    });
+
+    it("una búsqueda vacía no es un error — responde sin sugerencias, sin tocar el repository", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+
+      const resultado = await buscarClientesAutocompleteAction("");
+
+      expect(resultado).toEqual({ ok: true, data: [] });
+      expect(buscarClientesAutocompleteMock).not.toHaveBeenCalled();
+    });
+
+    it("no escribe AuditLog (es una lectura, no una mutación)", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarClientesAutocompleteMock.mockResolvedValue([]);
+
+      await buscarClientesAutocompleteAction("Sol");
+
+      expect(crearAuditLogMock).not.toHaveBeenCalled();
     });
   });
 });

@@ -41,3 +41,12 @@ export const cambiarEstadoClienteSchema = z.object({
 });
 
 export type CambiarEstadoClienteInput = z.infer<typeof cambiarEstadoClienteSchema>;
+
+// Sprint 9 — selector de cliente del POS. Sin id/clienteId (es una lectura,
+// no una mutación) y sin los límites de crearClienteSchema (nombre/celular
+// completos) — solo el texto que el operario ya escribió en el buscador.
+export const buscarClientesAutocompleteSchema = z.object({
+  busqueda: z.string().trim().min(1).max(120),
+});
+
+export type BuscarClientesAutocompleteInput = z.infer<typeof buscarClientesAutocompleteSchema>;

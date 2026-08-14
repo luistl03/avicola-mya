@@ -2,11 +2,18 @@
 
 import { Prisma } from "@prisma/client";
 
-import { cambiarEstadoClienteSchema, crearClienteSchema, editarClienteSchema } from "@/lib/zod/cliente";
+import {
+  buscarClientesAutocompleteSchema,
+  cambiarEstadoClienteSchema,
+  crearClienteSchema,
+  editarClienteSchema,
+} from "@/lib/zod/cliente";
+import { auth } from "@/server/auth";
 import { AccionError, withAuth } from "@/server/auth/with-auth";
 import {
   actualizarCliente,
   buscarClientePorId,
+  buscarClientesAutocomplete,
   cambiarEstadoCliente,
   crearCliente as crearClienteRepo,
 } from "@/server/repositories/cliente";
@@ -117,3 +124,27 @@ export const cambiarEstadoClienteAction = withAuth(
     };
   },
 );
+
+// Lectura, no mutación → NO pasa por withAuth a propósito (Sprint 9, mismo
+// criterio que obtenerMasBitacora, memory/convenciones.md, "Server
+// Actions"): no hay una única entidad mutada que auditar — forzarlo
+// ensuciaría AuditLog con una fila por cada tecla escrita en el buscador
+// del POS. Verifica sesión a mano con auth(). Acotado a ACTIVO y sin
+// paginación en el repository (buscarClientesAutocomplete), no acá.
+export async function buscarClientesAutocompleteAction(busqueda: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "No autenticado." };
+  }
+
+  const parsed = buscarClientesAutocompleteSchema.safeParse({ busqueda });
+  if (!parsed.success) {
+    // Búsqueda vacía/inválida (ej. el operario borró el input) no es un
+    // error para el usuario del autocomplete — simplemente no hay
+    // sugerencias que mostrar todavía.
+    return { ok: true as const, data: [] };
+  }
+
+  const clientes = await buscarClientesAutocomplete(parsed.data.busqueda);
+  return { ok: true as const, data: clientes };
+}

@@ -5,6 +5,7 @@ import {
   Home,
   Layers3,
   NotebookPen,
+  ShoppingCart,
   Skull,
   Tag,
   Users,
@@ -34,4 +35,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/consolidacion", label: "Consolidación", icon: Combine },
   { href: "/clientes", label: "Clientes", icon: Contact },
   { href: "/precio-kilo", label: "Precio por Kilo", icon: Tag },
+  { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
 ];
