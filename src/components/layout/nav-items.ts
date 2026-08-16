@@ -1,7 +1,9 @@
 import {
   Combine,
   Contact,
+  CreditCard,
   Egg,
+  History,
   Home,
   Layers3,
   NotebookPen,
@@ -36,4 +38,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/clientes", label: "Clientes", icon: Contact },
   { href: "/precio-kilo", label: "Precio por Kilo", icon: Tag },
   { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
+  { href: "/ventas", label: "Ventas", icon: History },
+  { href: "/creditos", label: "Créditos", icon: CreditCard },
 ];

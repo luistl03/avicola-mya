@@ -1,20 +1,8 @@
 import { z } from "zod";
 
-import { idUuid } from "@/lib/zod/comun";
+import { hoyEnLima, idUuid } from "@/lib/zod/comun";
 
 const codigo = z.string().trim().min(1, "El código es obligatorio").max(40);
-
-// "Hoy" se calcula en América/Lima (D5), no en la zona horaria del
-// servidor — comparar Date crudos (UTC) haría que, por ejemplo, las
-// primeras horas de un día en UTC (que todavía son "ayer" en Lima,
-// UTC-5) rechacen como "futura" una fecha que en Lima sigue siendo hoy.
-// toLocaleDateString("en-CA", ...) da directo el formato YYYY-MM-DD; el
-// constructor de Date interpreta ese string como medianoche UTC, que es
-// exactamente lo mismo que hace z.coerce.date() con el valor que manda
-// el <input type="date">, así que la comparación queda pareja.
-function hoyEnLima(): Date {
-  return new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Lima" }));
-}
 
 const fechaIngreso = z.coerce
   .date({ message: "Fecha inválida" })

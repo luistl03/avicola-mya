@@ -9,12 +9,13 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 10 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+- **Sprint actual:** 12 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
   Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
   Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora, Sprint 5 —
   Recolección e Inventario, Sprint 6 — Ventana de gracia y reversión,
   Sprint 7 — Consolidación de residuos, Sprint 8 — Clientes y Precio por
-  Kilo, Sprint 9 — POS: Carrito y Cierre)
+  Kilo, Sprint 9 — POS: Carrito y Cierre, Sprint 10 — Consolidación:
+  Romper Paquete/Bandeja, Sprint 11 — Créditos y cobranza)
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -779,20 +780,95 @@ priorizado). Una vez separados:
   cliente registrado, tiene que existir también en producción.
 
 ## Cómo continuar desde acá
-1. **Sprint 9 (POS: Carrito y Cierre) ya está cerrado** (ver el registro
+0. **Sprint 11 (Créditos y cobranza) ya está cerrado** (ver el registro
    completo en "Registro de cierre de sprints" más abajo y
-   `specs/sprint-09-pos-carrito-cierre/`). Sprint 10 (POS: Romper Paquete
-   y sueltos, "se vende cualquier cantidad, rompiendo paquete en vivo") es
-   el siguiente. **Piezas de Sprint 9 que Sprint 10 hereda tal cual, sin
-   reconstruir:** `cerrarVenta()` (`server/repositories/venta.ts`) y su
-   guard anti-doble-venta (`updateMany` por lote de ids sobre
-   `Paquete`/`BandejaSuelta`) son la referencia directa para cualquier
-   guard nuevo sobre `RoturaPaquete`; `PosSelectorItems`/`PosCarrito`/
-   `PosWorkspace` (`components/domain/pos/`) son la base real sobre la que
-   Sprint 10 agrega el flujo "Romper Paquete" — no hace falta un POS
-   nuevo, se extiende el mismo; `DetalleVenta.tipo: SUELTO` sigue sin
-   ningún código real encima (confirmado explícitamente fuera de alcance
-   de Sprint 9), es lo primero que Sprint 10 puebla.
+   `specs/sprint-11-creditos-cobranza/`). Sprint 12 (Egresos y Personal) es
+   el siguiente. **Hallazgo de diseño más importante de Sprint 11, a tener
+   presente para cualquier transacción interactiva futura con un guard
+   sobre un contador con margen:** el diseño original de `registrarAbono`
+   (`server/repositories/credito.ts`) copió el orden "guard primero, ancla
+   después" de `registrarMortalidadYDescontarAves` (Sprint 4) por analogía
+   directa (`Credito.montoPagado` ~ `Lote.avesVivas`, ambos "contadores con
+   margen"). Esa analogía resultó incompleta y se rompió en la
+   verificación en vivo contra Neon (S11-19): a diferencia de `avesVivas`
+   (llegar a 0 es posible pero no el desenlace normal), `montoPagado`
+   llegando exactamente a `montoTotal` es el desenlace ESPERADO de todo
+   crédito (auto-liquidación) — con "guard primero", el reintento
+   idempotente de justo el abono que liquida el crédito encontraba el
+   guard sin margen y se rechazaba ANTES de llegar al `create` con `id`
+   explícito, así que la detección de idempotencia vía `P2002` nunca se
+   disparaba. **Corregido a "ancla primero, guard después"**, mismo orden
+   que `cerrarVenta`/`romperPaquete`/`romperBandeja`. **Lección para
+   sprints futuros:** "guard primero" solo es seguro cuando agotar el
+   margen del contador es un caso límite infrecuente, no el desenlace
+   normal esperado de la operación — evaluar caso por caso, y si hay duda
+   real, verificarlo con un reintento real contra Neon (los tests
+   mockeados de S11-17/S11-18 pasaron en verde con el diseño roto, porque
+   mockean el repository entero y no distinguen el orden interno de la
+   transacción). Detalle completo en
+   `specs/sprint-11-creditos-cobranza/plan.md`, sección "Hallazgo de
+   diseño, CORREGIDO durante la verificación en vivo".
+
+   **Dos hallazgos reales más, encontrados en la verificación clic a clic
+   (S11-20), ambos corregidos en el momento:**
+   - Un `Credito` `PENDIENTE` con más de 3 días de margen (sin alerta
+     todavía) no tenía ningún botón para recibir un abono en toda la UI —
+     `PanelAlertas` solo muestra créditos con algún nivel de alerta,
+     `EstadoCuentaCliente` solo mostraba datos. Corregido agregando
+     `RegistrarAbonoDialog` (con un `onRegistrado` opcional nuevo, para que
+     un consumidor que no es un Server Component pueda refrescar su propio
+     estado) a cada fila `PENDIENTE` de `EstadoCuentaCliente` también, no
+     solo a las tarjetas del panel de alertas.
+   - Las fechas límite de crédito se mostraban con un día de desfase
+     (bug de zona horaria real, confirmado con Node): `Credito.fechaLimite`
+     es una fecha-calendario pura anclada a medianoche UTC (mismo criterio
+     D5/`hoyEnLima()` que el resto del proyecto usa para fechas sin hora),
+     pero se formateaba para mostrar con `timeZone: "America/Lima"` —
+     medianoche UTC cae las 19:00 del día anterior en Lima (UTC-5), así
+     que la conversión le resta un día a una fecha que nunca tuvo hora
+     real. Corregido formateando esas fechas-calendario con
+     `timeZone: "UTC"` en vez de `"America/Lima"` (sin tocar
+     `Venta.fecha`/`HistorialAbonos.fecha`, esos sí son instantes reales
+     con hora, correctos en `America/Lima`). Bug relacionado, mismo
+     origen, encontrado y corregido a la vez: `app/(app)/creditos/page.tsx`
+     y `app/page.tsx` calculaban "hoy" para clasificar niveles de alerta
+     con `new Date()` crudo en vez de `hoyEnLima()` — mismo tipo de
+     descalce que "fechaIngreso aceptaba fechas futuras" (Sprint 3, Bug
+     4), con ventana de riesgo real entre las 00:00 y las 05:00 UTC
+     (cuando en Lima todavía es "ayer"). **Lección para sprints futuros:**
+     cualquier campo `DateTime` que en realidad representa un día
+     calendario sin hora (como `fechaLimite`, `fechaIngreso`) debe
+     formatearse para mostrar con `timeZone: "UTC"`, nunca
+     `"America/Lima"` — ese criterio queda reservado para instantes reales
+     con hora (`creadoEn`, `fecha` de una venta/abono/movimiento). El
+     `.badge`/patrón de comparación (`hoyEnLima()` vs. el valor crudo) ya
+     lo tenía bien resuelto desde Sprint 3; lo que faltaba era aplicarlo
+     también al lado de la lectura/display, no solo al de escritura/
+     comparación.
+
+1. **Sprint 10 (Consolidación: Romper Paquete/Bandeja) ya está cerrado**
+   (ver el registro completo en "Registro de cierre de sprints" más abajo
+   y `specs/sprint-10-romper-paquete-sueltos/`). **Hallazgo real más
+   importante de Sprint 10,
+   a tener presente para cualquier sprint futuro con ambigüedad similar de
+   "¿dónde vive esta acción en la UI?":** el brief original asumía que la
+   granja vendía huevo suelto por unidad y que "Romper Paquete" viviría
+   dentro de `/pos` — ambos supuestos resultaron falsos al debatir el
+   flujo real ya construido con el Product Owner (la granja solo vende por
+   Paquete/Bandeja; Romper únicamente alimenta los wizards de Consolidación,
+   nunca una venta directa). S10-9 a S10-12 se implementaron primero con
+   el diseño original, quedaron en verde, y se revirtieron por completo —
+   ver "Corrección de diseño real, en plena ejecución" en
+   `specs/sprint-10-romper-paquete-sueltos/spec.md`/`tasks.md` para el
+   detalle completo. **`DetalleVenta.tipo: SUELTO` y
+   `TipoMovimientoSueltos.VENTA_SUELTO` quedan sin código real de forma
+   PERMANENTE** (no "hasta que otro sprint lo resuelva") — cualquier
+   sprint futuro que toque `Venta`/`DetalleVenta` no debe asumir que hace
+   falta poblarlos. **Piezas de Sprint 9 que Sprint 10 heredó tal cual, sin
+   reconstruir:** `listarPaquetesDisponibles()`/`listarBandejasDisponibles()`
+   (`server/repositories/venta.ts`) se reusan tal cual desde
+   `/consolidacion` además de `/pos` — mismo dataset, dos consumidores,
+   sin ninguna función nueva.
 
    Piezas y lecciones que Sprint 7 dejó y que sprints futuros deben
    reusar/tener presentes:
@@ -1311,6 +1387,169 @@ priorizado). Una vez separados:
   sin resolver (el ajuste manual de Mortalidad y el botón "Deshacer" de
   `RegistroConsolidacion`, heredados de Sprints 6/7, siguen sin resolver
   pero no son de este sprint).
+
+- **Sprint 10** — cerrado (2026-08-14). 408 tests (20 nuevos sobre los 388
+  heredados de Sprint 9), una migración no destructiva aplicada contra
+  Neon real (`RoturaBandeja` nuevo, `EstadoBandeja` gana `ROTO`,
+  `TipoMovimientoSueltos` gana `ROTURA_BANDEJA_ENTRADA`), cobertura
+  100%/100% en `server/services/rotura.ts` **y** en
+  `server/actions/rotura.ts`, verificado con un script temporal contra
+  Neon real (30 asserts, incluidas **dos carreras concurrentes reales
+  forzadas** — romper el mismo Paquete y la misma Bandeja dos veces a la
+  vez, exactamente un éxito y un rechazo en cada caso — más idempotencia
+  real vía `P2002`) y clic a clic en navegador real con la extensión
+  Claude in Chrome, sin hallazgos de bugs. Octava y novena transacción
+  interactiva del proyecto (`romperPaquete`/`romperBandeja`), primer
+  código real sobre `RoturaPaquete` (schema desde Sprint 0, sin consumidor
+  hasta ahora). Detalle completo en
+  `specs/sprint-10-romper-paquete-sueltos/` (spec.md, plan.md, tasks.md
+  con las 16 tareas documentadas al cerrarlas, incluida la corrección de
+  diseño real en plena ejecución).
+
+  **Decisiones de negocio confirmadas por el Product Owner** (nueve
+  preguntas explícitas vía `AskUserQuestion` a lo largo de la
+  planificación y la ejecución — dos de ellas salieron de debatir el flujo
+  ya construido, no del brief inicial): reparto proporcional a los
+  orígenes reales de `PaqueteOrigen`/`BandejaOrigen` (100% trivial si es
+  `PURO`), con el remanente sin `loteId` conocido resuelto vía "Ajustar
+  Inventario" (Sprint 6) en vez de perderse en silencio; `RoturaPaquete.paqueteId`/
+  `RoturaBandeja.bandejaId` `@unique` sirven de ancla natural de
+  idempotencia, sin id de cliente separado; también se puede romper una
+  `BandejaSuelta` (30u), no solo un `Paquete` (180u) — expandió el alcance
+  original del roadmap y exigió la migración de schema; abierto a GERENTE
+  y OPERARIO por igual; siempre se rompe la unidad completa, nunca
+  parcial; `TipoMovimientoSueltos` gana `ROTURA_BANDEJA_ENTRADA` en vez de
+  reusar `ROTURA_PAQUETE_ENTRADA` para ambos casos.
+
+  **Corrección de diseño real, en plena ejecución — la más grande de
+  cualquier sprint hasta ahora, más grande que la de S7-15:** S10-9 a
+  S10-12 se implementaron primero tal cual el brief original (Romper
+  Paquete integrado en `/pos`, más una extensión completa de
+  `cerrarVenta()`/`/pos` para vender huevo suelto por unidad), quedaron en
+  verde (`typecheck`/`lint`/`test`/`build`), y se **revirtieron por
+  completo** después de dos hallazgos del Product Owner debatiendo el
+  flujo ya construido: (1) la granja **nunca vende huevo por unidad**,
+  solo Paquete o Bandeja — "Venta de sueltos por unidad" no era una
+  historia real; (2) el único destino real de un suelto liberado por una
+  rotura es re-armarse en Paquete/Bandeja vía los wizards de
+  `/consolidacion` (Sprint 7), que **no tienen equivalente dentro de
+  `/pos`** — así que Romper nunca tuvo un motivo de negocio real para
+  vivir ahí. Revertido por completo (de vuelta al estado exacto de
+  Sprint 9, confirmado con `git diff` sin ninguna diferencia real más allá
+  de comentarios): `lib/zod/venta.ts`, `server/repositories/venta.ts`,
+  `server/actions/venta.ts`, `lib/pdf/comprobante.ts`, y todo
+  `components/domain/pos/`. Reubicado (mismo contenido, mismos archivos,
+  movidos de carpeta): `RomperPaqueteDialog`/`RomperBandejaDialog`, ahora
+  en `components/domain/consolidacion/`. Nuevo, para la ubicación
+  corregida: `RomperInventarioSection` + el listado de Paquetes/Bandejas
+  `DISPONIBLE` agregado a `/consolidacion`. **Lo que NO necesitó ni un
+  desvío:** `server/services/rotura.ts`, `server/repositories/rotura.ts`,
+  `server/actions/rotura.ts`, `lib/zod/rotura.ts` y la migración de schema
+  — la arquitectura en capas hizo que mover la feature completa de
+  pantalla fuera, literalmente, solo un cambio de UI. Documentado en
+  detalle (sin reescribir la historia real) en
+  `specs/sprint-10-romper-paquete-sueltos/spec.md`/`tasks.md`.
+
+  **Bug real encontrado y corregido durante la implementación original de
+  S10-9 (antes de la corrección de diseño, pero vale la pena dejarlo
+  anotado porque el patrón puede repetirse):** `Extract<T, { tipo:
+  "PAQUETE" }>` sobre un tipo Zod con `tipo: z.enum(["PAQUETE",
+  "BANDEJA"])` (un solo miembro de unión con un campo de tipo unión, no
+  dos miembros discriminados por separado) resuelve a `never` en
+  TypeScript — hace falta extraer sobre la unión combinada de los
+  literales juntos (`Extract<T, { tipo: "PAQUETE" | "BANDEJA" }>`). Tenerlo
+  presente en cualquier código futuro que necesite narrowear un ítem de
+  `cerrarVentaSchema` por tipo.
+
+  **Hallazgo de cobertura (S10-14), mismo patrón que S7-13/S8-15/S9-15:**
+  las cuatro ramas de error de `romperBandejaAction` (bandeja inexistente,
+  error no-`P2002` propagado, `P2002` con el registro ya no encontrado,
+  `pesoExtraido` distinto → carrera real) eran un mirror exacto de
+  `romperPaqueteAction`, pero ningún test las ejercitaba específicamente
+  para Bandeja. Corregido con 4 tests reales nuevos — recobertura
+  100%/100%/100%/100% en `server/actions/rotura.ts`.
+
+  **Deuda pendiente explícita, no resuelta en este sprint:** ninguna
+  conocida sobre la funcionalidad en sí — el costo real de este sprint fue
+  el trabajo revertido de la corrección de diseño (documentado como R7 en
+  `specs/sprint-10-romper-paquete-sueltos/spec.md`, con la reflexión de
+  que un mockup o una descripción más concreta del flujo "romper en vivo"
+  antes de implementar habría evitado esa vuelta). El ajuste manual de
+  Mortalidad y el botón "Deshacer" de `RegistroConsolidacion`/`RoturaPaquete`/
+  `RoturaBandeja`, heredados de sprints anteriores, siguen sin resolver.
+
+- **Sprint 11** — cerrado (2026-08-15). 460 tests (52 nuevos sobre los 408
+  heredados de Sprint 10), **sin migración de schema** (`Credito`/
+  `HistorialAbonos`/`enum EstadoCredito` ya tenían todo desde Sprint 0),
+  cobertura 100%/100%/100%/100% en `server/services/credito.ts` **y** en
+  la porción nueva de `server/services/venta.ts`/`server/actions/venta.ts`/
+  `server/actions/credito.ts`/`lib/zod/venta.ts`/`lib/zod/credito.ts`,
+  verificado con 29 asserts contra Neon real (incluida una carrera
+  concurrente real forzada — dos abonos peleando por el mismo saldo,
+  exactamente uno gana) y clic a clic en navegador. Décima transacción
+  interactiva del proyecto (`registrarAbono`), primer código real sobre
+  `Credito`/`HistorialAbonos` (schema desde Sprint 0, sin consumidor hasta
+  ahora), primera vez que el proyecto puebla `Venta.montoContado`/
+  `montoCredito` con un valor distinto al 100% contado de Sprint 9.
+  Detalle completo en `specs/sprint-11-creditos-cobranza/` (spec.md,
+  plan.md, tasks.md con las 20 tareas documentadas al cerrarlas, incluidos
+  los tres hallazgos reales de diseño).
+
+  **Decisiones de negocio confirmadas por el Product Owner** (diez
+  preguntas explícitas vía `AskUserQuestion` — nueve del brief original
+  más una sobre `fechaLimite` que surgió al diseñar la extensión real de
+  `cerrarVenta`): toggle "Venta a crédito" separado del selector de
+  método de pago (`MetodoPago` no gana ningún valor nuevo); pago parcial
+  contado+crédito permitido en la misma venta; bloqueo de crédito solo
+  por comparación directa con `CLIENTE_PUBLICO_GENERAL_ID` (no por
+  `TipoCliente.EVENTUAL`); sin límite de crédito por cliente, sin
+  migración sobre `Cliente`; panel de alertas en ambos lugares (resumen
+  real en el dashboard `/` + panel completo en `/creditos`); tres niveles
+  de antigüedad (Por vencer ≤3 días, Vencido reciente ≤7 días, Vencido
+  crítico >7 días); abonos abiertos a GERENTE y OPERARIO por igual;
+  sobrepago rechazado explícito, nunca recortado en silencio; estado de
+  cuenta dentro de `/creditos`, no en `/clientes`; `fechaLimite` sugerida
+  (hoy + 15 días) y editable, no fija ni vacía.
+
+  **Hallazgo de diseño real, el más importante del sprint — encontrado
+  contra Neon real, no solo en teoría (S11-19):** el diseño original de
+  `registrarAbono()` seguía el orden "guard primero, ancla después" de
+  `registrarMortalidadYDescontarAves` (Sprint 4), por analogía
+  (`Credito.montoPagado` ~ `Lote.avesVivas`, ambos "contadores con
+  margen"). Esa analogía resultó incompleta: `avesVivas` llegando a 0 es
+  un caso posible pero no el desenlace normal de cada registro, mientras
+  que `montoPagado` llegando exactamente a `montoTotal` es el desenlace
+  ESPERADO de todo crédito (auto-liquidación, H5) — con "guard primero",
+  el reintento idempotente de justo el abono que liquida el crédito
+  encontraba el guard sin margen y se rechazaba con `CreditoSobrepagoError`
+  ANTES de llegar al `create` con `id` explícito, así que la detección de
+  idempotencia vía `P2002` nunca se disparaba (un `assert` real falló
+  contra Neon confirmándolo). **Corregido a "ancla primero, guard
+  después"**, mismo orden que `cerrarVenta`/`romperPaquete`/
+  `romperBandeja`. Detalle completo y la lección para sprints futuros
+  ("guard primero" solo generaliza cuando agotar el margen es un caso
+  límite infrecuente, no el desenlace normal esperado) en "Cómo continuar
+  desde acá", punto 0, más arriba.
+
+  **Dos hallazgos reales más, en la verificación clic a clic (S11-20),
+  ambos corregidos en el momento:** (1) un `Credito` `PENDIENTE` sin
+  alerta todavía (más de 3 días de margen) no tenía ningún botón para
+  recibir un abono en toda la UI — corregido agregando
+  `RegistrarAbonoDialog` también a cada fila `PENDIENTE` de
+  `EstadoCuentaCliente`, no solo a las tarjetas del panel de alertas; (2)
+  las fechas límite se mostraban con un día de desfase (`Credito.fechaLimite`
+  es una fecha-calendario ancla a medianoche UTC, formatearla con
+  `timeZone: "America/Lima"` le resta un día) — corregido formateando en
+  `"UTC"`, y el cálculo de "hoy" para clasificar alertas pasó de
+  `new Date()` crudo a `hoyEnLima()` (D5) en `app/(app)/creditos/page.tsx`
+  y `app/page.tsx`. Ver "Cómo continuar desde acá", punto 0, para el
+  detalle completo de ambos.
+
+  **Deuda pendiente explícita, no resuelta en este sprint:** ninguna
+  conocida sobre la funcionalidad en sí. El ajuste manual de Mortalidad y
+  el botón "Deshacer" de `RegistroConsolidacion`/`RoturaPaquete`/
+  `RoturaBandeja`, heredados de sprints anteriores, siguen sin resolver —
+  mismos de siempre, no nuevos de este sprint.
 
 ## Bug real: `PageHeader` con 2+ botones de acción rompía el ancho en mobile (post-Sprint 7, 2026-08-13)
 El Product Owner probó `/consolidacion` en su celular real (los dos

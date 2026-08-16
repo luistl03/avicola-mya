@@ -1,13 +1,14 @@
 import { z } from "zod";
 
-import { idUuid } from "@/lib/zod/comun";
+import { hoyEnLima, idUuid } from "@/lib/zod/comun";
 
 // A propósito, un ítem del carrito NO lleva peso ni precio — esos valores
 // nunca se confían del payload del cliente (H2, spec.md): la Server Action
 // relee el peso real de Paquete/BandejaSuelta y el precio de
-// obtenerPrecioKiloVigente() del lado del servidor. SUELTO queda fuera del
-// enum a propósito (decisión de negocio 5, spec.md) — Sprint 10 lo agrega
-// cuando exista ese flujo real.
+// obtenerPrecioKiloVigente() del lado del servidor. La granja no vende
+// huevo por unidad (confirmado con el Product Owner durante la
+// planificación de Sprint 10) — el carrito solo admite PAQUETE/BANDEJA,
+// nunca un tipo SUELTO.
 const itemCarrito = z.object({
   tipo: z.enum(["PAQUETE", "BANDEJA"]),
   id: idUuid(),
@@ -30,6 +31,32 @@ const descuento = z.coerce.number().min(0, "El descuento no puede ser negativo")
 
 const metodoPago = z.enum(["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA"]);
 
-export const cerrarVentaSchema = z.object({ id, clienteId, items, descuento, metodoPago });
+// Sprint 11 — venta a crédito (total o parcial). A propósito, este schema
+// sigue sin incluir montoTotal/montoCredito calculados: se resuelven
+// server-side a partir de totalCobrado (ya resuelto con precio real) y
+// montoContado, mismo criterio que precioKiloAplicado/subtotal nunca se
+// confían del cliente (H2, Sprint 9). El guard "montoContado no supera el
+// total cobrado" tampoco vive acá (Zod no conoce totalCobrado, depende de
+// ítems reales resueltos server-side) — vive en
+// validarMontoContado (server/services/venta.ts).
+const esCredito = z.coerce.boolean().default(false);
+const montoContado = z.coerce.number().min(0, "No puede ser negativo").optional();
+const fechaLimiteCredito = z.coerce.date({ message: "Fecha inválida" }).optional();
+
+export const cerrarVentaSchema = z
+  .object({ id, clienteId, items, descuento, metodoPago, esCredito, montoContado, fechaLimiteCredito })
+  .refine((data) => !data.esCredito || data.montoContado !== undefined, {
+    message: "Indicá el monto al contado (puede ser 0).",
+    path: ["montoContado"],
+  })
+  .refine((data) => !data.esCredito || data.fechaLimiteCredito !== undefined, {
+    message: "Indicá la fecha límite del crédito.",
+    path: ["fechaLimiteCredito"],
+  })
+  .refine(
+    (data) =>
+      !data.esCredito || !data.fechaLimiteCredito || data.fechaLimiteCredito.getTime() > hoyEnLima().getTime(),
+    { message: "La fecha límite debe ser posterior a hoy.", path: ["fechaLimiteCredito"] },
+  );
 
 export type CerrarVentaInput = z.infer<typeof cerrarVentaSchema>;

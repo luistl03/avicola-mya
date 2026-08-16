@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { calcularBrutoVenta, calcularTotalCobrado, validarDescuento } from "@/server/services/venta";
+import {
+  calcularBrutoVenta,
+  calcularMontoCredito,
+  calcularTotalCobrado,
+  validarDescuento,
+  validarMontoContado,
+} from "@/server/services/venta";
 
 describe("calcularBrutoVenta", () => {
   it("un solo ítem: peso × precio vigente", () => {
@@ -49,5 +55,33 @@ describe("calcularTotalCobrado", () => {
 
   it("redondea a centavos", () => {
     expect(calcularTotalCobrado(33.333, 0)).toBe(33.33);
+  });
+});
+
+describe("validarMontoContado", () => {
+  it("monto 0 es válido (todo a crédito)", () => {
+    expect(validarMontoContado(300, 0)).toBe(true);
+  });
+
+  it("monto igual al total cobrado es válido (límite exacto — todo al contado)", () => {
+    expect(validarMontoContado(300, 300)).toBe(true);
+  });
+
+  it("monto mayor al total cobrado es inválido", () => {
+    expect(validarMontoContado(300, 300.01)).toBe(false);
+  });
+
+  it("monto negativo es inválido", () => {
+    expect(validarMontoContado(300, -1)).toBe(false);
+  });
+});
+
+describe("calcularMontoCredito", () => {
+  it("con monto parcial al contado, resta del total cobrado", () => {
+    expect(calcularMontoCredito(300, 100)).toBe(200);
+  });
+
+  it("con monto al contado en 0, el crédito es el total cobrado completo", () => {
+    expect(calcularMontoCredito(300, 0)).toBe(300);
   });
 });

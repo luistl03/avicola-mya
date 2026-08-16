@@ -32,6 +32,12 @@ describe("reconstruirSaldo", () => {
     expect(reconstruirSaldo(movimientos)).toBe(12);
   });
 
+  it("suma ROTURA_BANDEJA_ENTRADA como entrada (Sprint 10)", () => {
+    const movimientos = [{ tipo: "ROTURA_BANDEJA_ENTRADA" as const, cantidad: 18 }];
+
+    expect(reconstruirSaldo(movimientos)).toBe(18);
+  });
+
   it("resta REVERSION — deshace un RECOLECCION anterior (Sprint 6)", () => {
     const movimientos = [
       { tipo: "RECOLECCION" as const, cantidad: 110 },

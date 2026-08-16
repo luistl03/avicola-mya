@@ -58,6 +58,7 @@ vi.mock("@/server/repositories/venta", () => ({
   buscarBandejasNoDisponiblesEntreIds: buscarBandejasNoDisponiblesEntreIdsMock,
 }));
 
+import { CLIENTE_PUBLICO_GENERAL_ID } from "@/lib/constants";
 import { cerrarVentaAction } from "@/server/actions/venta";
 import { ItemsNoDisponiblesError } from "@/server/repositories/venta";
 
@@ -128,11 +129,19 @@ function ventaBase(overrides: Partial<Record<string, unknown>> = {}) {
     metodoPago: "EFECTIVO" as const,
     montoContado: 95,
     montoCredito: null,
+    credito: null,
     cliente: { nombre: "Distribuidora El Sol" },
     usuario: { nombre: "Gerente" },
     detalles: [detalleBase()],
     ...overrides,
   };
+}
+
+function erroDeUnicidad() {
+  return new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+    code: "P2002",
+    clientVersion: "6.19.3",
+  });
 }
 
 describe("cerrarVentaAction", () => {
@@ -171,6 +180,10 @@ describe("cerrarVentaAction", () => {
         totalCobrado: 95,
         descuento: 0,
         metodoPago: "EFECTIVO",
+        esCredito: false,
+        montoContado: 95,
+        montoCredito: null,
+        fechaLimiteCredito: null,
         items: [{ tipo: "PAQUETE", pesoKg: 10, precioKiloAplicado: 9.5, subtotal: 95 }],
       },
     });
@@ -183,6 +196,7 @@ describe("cerrarVentaAction", () => {
       totalCobrado: 95,
       metodoPago: "EFECTIVO",
       ahora: AHORA,
+      credito: undefined,
     });
     expect(crearAuditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({ entidad: "Venta", accion: "CREAR", entidadId: VENTA_1_ID }),
@@ -364,12 +378,6 @@ describe("cerrarVentaAction", () => {
   // Idempotencia por id de cliente (spec.md — Venta no tiene ningún campo
   // @unique).
   describe("idempotencia por id de cliente", () => {
-    function erroDeUnicidad() {
-      return new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
-        code: "P2002",
-        clientVersion: "6.19.3",
-      });
-    }
 
     it("reintento con el mismo id y el mismo carrito devuelve la venta ya existente, sin duplicar", async () => {
       authMock.mockResolvedValue(sessionGerente());
@@ -480,6 +488,156 @@ describe("cerrarVentaAction", () => {
 
       await expect(cerrarVentaAction(inputValido)).rejects.toThrow(error);
       expect(crearAuditLogMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // Sprint 11 — venta a crédito (total o parcial). Los tests de arriba
+  // (100% al contado, esCredito por defecto en false) no cambiaron ni una
+  // aserción — confirma que esta extensión no rompe el comportamiento de
+  // Sprint 9.
+  describe("venta a crédito (Sprint 11)", () => {
+    it("venta a crédito total (montoContado: 0) crea el Credito con montoTotal = totalCobrado", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      obtenerPrecioKiloVigenteMock.mockResolvedValue(precioVigente(9.5));
+      buscarPaquetesPorIdsMock.mockResolvedValue([{ id: PAQUETE_1_ID, peso: 10 }]);
+      buscarBandejasPorIdsMock.mockResolvedValue([]);
+      const fechaLimite = new Date("2026-02-01T00:00:00.000Z");
+      cerrarVentaRepoMock.mockResolvedValue(
+        ventaBase({
+          montoContado: 0,
+          montoCredito: 95,
+          credito: { fechaLimite },
+        }),
+      );
+
+      const resultado = await cerrarVentaAction({
+        ...inputValido,
+        esCredito: true,
+        montoContado: 0,
+        fechaLimiteCredito: fechaLimite,
+      });
+
+      expect(resultado.ok).toBe(true);
+      if (resultado.ok) {
+        expect(resultado.data.esCredito).toBe(true);
+        expect(resultado.data.montoContado).toBe(0);
+        expect(resultado.data.montoCredito).toBe(95);
+      }
+      expect(cerrarVentaRepoMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          credito: { montoContado: 0, montoCredito: 95, fechaLimite },
+        }),
+      );
+    });
+
+    it("venta a crédito parcial: Credito.montoTotal es SOLO el saldo a crédito, no el total de la venta", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      obtenerPrecioKiloVigenteMock.mockResolvedValue(precioVigente(9.5));
+      buscarPaquetesPorIdsMock.mockResolvedValue([{ id: PAQUETE_1_ID, peso: 10 }]); // bruto = 95
+      buscarBandejasPorIdsMock.mockResolvedValue([]);
+      const fechaLimite = new Date("2026-02-01T00:00:00.000Z");
+      cerrarVentaRepoMock.mockResolvedValue(
+        ventaBase({ montoContado: 35, montoCredito: 60, credito: { fechaLimite } }),
+      );
+
+      const resultado = await cerrarVentaAction({
+        ...inputValido,
+        esCredito: true,
+        montoContado: 35,
+        fechaLimiteCredito: fechaLimite,
+      });
+
+      expect(resultado.ok).toBe(true);
+      expect(cerrarVentaRepoMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          credito: { montoContado: 35, montoCredito: 60, fechaLimite },
+        }),
+      );
+    });
+
+    it("rechaza una venta a crédito a Público General, antes de cualquier cálculo (no toca obtenerPrecioKiloVigente)", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+
+      const resultado = await cerrarVentaAction({
+        ...inputValido,
+        clienteId: CLIENTE_PUBLICO_GENERAL_ID,
+        esCredito: true,
+        montoContado: 0,
+        fechaLimiteCredito: new Date("2026-02-01T00:00:00.000Z"),
+      });
+
+      expect(resultado).toEqual({ ok: false, error: "No se puede vender a crédito a Público General." });
+      expect(obtenerPrecioKiloVigenteMock).not.toHaveBeenCalled();
+      expect(cerrarVentaRepoMock).not.toHaveBeenCalled();
+    });
+
+    it("rechaza un montoContado mayor al total cobrado de la venta", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      obtenerPrecioKiloVigenteMock.mockResolvedValue(precioVigente(9.5));
+      buscarPaquetesPorIdsMock.mockResolvedValue([{ id: PAQUETE_1_ID, peso: 10 }]); // totalCobrado = 95
+      buscarBandejasPorIdsMock.mockResolvedValue([]);
+
+      const resultado = await cerrarVentaAction({
+        ...inputValido,
+        esCredito: true,
+        montoContado: 100,
+        fechaLimiteCredito: new Date("2026-02-01T00:00:00.000Z"),
+      });
+
+      expect(resultado).toEqual({
+        ok: false,
+        error: "El monto al contado no puede superar el total de la venta.",
+      });
+      expect(cerrarVentaRepoMock).not.toHaveBeenCalled();
+    });
+
+    it("reintento idempotente de una venta a crédito con los mismos datos responde éxito, sin duplicar", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      obtenerPrecioKiloVigenteMock.mockResolvedValue(precioVigente(9.5));
+      buscarPaquetesPorIdsMock.mockResolvedValue([{ id: PAQUETE_1_ID, peso: 10 }]); // totalCobrado = 95
+      buscarBandejasPorIdsMock.mockResolvedValue([]);
+      cerrarVentaRepoMock.mockRejectedValue(erroDeUnicidad());
+      buscarVentaConDetallesPorIdMock.mockResolvedValue(
+        ventaBase({ montoContado: 35, montoCredito: 60, credito: { fechaLimite: new Date("2026-02-01") } }),
+      );
+
+      const resultado = await cerrarVentaAction({
+        ...inputValido,
+        esCredito: true,
+        montoContado: 35,
+        fechaLimiteCredito: new Date("2026-02-01"),
+      });
+
+      expect(resultado.ok).toBe(true);
+      if (resultado.ok) {
+        expect(resultado.data.id).toBe(VENTA_1_ID);
+      }
+    });
+
+    // Rama defensiva, mismo criterio que el sentinel `?? ""` de arriba
+    // (paqueteId/bandejaId): Venta.montoContado nunca es null en la
+    // práctica (cerrarVenta siempre lo setea), pero si pasara, no debe
+    // compararse como si "coincidiera" con un montoContado numérico real.
+    it("rechaza explícito si el registro existente tiene montoContado null (defensivo)", async () => {
+      authMock.mockResolvedValue(sessionGerente());
+      buscarSesionPorJtiMock.mockResolvedValue(sesionValida());
+      obtenerPrecioKiloVigenteMock.mockResolvedValue(precioVigente(9.5));
+      buscarPaquetesPorIdsMock.mockResolvedValue([{ id: PAQUETE_1_ID, peso: 10 }]);
+      buscarBandejasPorIdsMock.mockResolvedValue([]);
+      cerrarVentaRepoMock.mockRejectedValue(erroDeUnicidad());
+      buscarVentaConDetallesPorIdMock.mockResolvedValue(ventaBase({ montoContado: null }));
+
+      const resultado = await cerrarVentaAction(inputValido);
+
+      expect(resultado).toEqual({
+        ok: false,
+        error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+      });
     });
   });
 });

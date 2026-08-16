@@ -18,3 +18,17 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 export function idUuid(mensaje = "Id inválido") {
   return z.string().regex(UUID_REGEX, mensaje);
 }
+
+// "Hoy" se calcula en América/Lima (D5), no en la zona horaria del
+// servidor — comparar Date crudos (UTC) haría que, por ejemplo, las
+// primeras horas de un día en UTC (todavía "ayer" en Lima, UTC-5) rechacen
+// como futura una fecha que en Lima sigue siendo hoy.
+// toLocaleDateString("en-CA", ...) da directo el formato YYYY-MM-DD; el
+// constructor de Date interpreta ese string como medianoche UTC, que es
+// exactamente lo mismo que hace z.coerce.date() con el valor que manda un
+// <input type="date">, así que la comparación queda pareja. Extraída acá
+// desde lib/zod/lote.ts (Sprint 3) porque Sprint 11 (lib/zod/venta.ts)
+// también la necesita.
+export function hoyEnLima(): Date {
+  return new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Lima" }));
+}

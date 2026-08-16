@@ -9,6 +9,8 @@ import { toastManager } from "@/components/ui/toast";
 import { DescuentoInput } from "@/components/domain/pos/descuento-input";
 import { MetodoPagoSelect, type MetodoPago } from "@/components/domain/pos/metodo-pago-select";
 import type { ItemCarrito, VentaCerradaData } from "@/components/domain/pos/pos-workspace";
+import { fechaLimiteCreditoSugerida, VentaCreditoFields } from "@/components/domain/pos/venta-credito-fields";
+import { CLIENTE_PUBLICO_GENERAL_ID } from "@/lib/constants";
 import { cerrarVentaAction } from "@/server/actions/venta";
 import type { ActionResult } from "@/server/auth/with-auth";
 
@@ -20,6 +22,9 @@ type VentaPayload = {
   items: { tipo: "PAQUETE" | "BANDEJA"; id: string }[];
   descuento: number;
   metodoPago: MetodoPago;
+  esCredito: boolean;
+  montoContado?: number;
+  fechaLimiteCredito?: string;
 };
 
 function redondearCentavos(valor: number): number {
@@ -48,6 +53,19 @@ export function PosCarrito({
 }) {
   const [descuentoInput, setDescuentoInput] = useState("");
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("EFECTIVO");
+  // Sprint 11 — venta a crédito. clienteEsPublicoGeneral bloquea el toggle
+  // (H2, spec.md) — el guard real vive en el servidor (cerrarVentaAction).
+  // esCreditoEfectivo (derivado en cada render, no sincronizado con un
+  // useEffect — mismo criterio que "Tabla paginada vs. muro con scroll
+  // infinito" en convenciones.md: sincronizar props→state con setState
+  // dentro de un effect genera renders en cascada) ignora el toggle
+  // guardado si el cliente seleccionado cambia a Público General a mitad
+  // de armar el carrito, sin necesidad de resetear esCredito a mano.
+  const clienteEsPublicoGeneral = clienteId === CLIENTE_PUBLICO_GENERAL_ID;
+  const [esCredito, setEsCredito] = useState(false);
+  const esCreditoEfectivo = esCredito && !clienteEsPublicoGeneral;
+  const [montoContadoInput, setMontoContadoInput] = useState("0");
+  const [fechaLimiteInput, setFechaLimiteInput] = useState(() => fechaLimiteCreditoSugerida());
   // Generado una sola vez por intento de checkout, no en cada clic — mismo
   // motivo que RegistrarRecoleccionDialog (bug real de S5-13): reusado
   // entre reintentos tras un error de validación, para que la protección
@@ -68,6 +86,12 @@ export function PosCarrito({
   const descuentoValido = descuento >= 0 && descuento <= bruto;
   const totalCobrado = redondearCentavos(bruto - (descuentoValido ? descuento : 0));
 
+  // Preview cliente-side del mismo guard que validarMontoContado()
+  // (server/services/venta.ts) — el servidor siempre revalida con los
+  // valores reales.
+  const montoContado = Number(montoContadoInput) || 0;
+  const montoContadoValido = !esCreditoEfectivo || (montoContado >= 0 && montoContado <= totalCobrado);
+
   const [state, formAction, pending] = useActionState<Estado, VentaPayload>(async (_prev, payload) => {
     const resultado = await cerrarVentaAction(payload);
     if (resultado.ok) {
@@ -82,11 +106,14 @@ export function PosCarrito({
       setVentaId(crypto.randomUUID());
       setDescuentoInput("");
       setMetodoPago("EFECTIVO");
+      setEsCredito(false);
+      setMontoContadoInput("0");
+      setFechaLimiteInput(fechaLimiteCreditoSugerida());
     }
     return resultado;
   }, undefined);
 
-  const puedeCerrar = items.length > 0 && descuentoValido && !pending;
+  const puedeCerrar = items.length > 0 && descuentoValido && montoContadoValido && !pending;
 
   return (
     <div className="flex h-fit flex-col gap-4 rounded-lg border border-border p-4">
@@ -129,7 +156,27 @@ export function PosCarrito({
           onChange={setDescuentoInput}
           error={!descuentoValido ? "El descuento no puede superar el total de la venta." : undefined}
         />
-        <MetodoPagoSelect value={metodoPago} onChange={setMetodoPago} />
+        {/* Método de pago vive en su posición habitual (acá, debajo de
+        Descuento) mientras la venta es al contado; en cuanto se activa
+        "Venta a crédito" se reubica dentro de VentaCreditoFields, debajo
+        de "Monto al contado" — mismo <select> controlado, solo cambia
+        dónde se monta, para que quede junto al resto de los datos de la
+        parte al contado en vez de separado arriba del todo. */}
+        {!esCreditoEfectivo ? <MetodoPagoSelect value={metodoPago} onChange={setMetodoPago} /> : null}
+
+        <VentaCreditoFields
+          esCredito={esCreditoEfectivo}
+          onEsCreditoChange={setEsCredito}
+          disabled={clienteEsPublicoGeneral}
+          montoContado={montoContadoInput}
+          onMontoContadoChange={setMontoContadoInput}
+          errorMontoContado={!montoContadoValido ? "El monto al contado no puede superar el total de la venta." : undefined}
+          fechaLimite={fechaLimiteInput}
+          onFechaLimiteChange={setFechaLimiteInput}
+          metodoPagoSlot={
+            esCreditoEfectivo ? <MetodoPagoSelect value={metodoPago} onChange={setMetodoPago} /> : null
+          }
+        />
 
         <div className="flex flex-col gap-1 text-sm">
           <div className="flex justify-between text-muted-foreground">
@@ -155,6 +202,9 @@ export function PosCarrito({
                 items: items.map((item) => ({ tipo: item.tipo, id: item.id })),
                 descuento,
                 metodoPago,
+                esCredito: esCreditoEfectivo,
+                montoContado: esCreditoEfectivo ? montoContado : undefined,
+                fechaLimiteCredito: esCreditoEfectivo ? fechaLimiteInput : undefined,
               });
             });
           }}

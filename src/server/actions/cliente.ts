@@ -8,6 +8,7 @@ import {
   crearClienteSchema,
   editarClienteSchema,
 } from "@/lib/zod/cliente";
+import { idUuid } from "@/lib/zod/comun";
 import { auth } from "@/server/auth";
 import { AccionError, withAuth } from "@/server/auth/with-auth";
 import {
@@ -17,6 +18,7 @@ import {
   cambiarEstadoCliente,
   crearCliente as crearClienteRepo,
 } from "@/server/repositories/cliente";
+import { buscarCreditosPorClienteConAbonos } from "@/server/repositories/credito";
 import { esClientePublicoGeneral } from "@/server/services/cliente";
 
 // Mismo helper que usuario.ts/lote.ts/galpon.ts/recoleccion.ts.
@@ -147,4 +149,38 @@ export async function buscarClientesAutocompleteAction(busqueda: string) {
 
   const clientes = await buscarClientesAutocomplete(parsed.data.busqueda);
   return { ok: true as const, data: clientes };
+}
+
+// Lectura, no mutación → NO pasa por withAuth (Sprint 11, mismo criterio
+// que buscarClientesAutocompleteAction arriba): no hay una única entidad
+// mutada que auditar. Verifica sesión a mano con auth(). Devuelve TODOS
+// los Credito del cliente (PENDIENTE y LIQUIDADO) con su historial de
+// abonos completo — "Estado de cuenta por cliente" (H6, spec.md).
+export async function obtenerEstadoCuentaAction(clienteId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "No autenticado." };
+  }
+
+  if (!idUuid().safeParse(clienteId).success) {
+    return { ok: false as const, error: "Cliente inválido." };
+  }
+
+  const creditos = await buscarCreditosPorClienteConAbonos(clienteId);
+  return {
+    ok: true as const,
+    data: creditos.map((credito) => ({
+      id: credito.id,
+      montoTotal: Number(credito.montoTotal),
+      montoPagado: Number(credito.montoPagado),
+      fechaLimite: credito.fechaLimite.toISOString(),
+      estado: credito.estado,
+      abonos: credito.abonos.map((abono) => ({
+        id: abono.id,
+        fecha: abono.fecha.toISOString(),
+        monto: Number(abono.monto),
+        metodoPago: abono.metodoPago,
+      })),
+    })),
+  };
 }

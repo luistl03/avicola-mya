@@ -29,6 +29,7 @@ type ClasificacionMovimiento = "ENTRADA" | "SALIDA" | "AJUSTE";
 const CLASIFICACION: Record<TipoMovimientoSueltos, ClasificacionMovimiento> = {
   RECOLECCION: "ENTRADA",
   ROTURA_PAQUETE_ENTRADA: "ENTRADA",
+  ROTURA_BANDEJA_ENTRADA: "ENTRADA", // Sprint 10 — mismo criterio que ROTURA_PAQUETE_ENTRADA
   CONSOLIDACION_SALIDA: "SALIDA",
   VENTA_SUELTO: "SALIDA",
   REVERSION: "SALIDA",

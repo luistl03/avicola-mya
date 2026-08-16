@@ -27,3 +27,15 @@ export function validarDescuento(bruto: number, descuento: number): boolean {
 export function calcularTotalCobrado(bruto: number, descuento: number): number {
   return redondearCentavos(bruto - descuento);
 }
+
+// Mismo criterio que validarDescuento: el límite superior es inclusivo
+// (montoContado === totalCobrado es "todo al contado" dentro de una venta
+// marcada a crédito — caso límite válido, sin caso de negocio especial).
+// Sprint 11.
+export function validarMontoContado(totalCobrado: number, montoContado: number): boolean {
+  return montoContado >= 0 && montoContado <= totalCobrado;
+}
+
+export function calcularMontoCredito(totalCobrado: number, montoContado: number): number {
+  return redondearCentavos(totalCobrado - montoContado);
+}

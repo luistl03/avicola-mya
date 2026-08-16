@@ -132,7 +132,7 @@ export function MortalidadFiltros({
               value={loteId ?? LOTE_TODOS}
               onValueChange={(valor) => actualizarFiltro("loteId", valor === LOTE_TODOS ? null : valor)}
             >
-              <SelectTrigger id="filtro-lote" className="h-10 w-full sm:w-48">
+              <SelectTrigger id="filtro-lote" className="h-10 w-full sm:w-44">
                 <SelectValue placeholder="Todos los lotes">
                   {loteId ? loteSeleccionado?.codigo : "Todos los lotes"}
                 </SelectValue>

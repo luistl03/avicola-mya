@@ -24,6 +24,12 @@ export type VentaCerradaData = {
   totalCobrado: number;
   descuento: number;
   metodoPago: "EFECTIVO" | "YAPE" | "PLIN" | "TRANSFERENCIA";
+  // Sprint 11 — desglose contado/crédito. esCredito: false en toda venta
+  // 100% al contado (comportamiento de Sprint 9, sin cambios).
+  esCredito: boolean;
+  montoContado: number;
+  montoCredito: number | null;
+  fechaLimiteCredito: string | null;
   items: { tipo: "PAQUETE" | "BANDEJA"; pesoKg: number; precioKiloAplicado: number; subtotal: number }[];
 };
 

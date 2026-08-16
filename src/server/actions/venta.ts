@@ -2,6 +2,7 @@
 
 import { Prisma } from "@prisma/client";
 
+import { CLIENTE_PUBLICO_GENERAL_ID } from "@/lib/constants";
 import { cerrarVentaSchema } from "@/lib/zod/venta";
 import { AccionError, withAuth } from "@/server/auth/with-auth";
 import { obtenerPrecioKiloVigente } from "@/server/repositories/precioKilo";
@@ -14,7 +15,13 @@ import {
   cerrarVenta as cerrarVentaRepo,
   ItemsNoDisponiblesError,
 } from "@/server/repositories/venta";
-import { calcularBrutoVenta, calcularTotalCobrado, validarDescuento } from "@/server/services/venta";
+import {
+  calcularBrutoVenta,
+  calcularMontoCredito,
+  calcularTotalCobrado,
+  validarDescuento,
+  validarMontoContado,
+} from "@/server/services/venta";
 
 // Mismo helper que usuario.ts/lote.ts/galpon.ts/recoleccion.ts/cliente.ts/precioKilo.ts.
 function esErrorDeUnicidad(error: unknown): boolean {
@@ -27,6 +34,13 @@ function esErrorDeUnicidad(error: unknown): boolean {
 export const cerrarVentaAction = withAuth(
   { schema: cerrarVentaSchema, entidad: "Venta", accion: "CREAR" },
   async (input, ctx) => {
+    // Guard nuevo, antes de cualquier otro cálculo: Público General nunca
+    // recibe crédito (H2, spec.md) — rechazo del lado del servidor, no
+    // solo un toggle deshabilitado en la UI.
+    if (input.esCredito && input.clienteId === CLIENTE_PUBLICO_GENERAL_ID) {
+      throw new AccionError("No se puede vender a crédito a Público General.");
+    }
+
     const precioVigente = await obtenerPrecioKiloVigente();
     if (!precioVigente) {
       throw new AccionError("No hay ningún precio por kilo configurado.");
@@ -59,6 +73,21 @@ export const cerrarVentaAction = withAuth(
     }
     const totalCobrado = calcularTotalCobrado(bruto, input.descuento);
 
+    // Sprint 11 — venta a crédito (total o parcial). credito queda
+    // undefined cuando esCredito es false, comportamiento 100% idéntico a
+    // Sprint 9 (montoContado = totalCobrado, montoCredito: null).
+    let credito: { montoContado: number; montoCredito: number; fechaLimite: Date } | undefined;
+    if (input.esCredito) {
+      if (!validarMontoContado(totalCobrado, input.montoContado!)) {
+        throw new AccionError("El monto al contado no puede superar el total de la venta.");
+      }
+      credito = {
+        montoContado: input.montoContado!,
+        montoCredito: calcularMontoCredito(totalCobrado, input.montoContado!),
+        fechaLimite: input.fechaLimiteCredito!,
+      };
+    }
+
     const items = input.items.map((item) => {
       const pesoKg = pesoPorId.get(item.id)!;
       const subtotal = Math.round(pesoKg * precio * 100) / 100;
@@ -76,6 +105,7 @@ export const cerrarVentaAction = withAuth(
         totalCobrado,
         metodoPago: input.metodoPago,
         ahora: new Date(),
+        credito,
       });
     } catch (error) {
       if (error instanceof ItemsNoDisponiblesError) {
@@ -95,19 +125,24 @@ export const cerrarVentaAction = withAuth(
       if (!existente) {
         throw error;
       }
-      // "" es un sentinel defensivo, nunca real este sprint: todo
-      // DetalleVenta de PAQUETE/BANDEJA siempre tiene paqueteId o bandejaId
-      // seteado (SUELTO, el único caso con los dos en null, no se puebla
-      // hasta Sprint 10).
+      // "" es un sentinel defensivo, nunca real (la granja no vende huevo
+      // por unidad — confirmado con el Product Owner, Sprint 10 — así que
+      // todo DetalleVenta siempre tiene paqueteId o bandejaId seteado).
       const idsExistentes = new Set(existente.detalles.map((detalle) => detalle.paqueteId ?? detalle.bandejaId ?? ""));
       const idsInput = new Set(input.items.map((item) => item.id));
       const mismosItems =
         idsExistentes.size === idsInput.size && [...idsExistentes].every((id) => idsInput.has(id));
+      // Sprint 11 — un reintento con esCredito/montoContado distinto al
+      // ya persistido tampoco es un reintento idempotente legítimo.
+      const montoContadoExistente = existente.montoContado !== null ? Number(existente.montoContado) : null;
+      const montoContadoEsperado = input.esCredito ? input.montoContado! : totalCobrado;
       const coincide =
         existente.clienteId === input.clienteId &&
         existente.metodoPago === input.metodoPago &&
         Number(existente.descuento) === input.descuento &&
-        mismosItems;
+        mismosItems &&
+        (existente.credito !== null) === input.esCredito &&
+        montoContadoExistente === montoContadoEsperado;
       if (!coincide) {
         throw new AccionError(
           "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
@@ -131,6 +166,10 @@ export const cerrarVentaAction = withAuth(
         totalCobrado: Number(venta.totalCobrado),
         descuento: Number(venta.descuento),
         metodoPago: venta.metodoPago,
+        esCredito: venta.credito !== null,
+        montoContado: Number(venta.montoContado),
+        montoCredito: venta.montoCredito !== null ? Number(venta.montoCredito) : null,
+        fechaLimiteCredito: venta.credito?.fechaLimite.toISOString() ?? null,
         items: venta.detalles.map((detalle) => ({
           tipo: detalle.tipo as "PAQUETE" | "BANDEJA",
           pesoKg: Number(detalle.pesoKg),
@@ -144,6 +183,7 @@ export const cerrarVentaAction = withAuth(
         totalCobrado: Number(venta.totalCobrado),
         metodoPago: venta.metodoPago,
         cantidadItems: venta.detalles.length,
+        esCredito: venta.credito !== null,
       },
     };
   },

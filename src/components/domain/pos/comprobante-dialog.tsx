@@ -164,6 +164,32 @@ export function ComprobanteDialog({
             </div>
             <p className="text-muted-foreground">Método de pago: {ETIQUETA_METODO_PAGO[venta.metodoPago]}</p>
           </div>
+
+          {venta.esCredito ? (
+            <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/30 p-2">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Pagado ahora</span>
+                <span>S/ {venta.montoContado.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-medium text-foreground">
+                <span>A crédito</span>
+                <span>S/ {(venta.montoCredito ?? 0).toFixed(2)}</span>
+              </div>
+              {venta.fechaLimiteCredito ? (
+                <p className="text-muted-foreground">
+                  Vence:{" "}
+                  {/* fechaLimiteCredito es una fecha-calendario pura
+                  (medianoche UTC, sin componente de hora — mismo criterio
+                  que hoyEnLima()/D5), no un instante real como venta.fecha.
+                  Formatearla con timeZone: "America/Lima" le restaría un
+                  día (medianoche UTC cae la noche anterior en Lima,
+                  UTC-5) — se formatea en UTC para recuperar exactamente el
+                  día calendario que se guardó. */}
+                  {new Date(venta.fechaLimiteCredito).toLocaleDateString("es-PE", { timeZone: "UTC" })}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <DialogFooter>

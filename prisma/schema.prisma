@@ -305,6 +305,7 @@ model PaqueteOrigen {
 enum EstadoBandeja {
   DISPONIBLE
   VENDIDO
+  ROTO // Sprint 10 — mismo criterio que EstadoPaquete.ROTO (Sprint 0)
 }
 
 model BandejaSuelta {
@@ -317,6 +318,7 @@ model BandejaSuelta {
   registroConsolidacion RegistroConsolidacion? @relation(fields: [registroConsolidacionId], references: [id], onDelete: SetNull)
   origenes              BandejaOrigen[]
   detalleVentas         DetalleVenta[]
+  rotura                RoturaBandeja? // Sprint 10 (relación inversa)
 
   @@index([estado])
   @@index([registroConsolidacionId])
@@ -352,6 +354,7 @@ enum TipoMovimientoSueltos {
   RECOLECCION
   CONSOLIDACION_SALIDA
   ROTURA_PAQUETE_ENTRADA
+  ROTURA_BANDEJA_ENTRADA // Sprint 10 — distingue en el ledger si la entrada vino de romper un Paquete o una Bandeja
   VENTA_SUELTO
   REVERSION
   AJUSTE_GERENTE
@@ -508,6 +511,20 @@ model RoturaPaquete {
   creadoEn          DateTime @default(now())
 
   paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+}
+
+// Sprint 10 — modelo espejo de RoturaPaquete: mismo criterio de diseño
+// exacto (bandejaId @unique, una Bandeja se rompe una sola vez, para
+// siempre; sin usuarioId propio, AuditLog ya registra quién y cuándo).
+model RoturaBandeja {
+  id                String   @id @default(uuid())
+  bandejaId         String   @unique
+  pesoExtraido      Decimal  @db.Decimal(6, 3)
+  unidadesExtraidas Int
+  unidadesDevueltas Int
+  creadoEn          DateTime @default(now())
+
+  bandeja BandejaSuelta @relation(fields: [bandejaId], references: [id], onDelete: Cascade)
 }
 
 // ============================================

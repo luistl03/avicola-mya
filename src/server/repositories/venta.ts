@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 // Lanzado dentro de la transacción para forzar el rollback cuando al menos
 // un ítem del carrito ya no está DISPONIBLE — no es un AccionError (ADR-000,
 // este archivo no conoce server/auth/with-auth.ts), la Server Action lo
-// atrapa y arma el mensaje con el/los ítems específicos (R5, spec.md).
+// atrapa y arma el mensaje con el/los ítems específicos (R5, spec.md de
+// Sprint 9).
 export class ItemsNoDisponiblesError extends Error {}
 
 type ItemVenta = {
@@ -49,6 +50,7 @@ const INCLUDE_COMPROBANTE = {
   detalles: true,
   cliente: { select: { nombre: true } },
   usuario: { select: { nombre: true } },
+  credito: true, // Sprint 11 — desglose contado/crédito en el comprobante
 } as const;
 
 export function cerrarVenta(params: {
@@ -60,6 +62,11 @@ export function cerrarVenta(params: {
   totalCobrado: number;
   metodoPago: MetodoPago;
   ahora: Date;
+  // Sprint 11 — presente solo cuando la venta es a crédito (total o
+  // parcial). montoContado ya viene resuelto (puede ser 0); montoCredito
+  // = totalCobrado - montoContado, ya calculado por la Server Action
+  // (calcularMontoCredito).
+  credito?: { montoContado: number; montoCredito: number; fechaLimite: Date };
 }) {
   const paqueteIds = params.items.filter((item) => item.tipo === "PAQUETE").map((item) => item.id);
   const bandejaIds = params.items.filter((item) => item.tipo === "BANDEJA").map((item) => item.id);
@@ -74,10 +81,10 @@ export function cerrarVenta(params: {
         totalCobrado: params.totalCobrado,
         descuento: params.descuento,
         metodoPago: params.metodoPago,
-        // 100% al contado este sprint (decisión de negocio 3, spec.md) —
-        // montoCredito/credito quedan sin usar hasta Sprint 11.
-        montoContado: params.totalCobrado,
-        montoCredito: null,
+        // Sin crédito: idéntico a Sprint 9 (100% al contado). Con
+        // crédito: montoContado puede ser 0 (crédito total) o parcial.
+        montoContado: params.credito ? params.credito.montoContado : params.totalCobrado,
+        montoCredito: params.credito ? params.credito.montoCredito : null,
         detalles: {
           create: params.items.map((item) => ({
             tipo: item.tipo,
@@ -88,6 +95,23 @@ export function cerrarVenta(params: {
             subtotal: item.subtotal,
           })),
         },
+        // Credito anidado dentro del MISMO tx.venta.create — atómico con
+        // el ancla, sin un segundo statement ni id de cliente separado:
+        // Credito.ventaId @unique ya lo protege (si Venta.create falla
+        // por P2002 en un reintento, la transacción entera se revierte,
+        // incluido este nested create, que nunca llega a persistir a
+        // medias).
+        ...(params.credito
+          ? {
+              credito: {
+                create: {
+                  clienteId: params.clienteId,
+                  montoTotal: params.credito.montoCredito,
+                  fechaLimite: params.credito.fechaLimite,
+                },
+              },
+            }
+          : {}),
       },
       include: INCLUDE_COMPROBANTE,
     });
@@ -131,12 +155,12 @@ export function buscarVentaConDetallesPorId(id: string) {
   return prisma.venta.findUnique({ where: { id }, include: INCLUDE_COMPROBANTE });
 }
 
-// Para el selector de items del POS — Paquete(estado)/BandejaSuelta(estado)
-// ya indexados desde Sprint 0 ("el POS filtra constantemente por
-// DISPONIBLE, es la query más frecuente del sistema",
-// memory/modelo-datos.md). Sin paginación: el POS es una pantalla
-// operativa de una sola vista, no una tabla de gestión. orderBy asc — FIFO,
-// vender lo más viejo primero.
+// Para el selector de items del POS y del listado de "Romper" de
+// Consolidación (Sprint 10) — Paquete(estado)/BandejaSuelta(estado) ya
+// indexados desde Sprint 0 ("el POS filtra constantemente por DISPONIBLE,
+// es la query más frecuente del sistema", memory/modelo-datos.md). Sin
+// paginación: son pantallas operativas de una sola vista, no una tabla de
+// gestión. orderBy asc — FIFO, vender/romper lo más viejo primero.
 export function listarPaquetesDisponibles() {
   return prisma.paquete.findMany({
     where: { estado: "DISPONIBLE" },
@@ -185,4 +209,46 @@ export function buscarBandejasNoDisponiblesEntreIds(ids: string[]) {
     where: { id: { in: ids }, estado: { not: "DISPONIBLE" } },
     select: { id: true },
   });
+}
+
+type FiltrosVentas = {
+  desde?: Date;
+  hasta?: Date;
+  clienteId?: string;
+  metodoPago?: MetodoPago;
+  // true = solo ventas con Credito asociado (total o parcial), false =
+  // solo 100% al contado (sin Credito), undefined = ambas.
+  esCredito?: boolean;
+};
+
+function whereVentas(filtros: FiltrosVentas) {
+  return {
+    fecha: { gte: filtros.desde, lte: filtros.hasta },
+    clienteId: filtros.clienteId,
+    metodoPago: filtros.metodoPago,
+    credito: filtros.esCredito === undefined ? undefined : filtros.esCredito ? { isNot: null } : { is: null },
+  };
+}
+
+// Listado de ventas (/ventas, tabla de gestión) — mismo patrón de
+// paginación server-side dirigida por URL que Mortalidad/Recolección
+// (memory/convenciones.md). `credito: { select: { estado } }` trae lo
+// justo para mostrar el badge Contado/Crédito sin una query aparte.
+export function listarVentas(params: FiltrosVentas & { skip: number; take: number }) {
+  return prisma.venta.findMany({
+    where: whereVentas(params),
+    orderBy: { fecha: "desc" },
+    skip: params.skip,
+    take: params.take,
+    include: {
+      cliente: { select: { nombre: true } },
+      usuario: { select: { nombre: true } },
+      credito: { select: { estado: true } },
+      _count: { select: { detalles: true } },
+    },
+  });
+}
+
+export function contarVentas(params: FiltrosVentas = {}) {
+  return prisma.venta.count({ where: whereVentas(params) });
 }

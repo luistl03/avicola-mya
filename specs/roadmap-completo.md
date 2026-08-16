@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 9 completado (ejecutado como sprint único, sin dividir en 9A/9B), sin migración de schema, cobertura 100%/100% en services y actions, verificado con 16 asserts contra Neon real incluida una carrera concurrente real forzada (dos cierres de venta peleando por el mismo Paquete — exactamente uno gana) y clic a clic en navegador por el Product Owner incluido "Compartir" por WhatsApp en un celular real, sin bugs de lógica de negocio (deuda heredada sin cambios: sin botón "Deshacer" para RegistroConsolidacion, ni ajuste manual del Gerente para Mortalidad — ver `memory/estado-proyecto.md`).
-**Progreso:** 10 de 16 sprints (63%)
+**Última actualización:** Sprint 11 completado — venta a crédito (total o parcial) desde el POS, panel de alertas por antigüedad (dashboard + `/creditos`), abonos con guard de sobrepago y auto-liquidación, estado de cuenta por cliente. Sin migración de schema (`Credito`/`HistorialAbonos` ya existían desde Sprint 0). Diseño de `registrarAbono` corregido en plena verificación contra Neon real (S11-19): el orden original "guard primero" (por analogía con `registrarMortalidadYDescontarAves`) rompía la idempotencia del abono que justo liquida el crédito — corregido a "ancla primero", mismo orden que `cerrarVenta`/`romperPaquete`. Dos hallazgos reales más, corregidos durante la verificación clic a clic (S11-20): un `Credito` sano (sin alerta) no tenía ningún botón para recibir abonos, y las fechas límite se mostraban con un día de desfase por un bug de zona horaria (medianoche UTC formateada en América/Lima). Cobertura 100%/100% en services/actions nuevos, 460 tests, sin bugs de código sobrevivientes (ver `memory/estado-proyecto.md`).
+**Progreso:** 12 de 16 sprints (75%)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -22,7 +22,7 @@ resumen + `memory/` como base — no inventar alcance nuevo.
 | Release | Sprints | Estado | Entrega de valor |
 |---|---|---|---|
 | R1 — Operación básica | 0–7 | 🟢 Completo (8/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
-| R2 — Finanzas | 8–11 | 🟡 En progreso (2/4) | Créditos, cobranza, egresos, planilla. |
+| R2 — Finanzas | 8–11 | 🟢 Completo (4/4) | Créditos, cobranza, egresos, planilla. |
 | R3 — Campo real | 12–13 | ⬜ Pendiente | Funciona sin señal. Instalable. |
 | R4 — Inteligencia | 14–15 | ⬜ Pendiente | Dashboard, reportes, push. |
 
@@ -150,20 +150,58 @@ deuda pendiente: auditar idempotencia en el resto de los dialogs de mutación):*
 **Specs:** `specs/sprint-09-pos-carrito-cierre/`
 **Detalle de ejecución (hallazgo de diseño del orden de idempotencia, una violación de ADR-000 corregida antes de implementar, tres correcciones reales de UX/diseño pedidas en vivo — incluidas dos vueltas del diseño del comprobante):** `memory/estado-proyecto.md`
 
-### Sprint 10 — POS: Romper paquete y sueltos (26 pts)
-**Goal:** se vende cualquier cantidad, rompiendo paquete en vivo.
+### ✅ Sprint 10 — Consolidación: Romper Paquete/Bandeja (26 pts) — COMPLETADO
+**Goal:** se puede deshacer un Paquete o una Bandeja para reshapear
+inventario cuando el tamaño armado no es el que hace falta vender.
+**Corrección real de alcance, en plena ejecución (ver `specs/sprint-10-romper-paquete-sueltos/spec.md`,
+"Corrección de diseño"):** el brief original de este sprint (título "POS:
+Romper paquete y sueltos") asumía que se iba a vender huevo suelto por
+unidad y que Romper viviría dentro de `/pos` para resolverlo en el momento
+de una venta. El Product Owner confirmó, viendo el flujo ya implementado,
+que la granja **nunca vende huevo por unidad** — solo Paquete (180u) o
+Bandeja (30u) — así que "Venta de sueltos por unidad" no es una historia
+real y se sacó del alcance por completo. Romper Paquete/Bandeja se
+reubicó de `/pos` a `/consolidacion`, junto a los wizards "Armar
+Bandeja"/"Armar Paquete Mixto" (Sprint 7) que ya existían ahí: el único
+propósito real de romper una unidad es devolver sus huevos a sueltos para
+poder rearmar un tamaño distinto con esos mismos wizards — no tiene
+ninguna razón de negocio para vivir en la pantalla de ventas.
 - Service repartirDevolucion (reparto proporcional, suma debe cerrar exacta)
-- Flujo "Romper Paquete": ROTO + captura de peso + RoturaPaquete
-- Devolución al ledger con reparto persistido
-- Venta de sueltos por unidad
+- Flujo "Romper Paquete/Bandeja" en /consolidacion: ROTO + captura de peso
+  + RoturaPaquete/RoturaBandeja
+- Devolución al ledger con reparto persistido, listo para los wizards de
+  Armar Bandeja/Armar Paquete Mixto ya existentes
+**Specs:** `specs/sprint-10-romper-paquete-sueltos/`
+**Detalle de ejecución (corrección de diseño real en plena ejecución — S10-9 a S10-12 implementados con el brief original y revertidos por completo tras confirmar que la granja no vende huevo por unidad; dos carreras concurrentes reales forzadas contra Neon; sin bugs de código sobrevivientes):** `memory/estado-proyecto.md`
 
-### Sprint 11 — Créditos y cobranza (26 pts)
+### ✅ Sprint 11 — Créditos y cobranza (26 pts) — COMPLETADO
 **Goal:** Gerente ve al entrar quién le debe y hace cuántos días.
-- Venta a crédito (bloqueada para Público General)
-- Panel de alertas (tarjetas rojas por antigüedad)
+- Venta a crédito, total o parcial (bloqueada para Público General)
+- Panel de alertas por antigüedad (dashboard + `/creditos`, 3 niveles)
 - Abonos parciales con su propio metodoPago
 - Auto-liquidación al llegar a cero + guard sobrepago
 - Estado de cuenta por cliente
+**Sin migración de schema** — `Credito`/`HistorialAbonos` ya existían
+completos desde Sprint 0, sin código encima hasta este sprint.
+**Corrección real de diseño, en plena verificación (S11-19, ver
+`specs/sprint-11-creditos-cobranza/plan.md`, "Hallazgo de diseño"):** el
+diseño original de `registrarAbono` (transacción interactiva) seguía el
+orden "guard primero, ancla después" de `registrarMortalidadYDescontarAves`
+por analogía (`avesVivas`, un contador con margen) — esa analogía resultó
+incompleta: a diferencia de `avesVivas`, `Credito.montoPagado` llegando
+exactamente a `montoTotal` es el desenlace ESPERADO de todo crédito
+(auto-liquidación), no un caso raro, y con ese orden un reintento
+idempotente de justo ese abono se rechazaba en vez de detectarse como
+éxito ya aplicado. Corregido a "ancla primero", mismo orden que
+`cerrarVenta`/`romperPaquete`. Dos hallazgos reales más, en la
+verificación clic a clic (S11-20): un `Credito` sin alerta todavía no
+tenía ningún botón para recibir abonos (agregado a `EstadoCuentaCliente`);
+las fechas límite se mostraban con un día de desfase (bug de zona
+horaria, medianoche UTC formateada de más con `America/Lima` — corregido
+formateando en UTC, y el cálculo de "hoy" para clasificar alertas pasó de
+`new Date()` crudo a `hoyEnLima()`, D5).
+**Specs:** `specs/sprint-11-creditos-cobranza/`
+**Detalle de ejecución (dos hallazgos de diseño reales corregidos en plena verificación — orden de transacción de `registrarAbono`, y zona horaria de fechas-calendario; guard de sobrepago verificado bajo carrera real forzada; 460 tests, cobertura 100%/100% en services/actions nuevos; sin bugs de código sobrevivientes):** `memory/estado-proyecto.md`
 
 ### Sprint 12 — Egresos y Personal (19 pts)
 **Goal:** Gerente registra gastos y planilla, aislados de la caja de ventas.

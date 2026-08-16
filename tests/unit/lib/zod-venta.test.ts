@@ -27,7 +27,7 @@ describe("cerrarVentaSchema", () => {
     }
   });
 
-  it("rechaza un tipo de ítem fuera de PAQUETE/BANDEJA (confirma que SUELTO no se puede enviar este sprint)", () => {
+  it("rechaza un tipo de ítem fuera de PAQUETE/BANDEJA (la granja no vende huevo por unidad — confirmado con el Product Owner, Sprint 10)", () => {
     const resultado = cerrarVentaSchema.safeParse({
       ...inputBase,
       items: [{ tipo: "SUELTO", id: crypto.randomUUID() }],
@@ -36,7 +36,7 @@ describe("cerrarVentaSchema", () => {
     expect(resultado.success).toBe(false);
   });
 
-  it("acepta los 2 tipos reales de ítem de este sprint", () => {
+  it("acepta los 2 tipos reales de ítem", () => {
     for (const tipo of ["PAQUETE", "BANDEJA"]) {
       const resultado = cerrarVentaSchema.safeParse({
         ...inputBase,
@@ -84,6 +84,78 @@ describe("cerrarVentaSchema", () => {
       ...inputBase,
       items: [{ tipo: "PAQUETE", id: "no-es-un-uuid" }],
     });
+
+    expect(resultado.success).toBe(false);
+  });
+
+  it("esCredito en false (default) no exige montoContado ni fechaLimiteCredito", () => {
+    const resultado = cerrarVentaSchema.safeParse(inputBase);
+
+    expect(resultado.success).toBe(true);
+    if (resultado.success) {
+      expect(resultado.data.esCredito).toBe(false);
+    }
+  });
+
+  it("esCredito en true con montoContado y fechaLimiteCredito válidos (futuros) se acepta", () => {
+    const manana = new Date(Date.now() + 24 * 60 * 60 * 1000 * 2);
+    const resultado = cerrarVentaSchema.safeParse({
+      ...inputBase,
+      esCredito: true,
+      montoContado: 50,
+      fechaLimiteCredito: manana.toISOString(),
+    });
+
+    expect(resultado.success).toBe(true);
+  });
+
+  it("esCredito en true sin montoContado se rechaza", () => {
+    const manana = new Date(Date.now() + 24 * 60 * 60 * 1000 * 2);
+    const resultado = cerrarVentaSchema.safeParse({
+      ...inputBase,
+      esCredito: true,
+      fechaLimiteCredito: manana.toISOString(),
+    });
+
+    expect(resultado.success).toBe(false);
+  });
+
+  it("esCredito en true sin fechaLimiteCredito se rechaza", () => {
+    const resultado = cerrarVentaSchema.safeParse({
+      ...inputBase,
+      esCredito: true,
+      montoContado: 50,
+    });
+
+    expect(resultado.success).toBe(false);
+  });
+
+  it("esCredito en true con fechaLimiteCredito de hoy exacto se rechaza (límite estricto)", () => {
+    const hoy = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Lima" }));
+    const resultado = cerrarVentaSchema.safeParse({
+      ...inputBase,
+      esCredito: true,
+      montoContado: 50,
+      fechaLimiteCredito: hoy.toISOString(),
+    });
+
+    expect(resultado.success).toBe(false);
+  });
+
+  it("esCredito en true con fechaLimiteCredito pasada se rechaza", () => {
+    const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000 * 2);
+    const resultado = cerrarVentaSchema.safeParse({
+      ...inputBase,
+      esCredito: true,
+      montoContado: 50,
+      fechaLimiteCredito: ayer.toISOString(),
+    });
+
+    expect(resultado.success).toBe(false);
+  });
+
+  it("montoContado negativo se rechaza independientemente de esCredito", () => {
+    const resultado = cerrarVentaSchema.safeParse({ ...inputBase, montoContado: -1 });
 
     expect(resultado.success).toBe(false);
   });

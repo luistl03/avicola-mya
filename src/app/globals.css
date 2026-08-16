@@ -296,6 +296,25 @@
     @apply border-purple-300! bg-purple-100! text-purple-800! dark:border-purple-800! dark:bg-purple-950! dark:text-purple-200!;
   }
 
+  /* Niveles de alerta de Credito por antigüedad (Sprint 11, /creditos +
+     tarjeta del dashboard) — POR_VENCER en ámbar (mismo tono que
+     .badge-estado-activo: acá no hay colisión real porque nunca aparecen
+     juntos en la misma pantalla, y el Product Owner pidió "ámbar"
+     explícitamente para este nivel). VENCIDO_RECIENTE/VENCIDO_CRITICO en
+     rojo — misma justificación que .badge-tipo-muerte (severidad real, no
+     decoración), diferenciados por intensidad: crítico usa un rojo más
+     saturado y oscuro que reciente para que se note de un vistazo cuál
+     escala requiere más urgencia. */
+  .badge-alerta-por-vencer {
+    @apply border-amber-300! bg-amber-100! text-amber-800! dark:border-amber-700! dark:bg-amber-950! dark:text-amber-200!;
+  }
+  .badge-alerta-vencido-reciente {
+    @apply border-red-300! bg-red-100! text-red-800! dark:border-red-800! dark:bg-red-950! dark:text-red-200!;
+  }
+  .badge-alerta-vencido-critico {
+    @apply border-red-500! bg-red-200! text-red-900! dark:border-red-600! dark:bg-red-900! dark:text-red-100!;
+  }
+
   /* Fila de origen seleccionada en el wizard de Consolidación
      (components/domain/consolidacion/consolidar-sueltos-dialog.tsx, Sprint
      7) — filas clicables en vez de un Checkbox nuevo (decisión de diseño
