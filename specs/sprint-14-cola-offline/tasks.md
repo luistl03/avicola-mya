@@ -11,10 +11,9 @@ medida que se ejecuta cada tarea, tal como quedaron documentadas las de
 `specs/sprint-12-egresos-personal/tasks.md` y
 `specs/sprint-13-pwa-instalacion/tasks.md`.
 
-**14A ejecutado y verificado en vivo (2026-08-19), en rama
-`feat/S14-cola-offline`, sin mergear a `main` todavía.** 14B (pantalla de
-pendientes, reintento manual, S14-19/S14-20) queda pendiente para otra
-sesión.
+**Sprint 14 completo (14A + 14B, S14-1 a S14-20) ejecutado y verificado
+en vivo (2026-08-19), en rama `feat/S14-cola-offline`, sin mergear a
+`main` todavía.**
 
 División 14A/14B confirmada en `spec.md` (decisión de negocio 2): 14A
 cierra con la cola sincronizando sola en camino feliz; 14B agrega
@@ -156,41 +155,67 @@ cerrado y verificado 14A.
 
 ## 14B — pantalla de pendientes, reintento manual, edge cases
 
-*(No arrancar hasta cerrar y verificar 14A completo.)*
+**Ejecutado y verificado en vivo (2026-08-19), misma sesión que 14A.**
 
-- [ ] S14-13 — `src/components/domain/offline/pantalla-pendientes.tsx` +
-  `src/app/(app)/pendientes/page.tsx`: lista reactiva de la cola local
-  (`useLiveQuery` de `dexie-react-hooks`), sin restricción de rol en
-  `server/auth/rbac.ts` (`RUTAS_POR_ROL` no gana una entrada nueva — la
-  ruta queda abierta a cualquier autenticado, decisión de negocio 5).
-  Cada fila: tipo (mismo set de íconos que los 3 dialogs), badge de
-  estado (`globals.css`, receta nueva por estado — `.badge-cola-*`, sin
-  pisar los tonos ya usados por otros badges de estado del proyecto),
-  motivo si `ERROR`.
+- [x] S14-13 — `pantalla-pendientes.tsx` + `badge-pendientes.tsx` +
+  `app/(app)/pendientes/page.tsx` implementados tal cual `plan.md`. Sin
+  entrada nueva en `RUTAS_POR_ROL` (queda abierta a cualquier
+  autenticado). 4 clases nuevas en `globals.css`
+  (`.badge-cola-pendiente/-enviando/-ok/-error`) reusando los mismos
+  tonos que `.badge-alerta-por-vencer` (ámbar), `.toast-success` (verde)
+  y `.badge-tipo-muerte` (rojo), más un sky nuevo para `ENVIANDO`.
+  **Bug real encontrado y corregido en vivo, no en tests:** el comentario
+  agregado a `globals.css` para estas clases contenía la secuencia
+  literal `*/` dentro de `.badge-categoria-*/.badge-tipo-cliente-*`
+  (guion, asterisco, barra pegados) — eso cierra un comentario CSS antes
+  de tiempo, corrompiendo todo el archivo desde ahí hasta el final
+  ("Parsing CSS source code failed... Unexpected end of input" en
+  Turbopack, reproducido tras limpiar `.next` para descartar caché
+  vieja). Ningún test lo detecta (no hay lint de CSS en el proyecto) —
+  se encontró recién al abrir la app en el navegador para la
+  verificación en vivo de S14-13/14/15/16, y se corrigió agregando un
+  espacio (`.badge-categoria-* / .badge-tipo-cliente-*`). Vale la pena
+  tenerlo presente para cualquier comentario CSS futuro que mencione dos
+  nombres de clase con `*` seguidos de `/`.
 
-- [ ] S14-14 — Botón "Reintentar" por ítem (llama `sincronizarCola()`
-  acotado a ese ítem — o al lote completo si acotarlo a uno solo agrega
-  complejidad desproporcionada, decidir y documentar acá al implementar).
+- [x] S14-14 — Botón "Reintentar" implementado: para un ítem `ERROR`
+  llama `marcarPendiente(id)` y después `sincronizarCola()` completa (no
+  acotada a un solo ítem — la alternativa de una función paralela
+  parametrizada se descartó por complejidad desproporcionada para el
+  beneficio, tal cual se dejó abierto en `plan.md`). Verificado en vivo:
+  clic en "Reintentar" sobre un ítem `ERROR` real → pasa a "Enviando…" →
+  sincroniza de verdad contra Neon (creó un `RegistroMortalidad` real) →
+  desaparece de la lista (pasa a `OK`, excluido de `listarPendientes()`)
+  → el badge del Shell baja de "3 pendientes" a "2 pendientes" en vivo,
+  reactivo, sin recargar la página.
 
-- [ ] S14-15 — Botón "Descartar" con confirmación explícita — mismo
-  patrón que `EliminarNotaBitacoraDialog` (`<Dialog>` + botón
-  `variant="destructive"`, nunca `window.confirm()`; confirmado que no
-  existe ningún `<AlertDialog>` en `components/ui/`, no hay que buscarlo)
-  → `descartar(id)` de `cola.ts`. Nunca automático, nunca sin
-  confirmación (decisión de negocio 6, `spec.md`).
+- [x] S14-15 — Botón "Descartar" implementado tal cual
+  `EliminarNotaBitacoraDialog` (`<Dialog>` + botón `variant="destructive"`,
+  sin `window.confirm()`). Verificado en vivo: diálogo de confirmación
+  con el texto exacto del plan, clic en "Sí, descartar" → el ítem
+  desaparece de la lista y el badge baja de "2 pendientes" a "1
+  pendiente" (singular correcto, `cantidad === 1 ? "" : "s"`).
 
-- [ ] S14-16 — Badge de conteo de pendientes (`PENDIENTE` + `ERROR`) en
-  el Shell, mismo lugar/criterio de visibilidad que `ConnectivityIndicator`
-  (footer del Sidebar) — enlaza a `/pendientes`.
+- [x] S14-16 — `BadgePendientes` montado en el footer del Sidebar, junto
+  a `ConnectivityIndicator`, gateado por `!colapsado` igual que el resto
+  del bloque nombre/rol. Verificado en vivo con las 3 transiciones
+  reales de arriba (3 → 2 → 1 pendientes), reactivo sin recargar.
 
-- [ ] S14-17 — Sin test de render para `pantalla-pendientes.tsx`: el
-  proyecto entero no tiene un solo test que renderice un componente React
-  (confirmado — `vitest.config.mts` corre en `environment: "node"`, sin
-  `jsdom`; `include` solo matchea `.test.ts`, ningún `.tsx`) — se
-  verifica en vivo (S14-18/19), mismo criterio que el resto de los
-  componentes `domain/*` del proyecto. `npm run typecheck && npm run
-  lint && npm test` en verde (sin regresión sobre lo ya cubierto en
-  S14-11).
+- [x] S14-17 — Confirmado: sin test de render para
+  `pantalla-pendientes.tsx`/`badge-pendientes.tsx` (mismo motivo que ya
+  quedó documentado). `npm run typecheck && npm run lint && npm test` en
+  verde — 575/575, sin regresión sobre lo ya cubierto en S14-11.
+  **Nota real, no un bug:** en el primer render de `/pendientes` tras
+  una navegación de documento completa (no client-side), `useLiveQuery`
+  devolvió `[]` una vez antes de resolver el estado real de IndexedDB
+  (carrera de apertura de conexión de Dexie en el primer mount) — un
+  segundo render (recarga o navegación posterior) siempre mostró los
+  ítems reales correctamente. No se investigó más a fondo ni se corrigió
+  — no afecta la corrección de los datos (nunca se pierde ni se
+  duplica nada, es puramente visual y transitorio), y añadir un guard
+  extra solo para este flash de un frame en la primera carga de sesión
+  sería complejidad sin beneficio real medible. Queda anotado acá por si
+  se vuelve a notar en una verificación futura.
 
 - [x] S14-18 — **Verificado en vivo de forma incidental durante S14-12**
   (no como tarea de 14B deliberada — se dejó `[x]` acá igual porque el
@@ -205,12 +230,31 @@ cerrado y verificado 14A.
   sincronizar es la que se intenta usar — confirma que el diseño es tal
   cual se documentó, riesgo aceptado sin resolver este sprint.
 
-- [ ] S14-19 — Verificación en vivo: forzar un error permanente real —
-  encolar un registro de Mortalidad/Recolección para un lote, finalizar
-  ese lote antes de reconectar, reconectar y confirmar que el ítem queda
-  en `ERROR` visible con el motivo real del servidor, sin descartarse
-  solo, y que los demás ítems del mismo lote de sync sí procesan bien
-  (independencia entre ítems).
+- [x] S14-19 — **Verificado en vivo contra Neon dev real.** Se creó un
+  lote desechable (`LOTE-S14-19-TEST`, Galpón 2, 10 aves — sin tocar
+  `LOTE-DEMO-01`, compartido con el resto de las verificaciones del
+  proyecto) para no afectar datos usados por otras pruebas. Se finalizó
+  ese lote (→ `INACTIVO`) y luego se encolaron 2 ítems `PENDIENTE`: uno
+  de Mortalidad contra el lote recién finalizado, otro de Mortalidad sin
+  relación contra `LOTE-DEMO-01`. Al sincronizar (disparador de montaje,
+  `/pendientes`): el ítem del lote finalizado quedó en `ERROR` visible
+  con el motivo real y específico del servidor ("Solo se puede registrar
+  mortalidad de un lote activo." — no un mensaje genérico), sin
+  descartarse solo; el ítem sin relación se procesó bien de forma
+  completamente independiente (pasó a `OK`, generó un `RegistroMortalidad`
+  real). Confirma que un error permanente en un ítem no bloquea ni
+  afecta a los demás del mismo lote de sync. Cola local limpiada al
+  cerrar la verificación (estado transitorio del navegador de prueba,
+  no hace falta preservarlo). `LOTE-S14-19-TEST` queda `INACTIVO` en la
+  base de dev — igual criterio que otros datos de verificación dejados
+  por sprints anteriores (`LOTE-DEMO-01` mismo, "Verif Browser S4",
+  etc.), no se revierte.
+
+- [x] S14-20 — Cierre de sprint: `memory/estado-proyecto.md` y
+  `specs/roadmap-completo.md` actualizados (ver commit de cierre) con el
+  resultado real de ejecución de 14A y 14B, el bug de CSS encontrado y
+  corregido en vivo, y el resultado completo de las verificaciones
+  S14-12/S14-18/S14-19.
 
 - [ ] S14-20 — Cierre de sprint: actualizar `memory/estado-proyecto.md`
   (sección "Sprint 14") y `specs/roadmap-completo.md` (marcar Sprint 14

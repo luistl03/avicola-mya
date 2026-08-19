@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import type { Rol } from "@prisma/client";
 
 import { LogoutButton } from "@/components/domain/auth/logout-button";
+import { BadgePendientes } from "@/components/domain/offline/badge-pendientes";
 import { ConnectivityIndicator } from "@/components/domain/pwa/connectivity-indicator";
 import { InstallAppButton } from "@/components/domain/pwa/install-app-button";
 import { IosInstallButton } from "@/components/domain/pwa/ios-install-button";
@@ -111,12 +112,13 @@ export function AppSidebar({ rol, nombre }: { rol: Rol; nombre: string }) {
 
       <SidebarFooter className="gap-3 border-t border-sidebar-border p-4">
         {!colapsado && (
-          <div className="flex flex-col overflow-hidden">
+          <div className="flex flex-col gap-1.5 overflow-hidden">
             <span className="truncate text-sm font-medium text-sidebar-foreground">{nombre}</span>
             <span className="flex items-center gap-1.5 text-xs text-sidebar-foreground/70">
               {ROL_LABEL[rol]}
               <ConnectivityIndicator />
             </span>
+            <BadgePendientes />
           </div>
         )}
         {!colapsado && (

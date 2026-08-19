@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 13 completado salvo un ítem — app instalable en Android real (manifest, iconos maskable, `beforeinstallprompt` con banner + botón manual de respaldo) y offline-ready para Mortalidad/Bitácora/Recolección vía Service Worker (`@serwist/turbopack`, D7 — no `next-pwa`, incompatible con Turbopack). 11 hallazgos reales encontrados y corregidos durante la verificación en dispositivo real (detalle completo en `memory/estado-proyecto.md` y `specs/sprint-13-pwa-instalacion/tasks.md`), entre ellos una carrera real de `beforeinstallprompt` contra la hidratación de React, desalojo LRU de caché por compartir balde, y un evento de instalación de un solo uso que no se limpiaba tras usarlo. Sin ninguna migración de schema. Verificado en vivo contra Neon/Upstash reales: guardar sin señal falla explícito sin perder ni duplicar datos, y el rate limit operativo responde exactamente como está documentado (60/min). Único ítem pendiente: S13-21 (verificación en iPhone real), en espera explícita del Product Owner, rama `feat/S13-pwa-instalacion` sin mergear a `main` todavía.
-**Progreso:** 14 de 16 sprints (88%, con una verificación puntual en iPhone pendiente de Sprint 13)
+**Última actualización:** Sprint 14 completado por completo (14A y 14B) — cola offline en IndexedDB (Dexie) para Mortalidad, Bitácora y Recolección: los 3 dialogs de campo encolan en vez de solo avisar el error de red, `POST /api/sync` sincroniza sola al recuperar señal reutilizando las Server Actions existentes (misma validación/idempotencia/AuditLog, sin duplicar lógica de negocio), y `/pendientes` da visibilidad y control manual (reintentar, descartar) sobre lo que no sincronizó. Migración agrega `creadoEnCliente` a `RegistroMortalidad`/`BitacoraGlobal`, completando el Contrato Offline-Ready que Recolección/Consolidación ya tenían desde Sprint 5/7. Verificado en vivo contra Neon dev real: guardar sin señal, sincronizar sin duplicar, la ventana de gracia de 10 min arranca al sincronizar (no al capturar offline), la cola sobrevive un logout/login real, y un error permanente forzado (lote finalizado antes de sincronizar) queda visible sin descartarse solo y sin bloquear a los demás ítems del mismo lote de sync. 575/575 tests, 100% cobertura en los 4 archivos nuevos de la capa offline. Detalle completo (incluido un bug real de CSS encontrado y corregido en vivo) en `memory/estado-proyecto.md` y `specs/sprint-14-cola-offline/tasks.md`. Rama `feat/S14-cola-offline` sin mergear a `main` todavía. Sprint 13 sigue cerrado salvo S13-21 (verificación en iPhone real), en espera explícita del Product Owner, rama `feat/S13-pwa-instalacion` tampoco mergeada.
+**Progreso:** 15 de 16 sprints (94%, con una verificación puntual en iPhone pendiente de Sprint 13)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -23,8 +23,8 @@ resumen + `memory/` como base — no inventar alcance nuevo.
 |---|---|---|---|
 | R1 — Operación básica | 0–7 | 🟢 Completo (8/8) | La granja registra producción y vende al contado. Reemplaza el cuaderno. |
 | R2 — Finanzas | 8–11 | 🟢 Completo (4/4) | Créditos, cobranza, egresos, planilla. |
-| R3 — Campo real | 12–13 | ⬜ Pendiente | Funciona sin señal. Instalable. |
-| R4 — Inteligencia | 14–15 | ⬜ Pendiente | Dashboard, reportes, push. |
+| R3 — Campo real | 12–14 | ⬜ Pendiente | Funciona sin señal. Instalable. |
+| R4 — Inteligencia | 15–16 | ⬜ Pendiente | Dashboard, reportes, push. |
 
 Total: 16 sprints de 2 semanas ≈ 32 semanas a dedicación full-time.
 Velocidad de referencia: 1 dev full-time 26–34 pts/sprint,
@@ -266,13 +266,46 @@ espera explícita del Product Owner — no bloqueante para seguir. Rama
 **Detalle completo (los 11 hallazgos, decisiones de negocio
 confirmadas, verificación en vivo):** `memory/estado-proyecto.md`
 
-### Sprint 14 — Cola offline y sincronización (37 pts) ⚠️ ALTO RIESGO, dividir en 14A/14B
+### ✅ Sprint 14 — Cola offline y sincronización (37 pts) — COMPLETADO
 **Goal:** operario trabaja 4h sin señal, al volver no se pierde ni duplica nada.
-- Capa IndexedDB (Dexie): cola PENDIENTE/ENVIANDO/OK/ERROR
-- Interceptor de fallo de red → encolar
-- POST /api/sync batch idempotente (upsert por UUID cliente)
-- Ventana de gracia offline: creadoEnCliente vs creadoEn (servidor)
-- Resolución de conflictos, cola sobrevive logout, pantalla de pendientes
+- Capa IndexedDB (Dexie 4.4.5): cola PENDIENTE/ENVIANDO/OK/ERROR
+  (`src/lib/offline/db.ts`, `cola.ts`)
+- Interceptor de fallo de red → encolar, en los 3 dialogs de campo
+  (Mortalidad, Bitácora, Recolección)
+- `POST /api/sync` batch idempotente (tope 25 ítems/request), reutiliza
+  las Server Actions existentes sin duplicar validación/idempotencia/
+  AuditLog
+- Sincronización automática (evento `online` + montaje del Shell) +
+  `/pendientes` con reintento manual y descarte con confirmación
+- Ventana de gracia offline: ancla a `creadoEn`/`fecha` (servidor, al
+  sincronizar), no a `creadoEnCliente` — decisión de negocio confirmada
+  y verificada en vivo
+- Conflictos (mismo id, datos distintos): rechazo explícito, mismo
+  `P2002` que ya usaban las 3 Server Actions — sin lógica de merge nueva
+**Ejecutado como sprint único, dividido en 14A (camino feliz) y 14B
+(pantalla de pendientes, edge cases) dentro de la misma sesión** — el
+roadmap lo marcaba "⚠️ ALTO RIESGO, dividir en 14A/14B"; el corte
+propuesto resultó suficiente, sin necesidad de partirlo en dos sesiones
+separadas.
+**Una migración** — `creadoEnCliente DateTime?` en `RegistroMortalidad`
+y `BitacoraGlobal` (nullable, sin backfill), completa el Contrato
+Offline-Ready que `RegistroRecoleccion`/`RegistroConsolidacion` ya
+tenían desde Sprint 5/7. `fecha` no se renombró.
+**Bug real encontrado y corregido en vivo:** un comentario nuevo en
+`globals.css` con la secuencia literal `*/` dentro de dos nombres de
+clase seguidos cerraba el comentario CSS antes de tiempo, corrompiendo
+el archivo completo — sin lint de CSS en el proyecto que lo detectara
+antes de abrir el navegador.
+**Verificado en vivo contra Neon dev real** (guardar sin señal,
+sincronizar sin duplicar, ventana de gracia arrancando al sincronizar,
+cola sobreviviendo un logout/login real, error permanente forzado
+quedando visible sin descartarse solo e independiente de otros ítems
+del mismo lote de sync) — detalle completo en `memory/estado-proyecto.md`.
+**Sin mergear a `main` todavía** — rama `feat/S14-cola-offline`.
+**Specs:** `specs/sprint-14-cola-offline/`
+**Detalle completo (bug de CSS, hallazgos reales, verificación en
+vivo tarea por tarea):** `memory/estado-proyecto.md` y
+`specs/sprint-14-cola-offline/tasks.md`
 
 ---
 
