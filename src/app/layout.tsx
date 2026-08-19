@@ -1,9 +1,13 @@
+import { SerwistProvider } from "@serwist/turbopack/react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 
 import { IdleTimer } from "@/components/domain/auth/idle-timer";
+import { IosInstallBanner } from "@/components/domain/pwa/ios-install-banner";
+import { InstallPromptAndroid } from "@/components/domain/pwa/install-prompt-android";
+import { PrecargarCatalogos } from "@/components/domain/pwa/precargar-catalogos";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ToastProvider } from "@/components/ui/toast";
@@ -25,6 +29,14 @@ export const metadata: Metadata = {
   description: "Sistema de gestión interna — Avícola M&A",
   icons: {
     icon: "/avicolamya-imagotipo.png",
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    // iOS no lee el manifest para esto — necesita estas meta tags propias
+    // (Sprint 13, H2/decisión 4).
+    capable: true,
+    statusBarStyle: "default",
+    title: "Avícola M&A",
   },
 };
 
@@ -55,7 +67,14 @@ export default async function RootLayout({
           ) : (
             children
           )}
-          {usuario ? <IdleTimer /> : null}
+          {usuario ? (
+            <SerwistProvider swUrl="/serwist/sw.js" reloadOnOnline={false}>
+              <IdleTimer />
+              <PrecargarCatalogos />
+              <InstallPromptAndroid />
+              <IosInstallBanner />
+            </SerwistProvider>
+          ) : null}
         </ToastProvider>
       </body>
     </html>

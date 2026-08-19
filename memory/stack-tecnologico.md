@@ -30,9 +30,14 @@
   El schema Zod es el contrato explícito entre cliente y servidor.
 
 ## Offline / PWA
-- **next-pwa** o **Serwist** — Service Workers, manifest, estrategias de caché.
+- **Serwist** (`@serwist/turbopack`) — Service Workers, manifest,
+  estrategias de caché. Elegido sobre `next-pwa` por incompatibilidad de
+  ese último con Turbopack, el bundler estable por defecto de Next 16
+  desde Sprint 0 (D7, `decisiones-tecnicas.md`, Sprint 13).
 - **Dexie** (wrapper de IndexedDB) — cola local de operaciones pendientes.
+  (Sprint 14, sin instalar todavía.)
 - **Web Push (VAPID)** — notificaciones push para alertas de crédito vencido.
+  (Sprint 16, sin instalar todavía.)
 
 ## Comprobantes (Sprint 9)
 - **jsPDF** — genera el comprobante de venta del POS como PDF **enteramente

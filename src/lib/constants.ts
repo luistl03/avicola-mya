@@ -21,3 +21,6 @@ export const UNIDADES_POR_PAQUETE = 180;
 
 /** Unidades por bandeja suelta armada en Consolidación (Sprint 7) — mismo criterio que UNIDADES_POR_PAQUETE: constante compartida entre server/services/consolidacion.ts (calcularConsolidacion, autoritativo) y el preview reactivo del wizard "Armar Bandeja" en el cliente, que debe coincidir exactamente. */
 export const UNIDADES_POR_BANDEJA = 30;
+
+/** Días que el prompt de instalación de Android espera antes de volver a ofrecerse solo, después de que el usuario lo cierra sin instalar (Sprint 13, decisión de negocio 3). Usada por install-prompt-android.tsx. */
+export const INSTALL_PROMPT_COOLDOWN_DIAS = 30;

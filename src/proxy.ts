@@ -54,9 +54,15 @@ export default auth(async (req) => {
 });
 
 export const config = {
-  // Excluye assets internos de Next y archivos estáticos de public/
-  // (favicon, logo, etc.) — sin esto el propio guard bloquea la petición
-  // interna del optimizador de imágenes de Next. /api/auth/* SÍ está
+  // Excluye assets internos de Next, archivos estáticos de public/
+  // (favicon, logo, etc.), el manifest de la PWA (.webmanifest) y la ruta
+  // de servicio del Service Worker (/serwist/*, Sprint 13) — sin esto, un
+  // dispositivo SIN sesión (incluido el primer chequeo de instalabilidad
+  // de Chrome desde /login) recibe un 302/307 a /login en vez del
+  // manifest/SW real. Mismo tipo de bug ya corregido una vez con el logo
+  // (Sprint 1/2, ver memory/estado-proyecto.md). /api/auth/* SÍ está
   // incluido a propósito: necesita pasar por acá para el rate limiting.
-  matcher: ["/((?!_next/static|_next/image|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|serwist|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|webmanifest)$).*)",
+  ],
 };

@@ -63,6 +63,7 @@ export default async function Home() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Link
             href="/creditos"
+            prefetch={false}
             className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
           >
             <span className="flex size-9 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
