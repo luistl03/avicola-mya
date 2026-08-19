@@ -710,12 +710,36 @@ tarea, tal como quedaron documentadas las de
      falta tocarla.
 
   Verificado `npm run typecheck && npm run lint && npm test` —
-  **553/553 en verde**, sin regresión. **Pendiente todavía:** confirmar
-  visualmente el reacomodo del punto de conectividad y el texto corregido
-  en el dispositivo real (no se pudo verificar en vivo, solo por código),
-  y el resto de los criterios de esta tarea (cooldown de "Ahora no",
-  botón manual a demanda, modo standalone, color de tema en la barra de
-  estado).
+  **553/553 en verde**, sin regresión.
+
+  **Tercer hallazgo real, mismo ciclo de verificación:** con la app ya
+  instalada, el Product Owner volvió a abrir la URL de preview en una
+  pestaña normal del navegador (no la app instalada) y el banner/botón
+  de instalar seguían apareciendo, como si nunca se hubiera instalado.
+  Causa: `eventoCapturado`/`window.__bipEvento` son memoria en RAM de la
+  página, se resetean en cada carga nueva — y Chrome no garantiza
+  suprimir `beforeinstallprompt` en una pestaña normal solo porque la PWA
+  ya esté instalada (sin `getInstalledRelatedApps()` configurado, que
+  necesitaría listar la app en Play Store, fuera de alcance). **Corregido**
+  con un flag nuevo persistido en `localStorage`
+  (`pwa-instalada`, `install-prompt-android.tsx`): se guarda "1" en el
+  handler real de `appinstalled` y gana por sobre cualquier evento
+  capturado después — `obtenerInstalacionDisponible()` (consumida tanto
+  por el banner como por `InstallAppButton`) chequea este flag primero.
+  **Limitación real, no resuelta ni resoluble sin más infraestructura:**
+  este flag no es retroactivo — la instalación que el Product Owner ya
+  hizo antes de este fix no lo dejó seteado (el código de ese momento no
+  lo guardaba todavía), así que es esperable que el banner/botón
+  aparezcan una vez más hasta el próximo `appinstalled` real; de ahí en
+  adelante debería quedar suprimido de verdad. Verificado
+  `npm run typecheck && npm run lint && npm test` — **553/553 en verde**.
+
+  **Pendiente todavía:** confirmar visualmente en el dispositivo real el
+  reacomodo del punto de conectividad, el texto corregido, y que el flag
+  de "ya instalada" efectivamente suprime el banner/botón en la próxima
+  instalación — más el resto de los criterios de esta tarea (cooldown de
+  "Ahora no", botón manual a demanda, modo standalone, color de tema en
+  la barra de estado).
 
 - [ ] S13-21 — Verificación en iPhone real (a cargo del Product Owner, R3
   `spec.md`): banner de tutorial de iOS aparece una vez con los 3 pasos

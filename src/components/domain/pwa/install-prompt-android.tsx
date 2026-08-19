@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { INSTALL_PROMPT_COOLDOWN_DIAS } from "@/lib/constants";
 
 const STORAGE_KEY = "pwa-install-prompt-cerrado-en";
+const INSTALADA_KEY = "pwa-instalada";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -50,8 +51,21 @@ export function suscribirseAInstalacion(callback: Escucha) {
   return () => escuchas.delete(callback);
 }
 
+// Sin esto, reabrir el sitio en una pestaña nueva del navegador (no la app
+// ya instalada) podía seguir mostrando el banner/botón — hallazgo real:
+// `eventoCapturado` y `window.__bipEvento` son memoria en RAM de la
+// página, se resetean en cada carga nueva; Chrome puede seguir
+// disparando `beforeinstallprompt` en una pestaña normal aunque la PWA ya
+// esté instalada (no hay garantía cross-tab de que se suprima solo). Este
+// flag persiste en localStorage la primera vez que se confirma la
+// instalación de verdad (evento `appinstalled`), y gana por sobre
+// cualquier evento capturado después.
+function yaInstalada(): boolean {
+  return localStorage.getItem(INSTALADA_KEY) === "1";
+}
+
 export function obtenerInstalacionDisponible() {
-  return eventoCapturado !== null;
+  return !yaInstalada() && eventoCapturado !== null;
 }
 
 export function dispararInstalacion() {
@@ -77,6 +91,7 @@ export function InstallPromptAndroid() {
     // (el caso real que fallaba), lo consume acá — no depende de que el
     // evento se dispare DESPUÉS de que este efecto corra.
     const capturarSiYaLlego = () => {
+      if (yaInstalada()) return; // ver nota de yaInstalada() más arriba
       if (window.__bipEvento && !eventoCapturado) {
         establecerEvento(window.__bipEvento);
         if (!dentroDelCooldown()) setMostrar(true);
@@ -91,6 +106,7 @@ export function InstallPromptAndroid() {
     // corrigió).
     const alCapturar = () => capturarSiYaLlego();
     const alInstalar = () => {
+      localStorage.setItem(INSTALADA_KEY, "1");
       establecerEvento(null);
       setMostrar(false);
     };
