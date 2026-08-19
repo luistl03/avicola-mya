@@ -922,6 +922,42 @@ tarea, tal como quedaron documentadas las de
      real. Verificado con `curl` contra `npm run start` que `/login` ya
      sirve la referencia a `/serwist/sw.js` sin necesitar sesión.
 
+  11. **Aun con el SW registrado desde `/login` (hallazgo 10), el
+     Product Owner seguía reportando "presiono Instalar y no pasa
+     nada" en el primer intento** — funcionaba recién tras refrescar
+     dos veces (una para que el botón "hiciera algo", otra para que la
+     descarga/instalación real arrancara). Auditando
+     `install-prompt-android.tsx` apareció un bug real independiente:
+     `dispararInstalacion()` nunca limpiaba `eventoCapturado` después
+     de usarlo. Un `BeforeInstallPromptEvent` es de un solo uso (spec
+     del navegador) — pero acá el banner flotante
+     (`InstallPromptAndroid`) y el botón manual del Sidebar
+     (`InstallAppButton`) comparten el mismo evento vía el store de
+     módulo, y ambos pueden quedar visibles al mismo tiempo. Sin
+     limpiarlo, un segundo toque (en cualquiera de los dos triggers)
+     reintentaba `prompt()` sobre un evento ya gastado, que Chrome
+     ignora en silencio — sin arrojar ningún error visible para
+     nosotros, coincide exactamente con "no pasa nada". **Corregido**:
+     `dispararInstalacion()` ahora limpia el store (`establecerEvento(null)`)
+     ANTES de llamar `.prompt()`, así que apenas se usa cualquiera de
+     los dos triggers, ambos se ocultan solos en vez de seguir
+     clicables sobre un evento muerto; se agregó también un `.catch()`
+     a la promesa de `prompt()` (antes se descartaba con `void`,
+     silenciando cualquier rechazo sin dejar rastro).
+     El Product Owner también planteó una hipótesis propia: que el
+     aviso nativo de Chrome de "contraseña no segura" (Google Password
+     Manager, tras loguearse con una credencial de prueba débil/filtrada)
+     pudiera estar compitiendo por la misma superficie nativa del
+     navegador y bloqueando el diálogo de instalación — plausible y sin
+     forma de descartarla desde el código (es comportamiento interno de
+     Chrome); pendiente de que el Product Owner reintente con una
+     contraseña de prueba fuerte para aislar esa variable. Acordado con
+     el Product Owner probar una vez más con el botón rápido tras este
+     fix; si sigue sin funcionar de forma confiable, la alternativa ya
+     evaluada es reemplazar el banner/botón por instrucciones manuales
+     apuntando al menú (⋮ → "Instalar aplicación") del navegador, mismo
+     patrón que ya usa el banner de iOS.
+
   Verificado de nuevo `npm run typecheck && npm run lint && npm run build
   && npm test` tras cada uno de estos hallazgos — **553/553 en verde**
   en todos los casos —, y confirmado con `curl` contra `npm run start`

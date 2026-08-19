@@ -69,7 +69,27 @@ export function obtenerInstalacionDisponible() {
 }
 
 export function dispararInstalacion() {
-  void eventoCapturado?.prompt();
+  const evento = eventoCapturado;
+  if (!evento) return;
+  // Se limpia ANTES de llamar prompt(), no después: un
+  // BeforeInstallPromptEvent es de un solo uso — si queda vivo en el
+  // store, un segundo toque en el banner o en el botón del Sidebar (los
+  // dos pueden estar visibles al mismo tiempo, comparten este mismo
+  // evento) reintenta prompt() sobre un evento ya gastado, que Chrome
+  // ignora en silencio sin ningún error visible — hallazgo real
+  // reportado por el Product Owner ("presiono Instalar y no pasa nada",
+  // luego funcionaba recién al refrescar y capturar un evento nuevo).
+  // Al limpiarlo acá, ambos triggers se ocultan solos apenas se usa
+  // cualquiera de los dos, en vez de quedar clicables sobre un evento
+  // muerto.
+  establecerEvento(null);
+  evento.prompt().catch(() => {
+    // Chrome puede rechazar prompt() sin exponernos el motivo (otro
+    // diálogo nativo compitiendo por la misma superficie del navegador,
+    // el evento invalidado del lado del navegador, etc.) — no hay nada
+    // que reintentar sobre ESTE evento ya consumido; el menú (⋮) del
+    // navegador sigue disponible como instalación manual.
+  });
 }
 
 function dentroDelCooldown(): boolean {
