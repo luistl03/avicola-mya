@@ -102,7 +102,17 @@ function RegistrarMortalidadForm({
   const [id] = useState(() => crypto.randomUUID());
 
   const [state, formAction, pending] = useActionState<Estado, FormData>(async (_prev, formData) => {
-    const resultado = await registrarMortalidad(formData);
+    let resultado: Estado;
+    try {
+      resultado = await registrarMortalidad(formData);
+    } catch {
+      // Ver el mismo catch en nueva-nota-bitacora-dialog.tsx — sin red, el
+      // fetch de la Server Action rechaza antes de llegar al servidor;
+      // sin este catch React lo trata como error no manejado en vez de
+      // mostrarlo con el mismo mensaje en rojo del resto del formulario
+      // (H3, spec.md Sprint 13).
+      return { ok: false, error: "Sin conexión. Guarda de nuevo cuando recuperes señal." };
+    }
     if (resultado.ok) {
       router.refresh();
       toastManager.add({

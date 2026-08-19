@@ -1,4 +1,4 @@
-# Decisiones Técnicas (D1–D6) — CERRADAS
+# Decisiones Técnicas (D1–D7) — CERRADAS
 
 Estas decisiones fueron confirmadas por el Product Owner (Gerente) antes de
 iniciar la migración del Sprint 0. Cambiar cualquiera de estas después de
@@ -59,6 +59,31 @@ pero **debe re-evaluarse** cuando:
   - haya presupuesto disponible para upgrade.
 **Acción de seguimiento:** agregar este ítem a la tabla de riesgos del
 plan SCRUM (`memory/` o el documento de riesgos), no dejarlo solo aquí.
+
+---
+
+## D7 — Librería PWA: Serwist vía `@serwist/turbopack` ✅ CERRADO (2026-08-18, Sprint 13)
+**Decisión:** se usa **Serwist** (`serwist`, `@serwist/turbopack`,
+`esbuild` como dependencia de build) en vez de `next-pwa`.
+`stack-tecnologico.md` decía "next-pwa o Serwist" sin cerrar — esta
+decisión lo cierra.
+**Motivo:** Next 16.2.12 usa Turbopack estable por defecto para `dev` y
+`build` (fijado en Sprint 0). `next-pwa` engancha su generación del
+Service Worker al hook `webpack()` de `next.config.js` — no tiene ninguna
+ruta de integración con Turbopack, porque Turbopack no ejecuta esa config
+en absoluto. Usarlo exigiría `next build --webpack` en producción mientras
+`next dev` sigue en Turbopack — dos bundlers distintos entre entornos,
+reintroduciendo exactamente el riesgo que Sprint 0 evitó al aceptar
+Turbopack por defecto. `@serwist/turbopack` (Serwist 9, soporte de
+Turbopack backporteado diciembre 2025, confirmado activo y mantenido) no
+depende del hook de `webpack()` — genera el Service Worker vía una ruta de
+Next (`app/serwist/[path]/route.ts`) compilada con `esbuild`, sin importar
+qué bundler compila el resto de la app.
+**Impacto:** confirma el diseño de `specs/sprint-13-pwa-instalacion/plan.md`
+— `app/sw.ts`, `app/serwist/[path]/route.ts`, `next.config.ts` envuelto
+con `withSerwist`. Cierra también un ajuste necesario en `src/proxy.ts`
+(su matcher no excluía `.webmanifest` ni rutas sin extensión de archivo —
+corregido en la misma sesión, ver `memory/estado-proyecto.md`).
 
 ---
 

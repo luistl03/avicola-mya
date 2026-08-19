@@ -84,7 +84,21 @@ function NuevaNotaBitacoraForm({ onExito }: { onExito: () => void }) {
   const [id] = useState(() => crypto.randomUUID());
 
   const [state, formAction, pending] = useActionState<Estado, FormData>(async (_prev, formData) => {
-    const resultado = await crearNotaBitacora(formData);
+    let resultado: Estado;
+    try {
+      resultado = await crearNotaBitacora(formData);
+    } catch {
+      // Sin red, la llamada a la Server Action ni siquiera llega al
+      // servidor — rechaza como un error de fetch normal, no como el
+      // {ok:false} de negocio que withAuth ya traduce del lado del
+      // servidor. Sin este catch, React lo trata como un error no
+      // manejado (pantalla en blanco/error del navegador) en vez de
+      // mostrarlo con el mismo mensaje en rojo que ya usa cualquier otro
+      // error de este formulario (H3, spec.md Sprint 13: "falla con el
+      // error de red esperado", sin colgarse). La cola offline real que
+      // evitaría esta falla es Sprint 14, no este sprint.
+      return { ok: false, error: "Sin conexión. Guarda de nuevo cuando recuperes señal." };
+    }
     if (resultado.ok) {
       router.refresh();
       toastManager.add({ type: "success", title: "Nota guardada" });

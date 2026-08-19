@@ -6,6 +6,10 @@ import { usePathname } from "next/navigation";
 import type { Rol } from "@prisma/client";
 
 import { LogoutButton } from "@/components/domain/auth/logout-button";
+import { ConnectivityIndicator } from "@/components/domain/pwa/connectivity-indicator";
+import { InstallAppButton } from "@/components/domain/pwa/install-app-button";
+import { IosInstallButton } from "@/components/domain/pwa/ios-install-button";
+import { PANTALLAS_DE_CAMPO } from "@/components/domain/pwa/precargar-catalogos";
 import { NAV_ITEMS } from "@/components/layout/nav-items";
 import {
   Sidebar as SidebarPrimitive,
@@ -81,13 +85,20 @@ export function AppSidebar({ rol, nombre }: { rol: Rol; nombre: string }) {
           {items.map((item) => {
             const activo = pathname === item.href;
             const Icono = item.icon;
+            // Sprint 13: Next prefetchea automáticamente cualquier <Link>
+            // visible en viewport, y el Service Worker cachea esa
+            // respuesta — sin acotarlo, TODAS las pantallas del Sidebar
+            // (gestión incluida) quedarían precacheadas solo por estar en
+            // el menú, contradiciendo la decisión de negocio 1 (hallazgo
+            // real de la verificación en vivo de S13-13, ver plan.md).
+            const esPantallaDeCampo = PANTALLAS_DE_CAMPO.includes(item.href);
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   isActive={activo}
                   tooltip={item.label}
                   size="lg"
-                  render={<Link href={item.href} />}
+                  render={<Link href={item.href} prefetch={esPantallaDeCampo} />}
                 >
                   <Icono />
                   <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
@@ -102,7 +113,16 @@ export function AppSidebar({ rol, nombre }: { rol: Rol; nombre: string }) {
         {!colapsado && (
           <div className="flex flex-col overflow-hidden">
             <span className="truncate text-sm font-medium text-sidebar-foreground">{nombre}</span>
-            <span className="text-xs text-sidebar-foreground/70">{ROL_LABEL[rol]}</span>
+            <span className="flex items-center gap-1.5 text-xs text-sidebar-foreground/70">
+              {ROL_LABEL[rol]}
+              <ConnectivityIndicator />
+            </span>
+          </div>
+        )}
+        {!colapsado && (
+          <div className="flex flex-col gap-2">
+            <InstallAppButton />
+            <IosInstallButton />
           </div>
         )}
         <div className={colapsado ? "flex justify-center" : undefined}>
