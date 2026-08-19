@@ -629,12 +629,19 @@ tarea, tal como quedaron documentadas las de
   `npm run typecheck && npm run lint && npm test` — **553/553 en
   verde**, sin regresión.
 
-- [ ] S13-20 — Verificación en dispositivo Android real (a cargo del
+- [x] S13-20 — Verificación en dispositivo Android real (a cargo del
   Product Owner, R3 `spec.md`): prompt de instalación aparece una vez tras
   el login, "Ahora no" respeta el cooldown de 30 días, el botón manual
   "Instalar app" del Sidebar dispara el mismo prompt a demanda, la app
-  instalada abre en modo standalone con el color de tema `--primary`
-  correcto en la barra de estado.
+  instalada abre en modo standalone. **Criterio de la barra de estado
+  actualizado**: el enunciado original decía "con el color de tema
+  `--primary` correcto en la barra de estado" — eso se implementó,
+  pero después el propio Product Owner pidió revertirlo (hallazgo 7 más
+  abajo): la barra de navegación inferior de Android no se puede pintar
+  vía web estándar, así que se prefirió dejar también la de arriba en
+  el color por defecto del sistema, no forzar un naranja a medias. El
+  criterio real de cierre es "sin inconsistencia entre ambas barras",
+  no "naranja arriba".
 
   **Bug real encontrado y corregido en plena verificación** (Product
   Owner probando en su Android real, vía preview de Vercel — primera vez
@@ -958,6 +965,58 @@ tarea, tal como quedaron documentadas las de
      apuntando al menú (⋮ → "Instalar aplicación") del navegador, mismo
      patrón que ya usa el banner de iOS.
 
+  **Confirmado por el Product Owner (2026-08-19): la hipótesis de la
+  contraseña era la causa real.** Con un usuario de prueba nuevo y una
+  contraseña fuerte (sin el aviso de Google Password Manager de
+  "contraseña no segura" compitiendo por la misma superficie nativa del
+  navegador), el flujo de instalación con el botón rápido funcionó sin
+  necesitar refrescar. **S13-20 queda cerrado** — el bug real
+  encontrado en el hallazgo 11 (evento de un solo uso sin limpiar) sigue
+  siendo una corrección legítima y se mantiene, pero no era la única
+  causa del síntoma reportado; la advertencia de Chrome es una función
+  propia del navegador/cuenta de Google, no algo que la app pueda ni
+  deba desactivar (es una protección real para usuarios con
+  contraseñas débiles/filtradas) — la recomendación hacia adelante es
+  simplemente usar contraseñas fuertes en las cuentas de prueba.
+
+  **Rate limit ("Demasiadas solicitudes...") — analizado, no es un bug
+  de este sprint.** El Product Owner reportó este error tras "bastante
+  navegación" probando la instalación. `verificarRateLimitOperativo`
+  (`src/lib/rate-limit.ts`) permite 60 solicitudes/min por usuario
+  autenticado — límite que ya existía desde Sprint 1, sin tocar en
+  Sprint 13. Contando el tráfico de fondo que SÍ agregó este sprint por
+  cada carga completa de página: `PrecargarCatalogos` dispara 6
+  solicitudes (3 pantallas de campo × 2 formatos, documento y RSC) más
+  el prefetch nativo de `<Link>` de Next para esas mismas 3 pantallas
+  (`prefetch={esPantallaDeCampo}` en `Sidebar`, hallazgo real de
+  S13-13/plan.md) — hasta ~9 solicitudes automáticas por cada recarga
+  completa, sin contar ninguna navegación real del usuario. Durante la
+  verificación de S13-20 se pidió refrescar la página muchas veces en
+  poco tiempo (reinstalar, probar modo avión, etc.) — unas pocas
+  recargas seguidas ya alcanzan el límite de 60/min solo con ese
+  tráfico de fondo. **No se identificó ningún bucle ni reintento
+  descontrolado** — es el costo esperado de una sesión de pruebas
+  intensiva, no un patrón de uso real (un Gerente/Operario normal no
+  refresca la página varias veces por minuto). No se tocó código: no
+  hay evidencia de que esto vaya a repetirse en uso normal de
+  producción; si volviera a aparecer fuera de una sesión de pruebas,
+  ahí sí ameritaría revisar el límite o excluir el tráfico de
+  precarga del contador.
+
+  **No verificado por falta de acceso a navegador real en esta sesión**:
+  ni la reproducción interactiva del rate limit contra Neon/Upstash
+  reales, ni el flujo completo de instalación — la extensión
+  `claude-in-chrome` reportó "Browser extension is not connected"
+  en varios intentos. El análisis de arriba se basa en lectura de
+  código y aritmética de solicitudes, no en observación directa. Un
+  intento de reproducirlo autenticando por `curl` contra
+  `/api/auth/callback/credentials` con las credenciales sembradas
+  (`gerente` / `Cambiar123!`) fue rechazado con `CredentialsSignin` —
+  la contraseña real ya no es la de seed (se sobreescribió en algún
+  momento del uso real del proyecto), así que tampoco se pudo armar
+  una sesión autenticada por ese camino sin pedirle la contraseña
+  actual al Product Owner.
+
   Verificado de nuevo `npm run typecheck && npm run lint && npm run build
   && npm test` tras cada uno de estos hallazgos — **553/553 en verde**
   en todos los casos —, y confirmado con `curl` contra `npm run start`
@@ -977,7 +1036,14 @@ tarea, tal como quedaron documentadas las de
   Bitácora o Recolección) sin señal falla explícito, sin perder ni
   duplicar nada y sin ningún comportamiento de cola/reintento silencioso
   (eso es Sprint 14) — confirmar con DevTools → Network → Offline,
-  intentando un alta real.
+  intentando un alta real. **El fix de código ya está** (hallazgo 3 de
+  S13-20: `try/catch` alrededor de la Server Action en los 3 dialogs,
+  el mismo mensaje en rojo del formulario en vez de la pantalla nativa
+  de Chrome) y el Product Owner ya lo probó una vez en Android real
+  ("Las pruebas de sin conexión pasan muy bien"), pero queda pendiente
+  la confirmación puntual con DevTools que pide este ítem — no se pudo
+  hacer en esta sesión por falta de acceso a un navegador real
+  (`claude-in-chrome` no conectado).
 
 ## Verificación final del sprint
 - [ ] `npm run typecheck && npm run lint && npm run build` en verde.
