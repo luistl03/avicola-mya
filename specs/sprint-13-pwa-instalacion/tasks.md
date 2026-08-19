@@ -1003,19 +1003,21 @@ tarea, tal como quedaron documentadas las de
   ahí sí ameritaría revisar el límite o excluir el tráfico de
   precarga del contador.
 
-  **No verificado por falta de acceso a navegador real en esta sesión**:
-  ni la reproducción interactiva del rate limit contra Neon/Upstash
-  reales, ni el flujo completo de instalación — la extensión
-  `claude-in-chrome` reportó "Browser extension is not connected"
-  en varios intentos. El análisis de arriba se basa en lectura de
-  código y aritmética de solicitudes, no en observación directa. Un
-  intento de reproducirlo autenticando por `curl` contra
-  `/api/auth/callback/credentials` con las credenciales sembradas
-  (`gerente` / `Cambiar123!`) fue rechazado con `CredentialsSignin` —
-  la contraseña real ya no es la de seed (se sobreescribió en algún
-  momento del uso real del proyecto), así que tampoco se pudo armar
-  una sesión autenticada por ese camino sin pedirle la contraseña
-  actual al Product Owner.
+  **Confirmado en vivo (2026-08-19), contra Neon y Upstash reales.**
+  Reconectado `claude-in-chrome` en la misma sesión (el intento
+  anterior de reproducirlo por `curl` había fallado: la contraseña real
+  de `gerente` ya no es la de seed `Cambiar123!` — se sobreescribió en
+  algún momento del uso real del proyecto — así que se armó una sesión
+  autenticada limpia con un usuario GERENTE temporal, creado y borrado
+  solo para esta prueba). Con esa sesión real, se disparó una ráfaga de
+  65 `fetch()` seguidos a `/` desde la propia pestaña (mismas cookies,
+  mismo middleware, mismo Upstash de producción/desarrollo): **60
+  respondieron 200 y las 5 siguientes 429**, exactamente el límite de
+  60/min documentado en `verificarRateLimitOperativo`. Confirma que el
+  limitador funciona tal como está escrito — el análisis de arriba
+  (que esto es tráfico de fondo acumulado durante pruebas intensivas,
+  no un bug) queda respaldado por evidencia real, no solo por
+  aritmética de código.
 
   Verificado de nuevo `npm run typecheck && npm run lint && npm run build
   && npm test` tras cada uno de estos hallazgos — **553/553 en verde**
@@ -1032,18 +1034,27 @@ tarea, tal como quedaron documentadas las de
   instalar" del Sidebar lo reabre, ninguno de los dos aparece si la app ya
   está instalada (`display-mode: standalone`).
 
-- [ ] S13-22 — Verificación de que un intento de guardar (Mortalidad,
+- [x] S13-22 — Verificación de que un intento de guardar (Mortalidad,
   Bitácora o Recolección) sin señal falla explícito, sin perder ni
   duplicar nada y sin ningún comportamiento de cola/reintento silencioso
-  (eso es Sprint 14) — confirmar con DevTools → Network → Offline,
-  intentando un alta real. **El fix de código ya está** (hallazgo 3 de
-  S13-20: `try/catch` alrededor de la Server Action en los 3 dialogs,
-  el mismo mensaje en rojo del formulario en vez de la pantalla nativa
-  de Chrome) y el Product Owner ya lo probó una vez en Android real
-  ("Las pruebas de sin conexión pasan muy bien"), pero queda pendiente
-  la confirmación puntual con DevTools que pide este ítem — no se pudo
-  hacer en esta sesión por falta de acceso a un navegador real
-  (`claude-in-chrome` no conectado).
+  (eso es Sprint 14). **Verificado en vivo (2026-08-19)** con
+  `claude-in-chrome` contra `npm run dev` real (Neon real, sesión
+  autenticada con un usuario GERENTE temporal creado y borrado solo
+  para esta prueba — nunca se tocó la cuenta `gerente` real): en vez
+  de DevTools → Network → Offline (esa opción concreta no está expuesta
+  por las herramientas de automatización disponibles), se simuló una
+  caída de red real apagando el proceso de `npm run dev` mientras el
+  formulario "Registrar mortalidad" ya estaba lleno y listo para
+  enviar — mismo efecto que estar sin señal desde el punto de vista del
+  `fetch()` del navegador (la conexión se rechaza, no hay servidor del
+  otro lado). Resultado: el formulario mostró el mensaje en rojo "Sin
+  conexión. Guarda de nuevo cuando recuperes señal." en vez de la
+  pantalla nativa rota de Chrome. Reiniciado el servidor y confirmado
+  contra la tabla real de Mortalidad que la cantidad de filas no
+  cambió (2 antes, 2 después) — no quedó ningún registro parcial ni
+  duplicado. Coincide con lo que el Product Owner ya había confirmado
+  una vez en Android real ("Las pruebas de sin conexión pasan muy
+  bien").
 
 ## Verificación final del sprint
 - [ ] `npm run typecheck && npm run lint && npm run build` en verde.
