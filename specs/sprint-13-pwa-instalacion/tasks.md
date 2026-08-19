@@ -636,6 +636,43 @@ tarea, tal como quedaron documentadas las de
   instalada abre en modo standalone con el color de tema `--primary`
   correcto en la barra de estado.
 
+  **Bug real encontrado y corregido en plena verificación** (Product
+  Owner probando en su Android real, vía preview de Vercel — primera vez
+  que se prueba contra un dispositivo real distinto del desktop de
+  S13-14): el menú nativo de Chrome (⋮ → "Instalar y crear acceso
+  directo") sí aparecía — confirma que el manifest/SW/íconos cumplen los
+  criterios reales de instalabilidad — pero el banner propio de la app y
+  el botón "Instalar app" del Sidebar **nunca aparecían**. Causa raíz:
+  condición de carrera real y conocida con `beforeinstallprompt` — el
+  listener de `install-prompt-android.tsx` se agregaba recién dentro de
+  un `useEffect`, que corre después de que React hidrata; en un celular
+  real (hidratación más lenta que en el desktop donde se verificó
+  S13-14), Chrome puede disparar el evento ANTES de que ese `useEffect`
+  llegue a ejecutarse — y `beforeinstallprompt` no se vuelve a disparar
+  una segunda vez, así que el evento se perdía para siempre.
+
+  **Corregido:** agregado un script inline con `next/script`
+  `strategy="beforeInteractive"` en `src/app/layout.tsx` — corre antes de
+  que cargue cualquier bundle de React (confirmado inspeccionando el HTML
+  real: es el primer `<script>` dentro de `<body>`), captura el evento en
+  `window.__bipEvento` sin importar cuándo Chrome lo dispare, y avisa con
+  un evento custom (`bip-capturado`). `install-prompt-android.tsx` ya no
+  agrega su propio listener de `beforeinstallprompt` (misma carrera) —
+  ahora consume `window.__bipEvento`, tanto si ya llegó antes del mount
+  (chequeo directo) como si llega después (escuchando `bip-capturado`).
+  Sin gate de sesión en el script (capturar el evento es inofensivo para
+  un usuario no logueado; la decisión de negocio 3 — mostrar solo tras el
+  login — la sigue aplicando el componente de React, no el script).
+
+  Verificado `npm run typecheck && npm run lint && npm run build` en
+  verde, y que el script aparece efectivamente como el primer `<script>`
+  de `<body>` en el HTML real (`curl` contra `npm run start`, antes de
+  cualquier chunk de React). **Pendiente confirmar en el dispositivo
+  Android real que el fix realmente resuelve el problema** — el hallazgo
+  se corrigió a nivel de código, pero la verificación completa de esta
+  tarea (incluida esta corrección) sigue abierta hasta que el Product
+  Owner reintente contra el preview actualizado.
+
 - [ ] S13-21 — Verificación en iPhone real (a cargo del Product Owner, R3
   `spec.md`): banner de tutorial de iOS aparece una vez con los 3 pasos
   correctos, no reaparece solo después de cerrado, el botón manual "Cómo

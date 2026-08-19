@@ -467,6 +467,25 @@ Código real completo en
 que `IdleTimer` para el aviso flotante — un solo lenguaje en todo el
 proyecto, no dos.
 
+### Corrección real, en plena verificación de S13-20 (Android real)
+El Product Owner probó contra la preview de Vercel en su Android real (no
+el desktop de S13-14) y el menú nativo de Chrome ofrecía "Instalar y
+crear acceso directo" (criterios de instalabilidad cumplidos), pero ni el
+banner propio ni `InstallAppButton` aparecían nunca. Causa raíz:
+condición de carrera real de `beforeinstallprompt` — el listener se
+agregaba dentro de un `useEffect`, que corre después de la hidratación de
+React; en un celular real (hidratación más lenta que en desktop), Chrome
+puede disparar el evento antes de que ese efecto llegue a ejecutarse, y
+el evento no se vuelve a disparar una segunda vez — se pierde para
+siempre. **Corregido** con un script inline `next/script`
+`strategy="beforeInteractive"` en `src/app/layout.tsx` (confirmado como
+el primer `<script>` de `<body>` en el HTML real, antes de cualquier
+bundle de React) que captura el evento en `window.__bipEvento` sin
+importar el timing — `InstallPromptAndroid` ya no agrega su propio
+listener de `beforeinstallprompt`, consume ese valor global (chequeo
+directo al montar + evento custom `bip-capturado` para capturas
+posteriores). Detalle completo en `tasks.md` (S13-20).
+
 <details>
 <summary>Pseudocódigo original de planificación (superado, no usado tal cual)</summary>
 

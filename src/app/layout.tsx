@@ -2,6 +2,7 @@ import { SerwistProvider } from "@serwist/turbopack/react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
+import Script from "next/script";
 import "./globals.css";
 
 import { IdleTimer } from "@/components/domain/auth/idle-timer";
@@ -56,6 +57,27 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
+        {/* beforeInteractive: corre antes de que React hidrate, sin
+            importar cuánto tarde el dispositivo en hidratar (más lento en
+            celular real que en desktop) — captura beforeinstallprompt sin
+            la carrera que hacía que el evento se perdiera si el listener
+            de React llegaba tarde (hallazgo real, Product Owner probando
+            en Android real: el ícono nativo de Chrome sí aparecía, pero
+            el banner propio de la app nunca — ver
+            components/domain/pwa/install-prompt-android.tsx). No depende
+            de sesión — capturar el evento es inofensivo para un usuario
+            no logueado, solo decide cuándo MOSTRAR algo el componente de
+            React que sí está gateado por login (decisión 3, spec.md). */}
+        <Script id="capturar-beforeinstallprompt" strategy="beforeInteractive">
+          {`
+            window.__bipEvento = null;
+            window.addEventListener("beforeinstallprompt", function (e) {
+              e.preventDefault();
+              window.__bipEvento = e;
+              window.dispatchEvent(new Event("bip-capturado"));
+            });
+          `}
+        </Script>
         <ToastProvider>
           {usuario ? (
             <TooltipProvider>

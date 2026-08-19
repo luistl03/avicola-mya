@@ -12,6 +12,23 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+// __bipEvento lo llena el script inline "beforeInteractive" de
+// src/app/layout.tsx — corre ANTES de que React hidrate, capturando el
+// evento sin importar cuándo Chrome decida dispararlo. Sin esto, un
+// listener agregado recién en un useEffect puede perderse el evento por
+// completo: beforeinstallprompt no se vuelve a disparar si ya pasó una
+// vez, y en un celular real (más lento que hidratar que un desktop de
+// escritorio) Chrome puede dispararlo antes de que React termine de
+// montar — hallazgo real, confirmado por el Product Owner probando en su
+// Android real: el ícono nativo de instalación de Chrome sí aparecía
+// (criterios de instalabilidad cumplidos), pero el banner propio de la
+// app nunca se mostraba (el evento se perdía en la carrera).
+declare global {
+  interface Window {
+    __bipEvento?: BeforeInstallPromptEvent | null;
+  }
+}
+
 // Store mínimo a nivel de módulo, compartido con install-app-button.tsx
 // (botón manual de respaldo en el footer del Sidebar) — un solo listener
 // global del evento beforeinstallprompt, sin duplicarlo en cada
@@ -56,19 +73,31 @@ export function InstallPromptAndroid() {
   const [mostrar, setMostrar] = useState(false);
 
   useEffect(() => {
-    const handler = (evento: Event) => {
-      evento.preventDefault(); // suprime el mini-infobar nativo de Chrome
-      establecerEvento(evento as BeforeInstallPromptEvent);
-      if (!dentroDelCooldown()) setMostrar(true);
+    // Si el script inline ya capturó el evento antes de este mount
+    // (el caso real que fallaba), lo consume acá — no depende de que el
+    // evento se dispare DESPUÉS de que este efecto corra.
+    const capturarSiYaLlego = () => {
+      if (window.__bipEvento && !eventoCapturado) {
+        establecerEvento(window.__bipEvento);
+        if (!dentroDelCooldown()) setMostrar(true);
+      }
     };
+    capturarSiYaLlego();
+
+    // Por si el evento llega DESPUÉS de este mount — el script inline lo
+    // captura igual (en window.__bipEvento) y avisa con este evento
+    // custom, en vez de que este componente agregue su propio listener
+    // de "beforeinstallprompt" (que tendría la misma carrera que se
+    // corrigió).
+    const alCapturar = () => capturarSiYaLlego();
     const alInstalar = () => {
       establecerEvento(null);
       setMostrar(false);
     };
-    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("bip-capturado", alCapturar);
     window.addEventListener("appinstalled", alInstalar);
     return () => {
-      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("bip-capturado", alCapturar);
       window.removeEventListener("appinstalled", alInstalar);
     };
   }, []);
