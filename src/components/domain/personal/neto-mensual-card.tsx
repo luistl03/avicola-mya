@@ -62,7 +62,7 @@ export function NetoMensualCard({
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border p-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="flex items-center gap-2 text-sm font-medium text-foreground">
           <Calculator className="size-4 text-primary" />
           Neto mensual (informativo)
