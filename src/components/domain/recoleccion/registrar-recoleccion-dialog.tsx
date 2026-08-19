@@ -161,7 +161,17 @@ function RegistrarRecoleccionForm({
   // <form action={formAction}>.
   const [state, formAction, pending] = useActionState<Estado, RecoleccionPayload>(
     async (_prev, payload) => {
-      const resultado = await registrarRecoleccion(payload);
+      let resultado: Estado;
+      try {
+        resultado = await registrarRecoleccion(payload);
+      } catch {
+        // Ver el mismo catch en nueva-nota-bitacora-dialog.tsx — sin red,
+        // el fetch de la Server Action rechaza antes de llegar al
+        // servidor; sin este catch React lo trata como error no manejado
+        // en vez de mostrarlo con el mismo mensaje en rojo del resto del
+        // formulario (H3, spec.md Sprint 13).
+        return { ok: false, error: "Sin conexión. Guarda de nuevo cuando recuperes señal." };
+      }
       if (resultado.ok) {
         router.refresh();
         toastManager.add({

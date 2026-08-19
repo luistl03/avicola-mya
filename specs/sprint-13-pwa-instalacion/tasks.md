@@ -741,6 +741,69 @@ tarea, tal como quedaron documentadas las de
   "Ahora no", botón manual a demanda, modo standalone, color de tema en
   la barra de estado).
 
+  **Tres hallazgos reales más, misma sesión de verificación con el
+  Product Owner probando offline de verdad (no simulado) en su Android:**
+
+  1. **Bug real de fondo — degradación de caché durante la sesión offline
+     (afecta directamente a S13-17, no solo a esta tarea):** con señal,
+     el Product Owner recorrió las 3 pantallas de campo, después activó
+     modo avión — al principio abrían bien, pero **más adelante en la
+     misma sesión offline** empezaron a fallar con la pantalla nativa de
+     "sin conexión" de Chrome (no la `/offline` propia de la app).
+     Causa raíz confirmada leyendo `sw.ts`: las 3 pantallas dependían
+     enteramente de los buckets genéricos `others`/`pages-rsc` de
+     `defaultCache` — compartidos con **cualquier** tráfico same-origin y
+     limitados a `maxEntries: 32` cada uno — así que navegación normal
+     durante la sesión (antes de activar modo avión) fue empujando esas 3
+     entradas fuera de la caché por el límite de tamaño, sin que el
+     usuario hiciera nada raro. **Corregido:** dos reglas nuevas y
+     dedicadas en `app/sw.ts` (`pantallas-campo`/`pantallas-campo-rsc`,
+     una por formato — documento y RSC), con `maxEntries: 20` propio,
+     sin competir con ningún otro tráfico. Van primero en el array,
+     antes de `...defaultCache`, para tener prioridad de matcheo.
+  2. **Color de tema ausente en pestañas normales del navegador:** el
+     manifest ya fijaba `theme_color`, pero eso solo gobierna la app YA
+     INSTALADA — nunca se había generado el `<meta name="theme-color">`
+     que Chrome usa aparte para pestañas normales (y, según Android/
+     fabricante, también puede influir incluso instalada). **Corregido**
+     agregando `export const viewport: Viewport = { themeColor: "#f4900f" }`
+     en `src/app/layout.tsx` (no `metadata.themeColor`, que Next 16
+     deprecó a favor de este export separado — confirmado leyendo el
+     `.d.ts` de Next antes de usarlo). Verificado con `curl` contra
+     `npm run start` que el meta tag se genera de verdad.
+  3. **Bug real al guardar sin señal (adelanta parte de S13-22):**
+     intentar guardar una nota en Bitácora sin señal mostraba la pantalla
+     nativa "This page couldn't load" de Chrome (tomando toda la
+     pantalla), no un error prolijo dentro del formulario. Causa raíz:
+     `NuevaNotaBitacoraForm`/`RegistrarMortalidadForm`/
+     `RegistrarRecoleccionForm` llamaban a su Server Action
+     (`await crearNotaBitacora(formData)` y equivalentes) **sin
+     `try/catch`** — sin red, ese `await` rechaza con un error de fetch
+     normal (la llamada nunca llega al servidor, así que `withAuth` del
+     lado del servidor no tiene chance de traducirlo a
+     `{ok:false, error}`), y React trata una promesa rechazada sin
+     manejar dentro de `useActionState` como un error no controlado —
+     de ahí la pantalla rota. **Corregido en los 3 dialogs** (mismo
+     patrón, confirmado que es el único lugar del proyecto que llama una
+     Server Action así, vía `grep` de `useActionState` en los tres
+     módulos de campo): `try { resultado = await accion(...) } catch {
+     return { ok: false, error: "Sin conexión. Guarda de nuevo cuando
+     recuperes señal." } }` — reusa exactamente el mismo mecanismo de
+     error en rojo que el formulario ya tenía para errores de negocio,
+     sin inventar UI nueva. Satisface la letra de H3 ("falla explícito,
+     sin perder datos en silencio") sin invadir el alcance real de
+     Sprint 14 (cola/reintento) — cuando exista la cola offline, este
+     mismo `catch` es el lugar natural donde Sprint 14 va a enchufarla,
+     reemplazando el mensaje de error por un encolado real.
+
+  Verificado `npm run typecheck && npm run lint && npm run build && npm
+  test` — **553/553 en verde**, sin regresión, tras los 6 archivos
+  tocados en este hallazgo (`sw.ts`, `layout.tsx`, y los 3 dialogs +
+  confirmación de que `pos`/otros módulos de gestión no comparten este
+  patrón de llamada directa sin protección, no auditados exhaustivamente
+  — quedan fuera del alcance de PWA, no dependen de que haya señal en
+  este sprint).
+
 - [ ] S13-21 — Verificación en iPhone real (a cargo del Product Owner, R3
   `spec.md`): banner de tutorial de iOS aparece una vez con los 3 pasos
   correctos, no reaparece solo después de cerrado, el botón manual "Cómo

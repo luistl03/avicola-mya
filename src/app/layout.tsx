@@ -1,5 +1,5 @@
 import { SerwistProvider } from "@serwist/turbopack/react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import Script from "next/script";
@@ -24,6 +24,17 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+// El manifest (app/manifest.ts) fija theme_color para la app YA INSTALADA
+// (WebAPK) — Chrome usa este export aparte (no metadata.themeColor, que
+// Next 16 deprecó a favor de este) para pestañas normales del navegador,
+// y según versión/fabricante de Android también puede influir en la
+// barra de estado incluso instalada. Nunca se había generado
+// <meta name="theme-color"> hasta ahora — hallazgo real reportado por el
+// Product Owner probando en su Android real.
+export const viewport: Viewport = {
+  themeColor: "#f4900f",
+};
 
 export const metadata: Metadata = {
   title: "Avícola M&A",
