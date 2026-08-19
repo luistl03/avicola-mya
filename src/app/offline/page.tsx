@@ -1,4 +1,3 @@
-import { WifiOff } from "lucide-react";
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -23,7 +22,13 @@ export default function OfflinePage() {
     <div className="flex flex-col gap-6 p-4 md:p-8">
       <PageHeader title="Sin conexión" />
       <div className="flex flex-col items-center gap-4 rounded-xl border bg-card p-8 text-center">
-        <WifiOff className="size-12 text-muted-foreground" aria-hidden />
+        {/* <img> plano, no next/image: esta página la sirve el propio
+        Service Worker desde Cache Storage (fallbacks.entries en sw.ts) sin
+        tocar el servidor — depender de /_next/image (que necesita el
+        servidor para optimizar cada variante) rompería justo el caso que
+        esta pantalla existe para cubrir. El archivo crudo en /public sí cae
+        bajo el runtime caching de imágenes estáticas de defaultCache. */}
+        <img src="/avicolamya-imagotipo.png" alt="Avícola M&A" className="h-20 w-auto" />
         <p className="max-w-md text-muted-foreground">
           Esta pantalla no está disponible sin señal todavía. Mortalidad, Bitácora y Recolección sí
           funcionan sin conexión — probá con una de ellas mientras recuperás señal.

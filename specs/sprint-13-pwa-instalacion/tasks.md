@@ -804,6 +804,55 @@ tarea, tal como quedaron documentadas las de
   — quedan fuera del alcance de PWA, no dependen de que haya señal en
   este sprint).
 
+  4. **Splash screen mostraba solo el isotipo, sin el nombre de la
+     granja:** al abrir la app instalada, Chrome genera la pantalla de
+     carga a partir del MISMO set de íconos del manifest que usa para el
+     ícono del launcher — no hay forma estándar de tener una imagen
+     distinta para cada cosa. A pedido del Product Owner probando en
+     Android real (adjuntó captura de la pantalla de carga mostrando solo
+     la gallina), `scripts/generar-iconos-pwa.ts` pasó de usar
+     `avicolamya-isotipo.png` a `avicolamya-imagotipo.png` (símbolo +
+     "AVÍCOLA M&A") como fuente, manteniendo intacta la lógica de
+     recorte/zona segura/fondo blanco para maskable. Regenerados los 5
+     archivos (`icon-192`, `icon-512`, `icon-192-maskable`,
+     `icon-512-maskable`, `apple-touch-icon`) y revisados visualmente uno
+     por uno: texto legible incluso a 192px, recorte maskable sin
+     cortar el texto.
+  5. **`/offline` sin logo, a pedido del Product Owner** ("el mismo logo
+     para cuando dice sin conexión"): se reemplazó el ícono `<WifiOff>`
+     de lucide por el imagotipo. Usa un `<img>` plano, no `next/image`
+     — esta página la sirve el propio Service Worker desde Cache Storage
+     (`fallbacks.entries` en `sw.ts`) sin tocar el servidor, y
+     `next/image` depende de `/_next/image` para optimizar cada variante,
+     lo que rompería justo el caso que esta pantalla existe para cubrir.
+     Por el mismo motivo, `/avicolamya-imagotipo.png` se agregó a
+     `additionalPrecacheEntries` en `src/app/serwist/[path]/route.ts`
+     junto con `/offline` (misma revisión, el SHA del commit): sin esto,
+     una instalación que nunca visitó `/login` ni el Sidebar expandido
+     antes de perder señal podría mostrar `/offline` sin el logo la
+     primera vez.
+  6. **Consistencia de color de barras entre online/offline:** el
+     Product Owner pidió que la barra superior e inferior de `/offline`
+     usen "el mismo color de fondo que cuando no muestra sin conexión".
+     Verificado que esto ya se cumple sin cambios de código: `theme_color`
+     (manifest) y el `viewport.themeColor` (layout, hallazgo 2 de este
+     mismo bloque) son globales a toda la app — no hay override por ruta
+     — así que `/offline` hereda el mismo naranja `#f4900f` que cualquier
+     otra pantalla, tanto en la pestaña normal de Chrome como en la app
+     instalada. La barra de navegación inferior de Android (los botones
+     "atrás") sigue sin poder pintarse de naranja en ningún caso: no
+     existe una API web estándar para controlarla, depende del
+     tema del sistema operativo/fabricante — limitación explicada al
+     Product Owner, aplica igual estando online u offline (mismo
+     comportamiento en ambos casos, no es una inconsistencia nueva).
+
+  Verificado de nuevo `npm run typecheck && npm run lint && npm run build
+  && npm test` tras estos 3 archivos (`scripts/generar-iconos-pwa.ts`,
+  `src/app/offline/page.tsx`, `src/app/serwist/[path]/route.ts`) —
+  **553/553 en verde**, y confirmado con `curl` contra `npm run start`
+  que `/serwist/sw.js` precachea `avicolamya-imagotipo.png` junto a
+  `/offline`.
+
 - [ ] S13-21 — Verificación en iPhone real (a cargo del Product Owner, R3
   `spec.md`): banner de tutorial de iOS aparece una vez con los 3 pasos
   correctos, no reaparece solo después de cerrado, el botón manual "Cómo
