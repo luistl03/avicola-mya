@@ -7,7 +7,7 @@ import sharp from "sharp";
 // (no hay forma estándar de tener una imagen distinta para cada cosa) —
 // con el isotipo, el splash mostraba solo la gallina, sin el nombre de la
 // granja. 500x500, igual que el isotipo.
-const FUENTE = "public/avicolamya-imagotipo.png";
+const FUENTE = "public/avicolamya-imagotipo-2.png";
 const ICONS_DIR = "public/icons";
 
 // FUENTE es un PNG SIN canal alfa (fondo blanco horneado, hasAlpha:

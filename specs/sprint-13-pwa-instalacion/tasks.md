@@ -856,13 +856,29 @@ tarea, tal como quedaron documentadas las de
      que el manifest ya no trae `theme_color` y que `/login` ya no
      genera `<meta name="theme-color">`. `553/553` tests siguen en
      verde.
+  8. **Segunda versión del imagotipo** (`avicolamya-imagotipo-2.png`,
+     mismo perfil técnico: 500x500, sin canal alfa): el Product Owner
+     redujo el tamaño del dibujo dentro del lienzo para que "encaje
+     bien" (más margen alrededor, sobre todo pensando en la zona segura
+     maskable). Reemplaza a `avicolamya-imagotipo.png` únicamente en los
+     4 lugares que se habían cambiado a imagotipo en este sprint:
+     `scripts/generar-iconos-pwa.ts` (`FUENTE`), `src/app/offline/page.tsx`,
+     `src/app/serwist/[path]/route.ts` (`additionalPrecacheEntries`) y
+     `src/app/layout.tsx` (`metadata.icons.icon`, agregado también en
+     este sprint). El login (`(public)/login/page.tsx`) y el Sidebar
+     siguen con el imagotipo original — no estaban en el alcance de este
+     pedido. Iconos regenerados y revisados visualmente uno por uno: el
+     dibujo queda con más aire alrededor, texto sigue legible en 192px.
+     De paso, corregido un voseo que había quedado suelto en el texto de
+     `/offline` ("probá"/"recuperás" → "prueba"/"recuperas").
 
   Verificado de nuevo `npm run typecheck && npm run lint && npm run build
-  && npm test` tras estos 3 archivos (`scripts/generar-iconos-pwa.ts`,
-  `src/app/offline/page.tsx`, `src/app/serwist/[path]/route.ts`) —
-  **553/553 en verde**, y confirmado con `curl` contra `npm run start`
-  que `/serwist/sw.js` precachea `avicolamya-imagotipo.png` junto a
-  `/offline`.
+  && npm test` tras cada uno de estos hallazgos — **553/553 en verde**
+  en todos los casos —, y confirmado con `curl` contra `npm run start`
+  que `/serwist/sw.js` precachea `avicolamya-imagotipo-2.png` junto a
+  `/offline` (y sigue precacheando también `avicolamya-imagotipo.png`,
+  referenciado aparte por login/Sidebar), y que el manifest/meta tag ya
+  no traen `theme_color`.
 
 - [ ] S13-21 — Verificación en iPhone real (a cargo del Product Owner, R3
   `spec.md`): banner de tutorial de iOS aparece una vez con los 3 pasos

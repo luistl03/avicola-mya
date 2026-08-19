@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   title: "Avícola M&A",
   description: "Sistema de gestión interna — Avícola M&A",
   icons: {
-    icon: "/avicolamya-imagotipo.png",
+    icon: "/avicolamya-imagotipo-2.png",
     apple: "/apple-touch-icon.png",
   },
   appleWebApp: {

@@ -20,6 +20,6 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
   // Sidebar expandido antes de perder señal.
   additionalPrecacheEntries: [
     { url: "/offline", revision: process.env.VERCEL_GIT_COMMIT_SHA ?? "dev" },
-    { url: "/avicolamya-imagotipo.png", revision: process.env.VERCEL_GIT_COMMIT_SHA ?? "dev" },
+    { url: "/avicolamya-imagotipo-2.png", revision: process.env.VERCEL_GIT_COMMIT_SHA ?? "dev" },
   ],
 });

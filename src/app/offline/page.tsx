@@ -28,10 +28,10 @@ export default function OfflinePage() {
         servidor para optimizar cada variante) rompería justo el caso que
         esta pantalla existe para cubrir. El archivo crudo en /public sí cae
         bajo el runtime caching de imágenes estáticas de defaultCache. */}
-        <img src="/avicolamya-imagotipo.png" alt="Avícola M&A" className="h-20 w-auto" />
+        <img src="/avicolamya-imagotipo-2.png" alt="Avícola M&A" className="h-20 w-auto" />
         <p className="max-w-md text-muted-foreground">
           Esta pantalla no está disponible sin señal todavía. Mortalidad, Bitácora y Recolección sí
-          funcionan sin conexión — probá con una de ellas mientras recuperás señal.
+          funcionan sin conexión — prueba con una de ellas mientras recuperas señal.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">
           {PANTALLAS_DISPONIBLES_OFFLINE.map((pantalla) => (
