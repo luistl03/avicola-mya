@@ -315,6 +315,52 @@
     @apply border-red-500! bg-red-200! text-red-900! dark:border-red-600! dark:bg-red-900! dark:text-red-100!;
   }
 
+  /* Badges de CategoriaEgreso (Sprint 12, /egresos) — mismo criterio que
+     .badge-categoria y .badge-tipo-cliente (bloques de arriba): es una
+     clasificación, no un estado bueno/malo, pero con 5 valores conviene
+     un color por
+     categoría para ubicarla de un vistazo en la tabla. Tonos elegidos sin
+     relación con los ya usados en otras pantallas (emerald/cyan/sky/
+     fuchsia/pink no colisionan con lime/azul/violeta de Bitácora ni con
+     indigo/teal/purple de Cliente). */
+  .badge-categoria-egreso-alimentos {
+    @apply border-emerald-300! bg-emerald-100! text-emerald-800! dark:border-emerald-800! dark:bg-emerald-950! dark:text-emerald-200!;
+  }
+  .badge-categoria-egreso-insumos-vacunas {
+    @apply border-cyan-300! bg-cyan-100! text-cyan-800! dark:border-cyan-800! dark:bg-cyan-950! dark:text-cyan-200!;
+  }
+  .badge-categoria-egreso-servicios {
+    @apply border-sky-300! bg-sky-100! text-sky-800! dark:border-sky-800! dark:bg-sky-950! dark:text-sky-200!;
+  }
+  .badge-categoria-egreso-mantenimiento {
+    @apply border-fuchsia-300! bg-fuchsia-100! text-fuchsia-800! dark:border-fuchsia-800! dark:bg-fuchsia-950! dark:text-fuchsia-200!;
+  }
+  .badge-categoria-egreso-varios {
+    @apply border-pink-300! bg-pink-100! text-pink-800! dark:border-pink-800! dark:bg-pink-950! dark:text-pink-200!;
+  }
+
+  /* Badges de TipoSueldoMovimiento (Sprint 12, /personal/[id]) — a
+     diferencia de CategoriaEgreso, acá SÍ hay una semántica real de signo
+     (BONO y SUELDO_BASE suman al neto, ADELANTO y DESCUENTO restan),
+     mismo espíritu que .badge-tipo-muerte/.badge-tipo-descarte (severidad
+     real, no decoración). A propósito SIN amber para ninguno de los 4:
+     esta misma pantalla (/personal/[empleadoId]) ya muestra el badge de
+     estado del propio Empleado (.badge-estado-activo, amber) arriba de la
+     tabla — usar amber acá también generaría confusión visual entre "el
+     empleado está activo" y "este movimiento es un adelanto". */
+  .badge-tipo-sueldo-base {
+    @apply border-blue-300! bg-blue-100! text-blue-800! dark:border-blue-800! dark:bg-blue-950! dark:text-blue-200!;
+  }
+  .badge-tipo-sueldo-bono {
+    @apply border-green-300! bg-green-100! text-green-800! dark:border-green-800! dark:bg-green-950! dark:text-green-200!;
+  }
+  .badge-tipo-sueldo-adelanto {
+    @apply border-orange-300! bg-orange-100! text-orange-800! dark:border-orange-800! dark:bg-orange-950! dark:text-orange-200!;
+  }
+  .badge-tipo-sueldo-descuento {
+    @apply border-red-300! bg-red-100! text-red-800! dark:border-red-800! dark:bg-red-950! dark:text-red-200!;
+  }
+
   /* Fila de origen seleccionada en el wizard de Consolidación
      (components/domain/consolidacion/consolidar-sueltos-dialog.tsx, Sprint
      7) — filas clicables en vez de un Checkbox nuevo (decisión de diseño

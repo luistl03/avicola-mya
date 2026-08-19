@@ -9,13 +9,14 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 12 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+- **Sprint actual:** 13 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
   Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
   Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora, Sprint 5 —
   Recolección e Inventario, Sprint 6 — Ventana de gracia y reversión,
   Sprint 7 — Consolidación de residuos, Sprint 8 — Clientes y Precio por
   Kilo, Sprint 9 — POS: Carrito y Cierre, Sprint 10 — Consolidación:
-  Romper Paquete/Bandeja, Sprint 11 — Créditos y cobranza)
+  Romper Paquete/Bandeja, Sprint 11 — Créditos y cobranza, Sprint 12 —
+  Egresos y Personal). Sprint 13 (PWA e instalación) es el siguiente.
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -780,10 +781,27 @@ priorizado). Una vez separados:
   cliente registrado, tiene que existir también en producción.
 
 ## Cómo continuar desde acá
-0. **Sprint 11 (Créditos y cobranza) ya está cerrado** (ver el registro
+0. **Sprint 12 (Egresos y Personal) ya está cerrado** (ver el registro
    completo en "Registro de cierre de sprints" más abajo y
-   `specs/sprint-11-creditos-cobranza/`). Sprint 12 (Egresos y Personal) es
-   el siguiente. **Hallazgo de diseño más importante de Sprint 11, a tener
+   `specs/sprint-12-egresos-personal/`). Sprint 13 (PWA e instalación) es
+   el siguiente — primer sprint de la Release 3 "Campo Real", introduce
+   `next-pwa`/Serwist, manifest, iconos maskable y estrategias de caché;
+   releer `memory/decisiones-tecnicas.md` (D1-D6) antes de empezar, en
+   particular cualquier supuesto de conectividad que los módulos de
+   gestión (Egresos/Personal incluidos) hayan asumido sin pensar en modo
+   offline.
+
+   **Hallazgo real de Sprint 12, a tener presente en cualquier sprint
+   futuro con un modelo que fue diseñado en Sprint 0 sin campos de
+   edición/reversión:** ni `Egreso` ni `SueldoMovimiento` tenían
+   `revertido`/`revertidoEn` en el schema original — a diferencia de
+   Créditos (Sprint 11), que no necesitó migración, este sprint sí la
+   necesitó porque el roadmap pedía "CRUD Egreso" y el schema de Sprint 0
+   no lo anticipaba. Antes de asumir "sin migración" en un sprint futuro
+   por analogía con Créditos, confirmar leyendo el modelo real si de
+   verdad tiene todos los campos que la historia de usuario necesita.
+
+   **Hallazgo de diseño más importante de Sprint 11, a tener
    presente para cualquier transacción interactiva futura con un guard
    sobre un contador con margen:** el diseño original de `registrarAbono`
    (`server/repositories/credito.ts`) copió el orden "guard primero, ancla
@@ -1551,6 +1569,128 @@ priorizado). Una vez separados:
   `RoturaBandeja`, heredados de sprints anteriores, siguen sin resolver —
   mismos de siempre, no nuevos de este sprint.
 
+- **Sprint 12** — cerrado (2026-08-18). 553 tests (44 nuevos sobre los
+  509 heredados de Sprint 11), **una migración** aplicada contra Neon
+  real (`Egreso` gana `creadoEn`/`revertido`/`revertidoEn` +
+  índice `[creadoEn, revertido]`; `SueldoMovimiento` gana `revertido`/
+  `revertidoEn` + índice `[empleadoId, fecha, revertido]` — ninguna
+  destructiva, `Egreso`/`Empleado`/`SueldoMovimiento` ya existían
+  completos desde Sprint 0 sin código encima, mismo punto de partida que
+  Créditos tuvo en Sprint 11), cobertura 100%/100%/100%/100% combinada
+  en `server/services/egreso.ts` y `server/services/sueldo-movimiento.ts`,
+  verificado con 20 asserts contra Neon real (incluida la primera vez
+  que una ventana de gracia de este proyecto se probó con un
+  `creadoEn`/`fecha` *backdateado directo contra la base* en vez de
+  `vi.useFakeTimers`, para ambos guards) y clic a clic en navegador real.
+  Primer módulo del proyecto donde ninguna mutación necesitó
+  `$transaction` (todas tocan una sola tabla — a diferencia de
+  Créditos/Mortalidad, ni `Egreso` ni `SueldoMovimiento` descuentan
+  ningún contador al anularse, así que un `updateMany` condicional
+  simple alcanza como guard). Primer código real sobre
+  `Egreso`/`Empleado`/`SueldoMovimiento` (schema desde Sprint 0).
+  Detalle completo en `specs/sprint-12-egresos-personal/`
+  (spec.md, plan.md, tasks.md con las 22 tareas documentadas al
+  cerrarlas).
+
+  **Decisiones de negocio confirmadas por el Product Owner** (ocho
+  preguntas explícitas vía `AskUserQuestion` en dos rondas, más una
+  aclaración de terminología que surgió en plena ejecución — ver
+  hallazgo de abajo): `Egreso` editable sin límite de tiempo mientras no
+  esté anulado, pero anulable solo dentro de `VENTANA_GRACIA_MIN` (10
+  min, ancla nueva e inmutable `creadoEn`, nunca `fecha` que sí es
+  editable); `SueldoMovimiento` es un ledger 100% append-only (sin
+  edición, solo alta + reversión con ventana de gracia, ancla `fecha`
+  directamente porque nunca cambia); `/egresos` y `/personal`
+  restringidas a GERENTE únicamente (primera vez desde `/precio-kilo`,
+  Sprint 8, que se restringe una ruta nueva — a diferencia de
+  Créditos/Abonos, Sprint 11, abierto a ambos roles); neto mensual por
+  mes calendario con selector, no rango libre; `Empleado.usuarioId`
+  (opcional desde Sprint 0) queda 100% fuera de la UI este sprint —
+  `Empleado` sigue desacoplado de `Usuario` tal cual el roadmap lo pedía
+  explícitamente; un `Empleado` `INACTIVO` no puede recibir ningún
+  `SueldoMovimiento` nuevo (guard best-effort en la Server Action, no
+  atómico — riesgo de carrera aceptado explícitamente, R2 de spec.md,
+  mismo criterio que R3 de Sprint 11).
+
+  **Aclaración real de terminología, en medio de la ejecución (entre
+  S12-9 y S12-10):** el Product Owner preguntó si "Empleado" no debería
+  ser directamente "Operario" (el rol de `Usuario` ya existente), al ver
+  archivos nuevos con ese nombre. Aclarado que son dos conceptos
+  independientes por diseño — `Rol` (GERENTE/OPERARIO) es acceso al
+  sistema, `Empleado` es planilla/personal, y pueden o no coincidir en
+  la misma persona (el roadmap pidió explícitamente "desacoplado de
+  Usuario" desde Sprint 0 para cubrir personal de campo sin cuenta de
+  login). Confirmado con el Product Owner que sí puede haber personal
+  sin cuenta de sistema en esta granja — el diseño original se mantuvo
+  sin cambios, ver decisión 5 arriba.
+
+  **Corrección real, en plena ejecución, a pedido del Product Owner
+  (post-S12-20, antes de S12-21) — la primera de este sprint que revierte
+  una historia de usuario ya cerrada (H2, banner "no afecta la caja de
+  ventas"):** se implementó tal cual durante S12-14 a S12-17 y se sacó
+  de las tres pantallas después de verlo en uso —
+  `components/domain/egresos/banner-caja-separada.tsx` se borró del
+  proyecto por completo, junto con el recorte de las mismas frases en
+  las descripciones de `EgresoFormDialog`/`EmpleadoFormDialog`. El
+  aislamiento real entre Egresos/Personal y la caja de Ventas/Créditos
+  sigue intacto a nivel de código (ningún repository/action de este
+  sprint toca `Venta`/`Credito` ni viceversa) — lo que cambió es
+  únicamente la comunicación visual explícita de ese hecho. De paso se
+  agregó, no anticipado en `plan.md`, un botón "Volver a Personal" en
+  `/personal/[empleadoId]` (el detalle no tenía forma de volver al
+  listado sin el botón "Atrás" del navegador).
+
+  **Pieza fuera de alcance de Sprint 12, agregada la misma sesión a
+  pedido del Product Owner (antes de S12-21):** historial completo de
+  `PrecioKilo` (Sprint 8) expuesto en `/precio-kilo` — **sin migración**,
+  el modelo ya era un ledger append-only desde su diseño original ("nueva
+  fila, nunca UPDATE"), solo faltaba mostrarlo. `listarPrecioKilo()` +
+  `contarPrecioKilo()` nuevos, `PrecioKiloTabla` nueva,
+  `<DataTablePagination>` agregada a la página. Documentado con su propia
+  fecha más abajo en este archivo (no forma parte de las tareas S12-N).
+
+  **Bug reintroducido y corregido en el momento durante S12-13, mismo
+  exacto que el de Sprint 3 sobre el badge Activo/Inactivo:** un
+  comentario nuevo de `globals.css` (documentando las recetas de color de
+  `.badge-categoria-egreso-*`) contenía la secuencia literal `-*/`, que
+  cierra un comentario CSS antes de tiempo. `npm run build` (Turbopack) lo
+  agarró con `Unexpected token Delim('*')` señalando la línea exacta —
+  ni `typecheck` ni `lint` ni `test` lo detectan, mismo patrón de Sprint
+  3. Corregido reescribiendo la frase sin la secuencia `*/`, verificado
+  con un segundo `build` limpio. **Lección reafirmada, no nueva:** ningún
+  comentario CSS de este proyecto puede contener `*/` literal, ni por
+  accidente listando nombres de clases con guion seguido de otra clase.
+
+  **Verificación en vivo contra Neon real (S12-21, 20 asserts):** 19/19
+  con resultado correcto, 1 con una expectativa mal armada en el propio
+  script de verificación, no un bug de código — al backdatear un `BONO`
+  11 minutos para probar la ventana de gracia de reversión (sin
+  revertirlo), ese movimiento seguía siendo del mes calendario actual, y
+  `calcularNetoMensual()` lo sumó correctamente (el script esperaba que
+  no contara). Recalculado a mano, el resultado real coincidía
+  exactamente con lo esperado — ningún cambio de código hizo falta.
+  Primera vez que una ventana de gracia del proyecto se probó
+  backdateando el campo real contra Neon (no `vi.useFakeTimers`) para
+  ambos guards nuevos (`Egreso.creadoEn`, `SueldoMovimiento.fecha`).
+
+  **Verificación clic a clic (S12-22):** usó la sesión ya logueada del
+  Gerente real del navegador para el recorrido visual (sin loguear con
+  la cuenta sembrada), y un Usuario GERENTE/OPERARIO temporal solo para
+  el chequeo de rol vía `curl`+cookie jar (login `302`, `/egresos` y
+  `/personal` → `403` reales, con un control positivo confirmando `200`
+  en `/pos` para descartar una sesión rota). Sin hallazgos de bugs reales
+  — el desglose de neto mensual se recalcula en vivo al revertir un
+  movimiento (sin recargar manualmente), el botón "Registrar movimiento"
+  desaparece al dar de baja a un empleado, y el botón "Volver a Personal"
+  agregado post-S12-20 funciona.
+
+  **Deuda pendiente explícita, no resuelta en este sprint:** ninguna
+  conocida sobre la funcionalidad en sí. El vínculo `Empleado.usuarioId`
+  sigue sin ningún consumidor de UI (decisión 5) — queda para un sprint
+  futuro que lo necesite de verdad. El ajuste manual de Mortalidad y el
+  botón "Deshacer" de `RegistroConsolidacion`/`RoturaPaquete`/
+  `RoturaBandeja`, heredados de sprints anteriores, siguen sin resolver.
+
 ## Bug real: `PageHeader` con 2+ botones de acción rompía el ancho en mobile (post-Sprint 7, 2026-08-13)
 El Product Owner probó `/consolidacion` en su celular real (los dos
 wizards, "Armar Bandeja" + "Armar Paquete Mixto", viven en el mismo
@@ -2050,3 +2190,35 @@ incluido un `loteId` con formato inválido a propósito (no rompe nada,
 Prisma simplemente no encuentra coincidencias — mismo criterio que
 `categoria`/`fecha` en Bitácora, `searchParams` es un límite de entrada
 externo, no pasa por Zod).
+
+## Historial de Precio por Kilo expuesto en la UI (durante Sprint 12, 2026-08-18)
+A pedido del Product Owner, en medio de la ejecución de Sprint 12 (sin
+relación con Egresos/Personal) — mismo criterio que "Edad del lote en
+semanas" y otros cambios puntuales documentados en este archivo con
+fecha, no en una carpeta `specs/sprint-XX` nueva.
+
+**Sin migración de schema.** `model PrecioKilo` (Sprint 8) ya era un
+ledger append-only desde su diseño original — cada `crearPrecioKilo`
+inserta una fila nueva, nunca hace `UPDATE` sobre la anterior (ver
+comentario en `server/actions/precioKilo.ts`, "nueva fila, nunca
+UPDATE"). El historial completo ya existía en la base desde Sprint 8;
+lo único que faltaba era mostrarlo — `/precio-kilo` solo renderizaba el
+precio vigente (`obtenerPrecioKiloVigente()`), sin ningún listado.
+
+**Agregado:** `listarPrecioKilo({skip, take})` + `contarPrecioKilo()`
+(`server/repositories/precioKilo.ts`, mismo patrón `Promise.all` de dos
+queries en paralelo que el resto de tablas paginadas del proyecto);
+`components/domain/precio-kilo/precio-kilo-tabla.tsx` (nuevo, mismo
+patrón que `MortalidadTabla`/`EgresosTabla`); `app/(app)/precio-kilo/page.tsx`
+gana `searchParams` (antes no lo recibía) y `<DataTablePagination>` —
+10 filas por página, mismo estándar del proyecto. La primera fila del
+historial es siempre el precio vigente que ya muestra la tarjeta de
+arriba (redundante a propósito, mismo espíritu que cualquier historial
+que incluye el estado actual como su entrada más nueva).
+
+**Verificado:** `npm run typecheck && npm run lint && npm run build`
+(limpio, mismas rutas) y `npm test` (553/553, sin ningún test nuevo
+necesario — repository sin tests por convención, y no hay lógica de
+negocio nueva que testear, solo lectura paginada). Verificación en vivo
+contra Neon real queda para cuando se retome la verificación general de
+Sprint 12 (S12-21/S12-22).

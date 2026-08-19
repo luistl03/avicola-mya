@@ -5,12 +5,14 @@ import {
   Egg,
   History,
   Home,
+  IdCard,
   Layers3,
   NotebookPen,
   ShoppingCart,
   Skull,
   Tag,
   Users,
+  Wallet,
   Warehouse,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -40,4 +42,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
   { href: "/ventas", label: "Ventas", icon: History },
   { href: "/creditos", label: "Créditos", icon: CreditCard },
+  { href: "/egresos", label: "Egresos", icon: Wallet },
+  { href: "/personal", label: "Personal", icon: IdCard },
 ];

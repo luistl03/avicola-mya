@@ -184,6 +184,8 @@ describe("cerrarVentaAction", () => {
         montoContado: 95,
         montoCredito: null,
         fechaLimiteCredito: null,
+        montoPagado: null,
+        abonos: [],
         items: [{ tipo: "PAQUETE", pesoKg: 10, precioKiloAplicado: 9.5, subtotal: 95 }],
       },
     });

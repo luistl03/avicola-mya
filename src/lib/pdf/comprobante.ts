@@ -33,6 +33,15 @@ export type DatosComprobante = {
   descuento: number;
   totalCobrado: number;
   metodoPago: "EFECTIVO" | "YAPE" | "PLIN" | "TRANSFERENCIA";
+  // Sprint 11 — desglose contado/crédito. esCredito: false en toda venta
+  // 100% al contado (comportamiento de Sprint 9, sin cambios). Faltaba
+  // por completo en este módulo (el PDF nunca se actualizó al agregar
+  // crédito al diálogo en pantalla) — corregido a pedido del Product
+  // Owner tras cerrar Sprint 11.
+  esCredito: boolean;
+  montoContado: number;
+  montoCredito: number | null;
+  fechaLimiteCredito: Date | null;
 };
 
 const ETIQUETA_TIPO: Record<ItemComprobante["tipo"], string> = {
@@ -210,6 +219,11 @@ function construirBloques(venta: DatosComprobante, logoDataUrl: string | null): 
 
   bloques.push(separador());
 
+  // Tipo de venta, explícito desde el principio del comprobante — no solo
+  // inferible por la presencia del bloque de crédito más abajo (pedido
+  // explícito del Product Owner: "debe estar especificado").
+  bloques.push(filaEtiquetaValor("Tipo", venta.esCredito ? "A CRÉDITO" : "Contado", { negrita: venta.esCredito }));
+
   bloques.push(
     filaEtiquetaValor(
       "Fecha",
@@ -231,8 +245,38 @@ function construirBloques(venta: DatosComprobante, logoDataUrl: string | null): 
   bloques.push(separador("solida"));
   bloques.push(filaEtiquetaValor("TOTAL COBRADO", formatearSoles(venta.totalCobrado), { negrita: true, tamano: 11, alto: 6 }));
 
-  bloques.push(separador());
-  bloques.push(filaEtiquetaValor("Método de pago", ETIQUETA_METODO_PAGO[venta.metodoPago]));
+  // "Método de pago" solo tiene sentido si se cobró algo AHORA — nunca en
+  // una venta 100% a crédito (montoContado: 0, se paga después vía abonos
+  // con su propio metodoPago). Mismo criterio aplicado en ComprobanteDialog/
+  // PosCarrito, pedido explícito del Product Owner.
+  const montoPagadoAhora = venta.esCredito ? venta.montoContado : venta.totalCobrado;
+  const mostrarMetodoPago = montoPagadoAhora > 0;
+
+  if (venta.esCredito) {
+    bloques.push(separador());
+    bloques.push(tituloSeccion("Venta a crédito"));
+    bloques.push(filaEtiquetaValor("Pagado ahora", formatearSoles(venta.montoContado)));
+    if (mostrarMetodoPago) {
+      bloques.push(filaEtiquetaValor("Método de pago", ETIQUETA_METODO_PAGO[venta.metodoPago]));
+    }
+    bloques.push(filaEtiquetaValor("A crédito", formatearSoles(venta.montoCredito ?? 0), { negrita: true }));
+    if (venta.fechaLimiteCredito) {
+      // fechaLimiteCredito es una fecha-calendario pura (medianoche UTC,
+      // sin componente de hora — mismo criterio que hoyEnLima()/D5), no
+      // un instante real como venta.fecha. Formatearla con
+      // timeZone: "America/Lima" le restaría un día (medianoche UTC cae
+      // la noche anterior en Lima, UTC-5) — mismo bug real ya corregido
+      // en ComprobanteDialog/EstadoCuentaCliente (S11-20), reproducido acá
+      // porque este módulo nunca se había actualizado con datos de
+      // crédito hasta ahora.
+      bloques.push(
+        filaEtiquetaValor("Vence", venta.fechaLimiteCredito.toLocaleDateString("es-PE", { timeZone: "UTC" })),
+      );
+    }
+  } else if (mostrarMetodoPago) {
+    bloques.push(separador());
+    bloques.push(filaEtiquetaValor("Método de pago", ETIQUETA_METODO_PAGO[venta.metodoPago]));
+  }
 
   bloques.push(separador());
   bloques.push({

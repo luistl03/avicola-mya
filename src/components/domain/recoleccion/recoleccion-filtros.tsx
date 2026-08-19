@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, ListFilter } from "lucide-react";
+import { ChevronDown, ListFilter, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,7 +44,10 @@ export function RecoleccionFiltros({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
-  const [abierto, setAbierto] = useState(Boolean(loteId || desde || hasta));
+  // Siempre colapsado al entrar, sin importar si ya hay filtros activos en
+  // la URL — pedido explícito del Product Owner: cada módulo debe verse
+  // "limpio" de entrada, sin el panel de filtros ya desplegado.
+  const [abierto, setAbierto] = useState(false);
   const [desdeValue, setDesdeValue] = useState(desde ?? "");
   const [hastaValue, setHastaValue] = useState(hasta ?? "");
 
@@ -63,29 +66,52 @@ export function RecoleccionFiltros({
 
   const hoy = hoyEnLimaComoStringDeInput();
   const loteSeleccionado = lotes.find((lote) => lote.id === loteId);
+  const hayFiltrosActivos = Boolean(loteId || desde || hasta);
+
+  function limpiarFiltros() {
+    setDesdeValue("");
+    setHastaValue("");
+    startTransition(() => {
+      router.replace("/recoleccion");
+    });
+  }
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-3">
-      <button
-        type="button"
-        onClick={() => setAbierto((valor) => !valor)}
-        aria-expanded={abierto}
-        className="flex w-full items-center justify-between gap-1.5 rounded-md text-sm font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-      >
-        <span className="flex items-center gap-1.5">
+      <div className="flex w-full items-center justify-between gap-1.5">
+        <button
+          type="button"
+          onClick={() => setAbierto((valor) => !valor)}
+          aria-expanded={abierto}
+          className="flex items-center gap-1.5 rounded-md text-sm font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
           <ListFilter className="size-4 text-muted-foreground" />
           Filtros
-        </span>
-        <ChevronDown
-          className={cn(
-            "size-4 text-muted-foreground transition-transform",
-            abierto && "rotate-180",
-          )}
-        />
-      </button>
+          <ChevronDown
+            className={cn(
+              "size-4 text-muted-foreground transition-transform",
+              abierto && "rotate-180",
+            )}
+          />
+        </button>
+        {hayFiltrosActivos ? (
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            className="flex items-center gap-1 rounded-md text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <X className="size-3.5" />
+            Limpiar filtros
+          </button>
+        ) : null}
+      </div>
 
       {abierto ? (
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        // Mismo patrón de grid responsive que MortalidadFiltros/
+        // ClienteFiltros/BitacoraFiltros/VentaFiltros: grid-cols-1 en
+        // mobile, auto-fit a partir de sm (las columnas crecen para llenar
+        // el cuadro y se achican hasta un mínimo legible antes de envolver).
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] sm:items-end">
           <div className="flex flex-col gap-2">
             <Label htmlFor="filtro-lote" className={LABEL_COMPACTO}>
               Lote
@@ -94,7 +120,7 @@ export function RecoleccionFiltros({
               value={loteId ?? LOTE_TODOS}
               onValueChange={(valor) => actualizarFiltro("loteId", valor === LOTE_TODOS ? null : valor)}
             >
-              <SelectTrigger id="filtro-lote" className="h-10 w-full sm:w-44">
+              <SelectTrigger id="filtro-lote" className="h-10 w-full">
                 <SelectValue placeholder="Todos los lotes">
                   {loteId ? loteSeleccionado?.codigo : "Todos los lotes"}
                 </SelectValue>

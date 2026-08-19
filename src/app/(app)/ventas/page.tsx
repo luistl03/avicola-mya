@@ -4,7 +4,6 @@ import { VentaFiltros } from "@/components/domain/ventas/venta-filtros";
 import { VentasTabla } from "@/components/domain/ventas/ventas-tabla";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { buscarClientePorId } from "@/server/repositories/cliente";
 import { contarVentas, listarVentas } from "@/server/repositories/venta";
 
 // Mismo tamaño de página estándar que memory/convenciones.md fija para
@@ -45,28 +44,28 @@ export default async function VentasPage({
 }: {
   searchParams: Promise<{
     page?: string;
-    clienteId?: string;
     metodoPago?: string;
     tipo?: string;
     desde?: string;
     hasta?: string;
     fecha?: string;
+    busqueda?: string;
   }>;
 }) {
   const {
     page: pageParam,
-    clienteId: clienteIdParam,
     metodoPago: metodoPagoParam,
     tipo: tipoParam,
     desde: desdeParam,
     hasta: hastaParam,
     fecha: fechaParam,
+    busqueda: busquedaParam,
   } = await searchParams;
 
   const page = Math.max(1, Number(pageParam) || 1);
-  const clienteId = clienteIdParam || undefined;
   const metodoPago = metodoPagoValido(metodoPagoParam);
   const esCredito = tipoParam === "CONTADO" ? false : tipoParam === "CREDITO" ? true : undefined;
+  const busqueda = busquedaParam?.trim() || undefined;
 
   // "Listado normal por la fecha de hoy, y luego con sus filtros
   // escoger" (pedido explícito del Product Owner): un /ventas completamente
@@ -84,24 +83,22 @@ export default async function VentasPage({
     ? undefined
     : finDeDiaEnLima(sinNingunFiltroDeFecha ? hoy : hastaParam);
 
-  const filtros = { desde, hasta, clienteId, metodoPago, esCredito };
+  const filtros = { desde, hasta, metodoPago, esCredito, busqueda };
 
-  const [ventas, total, clienteInicial] = await Promise.all([
+  const [ventas, total] = await Promise.all([
     listarVentas({ skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, ...filtros }),
     contarVentas(filtros),
-    clienteId ? buscarClientePorId(clienteId) : Promise.resolve(null),
   ]);
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-8">
       <PageHeader title="Ventas" description="Historial de ventas del punto de venta." />
       <VentaFiltros
-        clienteId={clienteIdParam}
-        clienteInicial={clienteInicial ? { id: clienteInicial.id, nombre: clienteInicial.nombre } : null}
         metodoPago={metodoPagoParam}
         tipo={tipoParam}
         desde={sinNingunFiltroDeFecha ? hoy : desdeParam}
         hasta={sinNingunFiltroDeFecha ? hoy : hastaParam}
+        busqueda={busquedaParam}
       />
       {sinNingunFiltroDeFecha ? (
         <p className="text-sm text-muted-foreground">Mostrando las ventas de hoy. Usa los filtros para ver otras fechas.</p>
@@ -110,7 +107,17 @@ export default async function VentasPage({
         <p className="text-sm text-muted-foreground">No hay ventas para los filtros aplicados.</p>
       ) : (
         <VentasTabla
-          ventas={ventas.map((venta) => ({ ...venta, totalCobrado: Number(venta.totalCobrado) }))}
+          ventas={ventas.map((venta) => ({
+            id: venta.id,
+            fecha: venta.fecha,
+            totalCobrado: Number(venta.totalCobrado),
+            montoContado: Number(venta.montoContado),
+            metodoPago: venta.metodoPago,
+            cliente: venta.cliente,
+            usuario: venta.usuario,
+            credito: venta.credito,
+            _count: venta._count,
+          }))}
         />
       )}
       <DataTablePagination
@@ -119,12 +126,12 @@ export default async function VentasPage({
         total={total}
         basePath="/ventas"
         filtros={{
-          clienteId: clienteIdParam,
           metodoPago: metodoPagoParam,
           tipo: tipoParam,
           desde: desdeParam,
           hasta: hastaParam,
           fecha: fechaParam,
+          busqueda: busquedaParam,
         }}
       />
     </div>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Receipt, Share2 } from "lucide-react";
+import { CreditCard, Download, Receipt, Share2 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,20 +39,48 @@ function aDatosComprobante(venta: VentaCerradaData): DatosComprobante {
     descuento: venta.descuento,
     totalCobrado: venta.totalCobrado,
     metodoPago: venta.metodoPago,
+    esCredito: venta.esCredito,
+    montoContado: venta.montoContado,
+    montoCredito: venta.montoCredito,
+    fechaLimiteCredito: venta.fechaLimiteCredito ? new Date(venta.fechaLimiteCredito) : null,
   };
 }
 
-// Se abre solo (el padre, PosWorkspace, lo monta cuando cerrarVentaAction
-// responde éxito) — no es un <Dialog> disparado por un botón como el resto
-// de dialogs del proyecto. Todos los datos vienen de VentaCerradaData
-// (la respuesta real de la Server Action), nunca del estado del carrito en
-// memoria — ver "Corrección real encontrada al empezar S9-10" en tasks.md.
+// Método de pago solo tiene sentido si se cobró algo AHORA — nunca en una
+// venta 100% a crédito (montoContado: 0). Mismo criterio aplicado en
+// PosCarrito y en el PDF (lib/pdf/comprobante.ts), pedido explícito del
+// Product Owner tras cerrar Sprint 11.
+function mostrarMetodoPago(venta: VentaCerradaData): boolean {
+  return (venta.esCredito ? venta.montoContado : venta.totalCobrado) > 0;
+}
+
+// Se abre solo (el padre lo monta cuando hay datos que mostrar) — no es un
+// <Dialog> disparado por un botón con trigger propio como el resto de
+// dialogs del proyecto. Todos los datos vienen de VentaCerradaData, nunca
+// del estado del carrito en memoria — ver "Corrección real encontrada al
+// empezar S9-10" en tasks.md. Reusado en dos contextos: PosWorkspace lo
+// monta cuando cerrarVentaAction responde éxito (venta recién cerrada,
+// titulo por defecto "Venta cerrada"), y VentasTabla lo monta al hacer clic
+// en "Ver detalle" sobre una venta ya cerrada (titulo="Detalle de venta") —
+// mismo componente, mismo botón "Descargar PDF"/"Compartir" en ambos
+// casos, sin duplicar el diseño del comprobante. mostrarAbonos (default
+// false) separa el historial de pagos posteriores del documento de venta:
+// PosWorkspace nunca lo pasa (una venta recién cerrada no tiene abonos
+// todavía, mostrar la sección igual sería ruido); VentasTabla sí lo pasa en
+// "Ver detalle" — pedido explícito del Product Owner para tener control de
+// los abonos de una venta a crédito sin salir de /ventas. Nunca aparece en
+// el PDF descargable (lib/pdf/comprobante.ts): el comprobante es el
+// documento de la venta al momento de cerrarse, no un ledger que cambia.
 export function ComprobanteDialog({
   venta,
   onCerrar,
+  titulo = "Venta cerrada",
+  mostrarAbonos = false,
 }: {
   venta: VentaCerradaData;
   onCerrar: () => void;
+  titulo?: string;
+  mostrarAbonos?: boolean;
 }) {
   const bruto = venta.totalCobrado + venta.descuento;
   const datosComprobante = aDatosComprobante(venta);
@@ -119,12 +148,26 @@ export function ComprobanteDialog({
         <DialogHeader>
           <DialogTitle>
             <Receipt className="size-4 text-primary" />
-            Venta cerrada
+            {titulo}
           </DialogTitle>
           <DialogDescription>Comprobante interno.</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-3 text-sm">
+          {/* Tipo de venta, explícito desde el principio del comprobante
+          — no solo inferible por la presencia del bloque de crédito más
+          abajo (pedido explícito del Product Owner: "debe estar
+          especificado"). Mismo criterio visual que la columna "Tipo" de
+          /ventas: badge-estado-activo (ámbar) para crédito recién
+          creado (siempre PENDIENTE en este momento), outline neutro
+          para contado. */}
+          <div>
+            <Badge variant="outline" className={venta.esCredito ? "badge-estado-activo" : undefined}>
+              {venta.esCredito ? <CreditCard data-icon="inline-start" /> : null}
+              {venta.esCredito ? "Venta a crédito" : "Venta al contado"}
+            </Badge>
+          </div>
+
           <div className="flex flex-col gap-1">
             <p>
               <span className="text-muted-foreground">Cliente:</span> {venta.clienteNombre}
@@ -162,19 +205,43 @@ export function ComprobanteDialog({
               <span>Total cobrado</span>
               <span>S/ {venta.totalCobrado.toFixed(2)}</span>
             </div>
-            <p className="text-muted-foreground">Método de pago: {ETIQUETA_METODO_PAGO[venta.metodoPago]}</p>
+            {/* Método de pago solo tiene sentido si se cobró algo AHORA —
+            en una venta a crédito se muestra dentro del bloque de abajo
+            (junto a "Pagado ahora"), no acá. */}
+            {!venta.esCredito && mostrarMetodoPago(venta) ? (
+              <p className="text-muted-foreground">Método de pago: {ETIQUETA_METODO_PAGO[venta.metodoPago]}</p>
+            ) : null}
           </div>
 
           {venta.esCredito ? (
             <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/30 p-2">
+              <p className="font-medium text-foreground">Desglose del pago</p>
               <div className="flex justify-between text-muted-foreground">
                 <span>Pagado ahora</span>
                 <span>S/ {venta.montoContado.toFixed(2)}</span>
               </div>
+              {mostrarMetodoPago(venta) ? (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Método de pago</span>
+                  <span>{ETIQUETA_METODO_PAGO[venta.metodoPago]}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between font-medium text-foreground">
                 <span>A crédito</span>
                 <span>S/ {(venta.montoCredito ?? 0).toFixed(2)}</span>
               </div>
+              {/* Solo en "Ver detalle" (mostrarAbonos): en una venta recién
+              cerrada el saldo pendiente es siempre igual a "A crédito" (0
+              abonos todavía) — mostrarlo ahí sería una línea redundante.
+              "A crédito" arriba es el monto financiado AL CERRAR la venta,
+              fijo; el saldo sí baja con cada abono registrado después
+              (Credito.montoPagado, repositories/credito.ts). */}
+              {mostrarAbonos ? (
+                <div className="flex justify-between font-medium text-foreground">
+                  <span>Saldo pendiente</span>
+                  <span>S/ {((venta.montoCredito ?? 0) - (venta.montoPagado ?? 0)).toFixed(2)}</span>
+                </div>
+              ) : null}
               {venta.fechaLimiteCredito ? (
                 <p className="text-muted-foreground">
                   Vence:{" "}
@@ -188,6 +255,27 @@ export function ComprobanteDialog({
                   {new Date(venta.fechaLimiteCredito).toLocaleDateString("es-PE", { timeZone: "UTC" })}
                 </p>
               ) : null}
+            </div>
+          ) : null}
+
+          {venta.esCredito && mostrarAbonos ? (
+            <div className="flex flex-col gap-1 rounded-md border border-border p-2">
+              <p className="font-medium text-foreground">Historial de abonos</p>
+              {venta.abonos.length === 0 ? (
+                <p className="text-muted-foreground">Sin abonos registrados todavía.</p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {venta.abonos.map((abono) => (
+                    <li key={abono.id} className="flex justify-between gap-2 text-muted-foreground">
+                      <span>
+                        {new Date(abono.fecha).toLocaleString("es-PE", { timeZone: "America/Lima" })} —{" "}
+                        {ETIQUETA_METODO_PAGO[abono.metodoPago]}
+                      </span>
+                      <span className="shrink-0">S/ {abono.monto.toFixed(2)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ) : null}
         </div>

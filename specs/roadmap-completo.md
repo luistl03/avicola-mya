@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 11 completado — venta a crédito (total o parcial) desde el POS, panel de alertas por antigüedad (dashboard + `/creditos`), abonos con guard de sobrepago y auto-liquidación, estado de cuenta por cliente. Sin migración de schema (`Credito`/`HistorialAbonos` ya existían desde Sprint 0). Diseño de `registrarAbono` corregido en plena verificación contra Neon real (S11-19): el orden original "guard primero" (por analogía con `registrarMortalidadYDescontarAves`) rompía la idempotencia del abono que justo liquida el crédito — corregido a "ancla primero", mismo orden que `cerrarVenta`/`romperPaquete`. Dos hallazgos reales más, corregidos durante la verificación clic a clic (S11-20): un `Credito` sano (sin alerta) no tenía ningún botón para recibir abonos, y las fechas límite se mostraban con un día de desfase por un bug de zona horaria (medianoche UTC formateada en América/Lima). Cobertura 100%/100% en services/actions nuevos, 460 tests, sin bugs de código sobrevivientes (ver `memory/estado-proyecto.md`).
-**Progreso:** 12 de 16 sprints (75%)
+**Última actualización:** Sprint 12 completado — CRUD de Egreso por categoría (editable sin límite de tiempo, anulable solo dentro de una ventana de gracia de 10 min), modelo Empleado desacoplado de Usuario (alta/edición/baja/reactivación), SueldoMovimiento como ledger append-only con reversión (ventana de gracia), neto mensual informativo por mes calendario. Única migración desde Sprint 8 (`Egreso` gana `creadoEn`/`revertido`/`revertidoEn`, `SueldoMovimiento` gana `revertido`/`revertidoEn`, no destructiva) — a diferencia de Créditos (Sprint 11), el schema de Sprint 0 no anticipaba edición/reversión para estos dos modelos. El banner "no afecta la caja de ventas" del brief original se implementó y se sacó de la UI a pedido del Product Owner en plena ejecución (el aislamiento real entre módulos sigue intacto a nivel de código). Cobertura 100%/100%/100%/100% en services nuevos, 553 tests, sin bugs de código sobrevivientes (ver `memory/estado-proyecto.md`).
+**Progreso:** 13 de 16 sprints (81%)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -203,13 +203,33 @@ formateando en UTC, y el cálculo de "hoy" para clasificar alertas pasó de
 **Specs:** `specs/sprint-11-creditos-cobranza/`
 **Detalle de ejecución (dos hallazgos de diseño reales corregidos en plena verificación — orden de transacción de `registrarAbono`, y zona horaria de fechas-calendario; guard de sobrepago verificado bajo carrera real forzada; 460 tests, cobertura 100%/100% en services/actions nuevos; sin bugs de código sobrevivientes):** `memory/estado-proyecto.md`
 
-### Sprint 12 — Egresos y Personal (19 pts)
+### ✅ Sprint 12 — Egresos y Personal (19 pts) — COMPLETADO
 **Goal:** Gerente registra gastos y planilla, aislados de la caja de ventas.
-- CRUD Egreso por categoría (sin comprobante adjunto — D4)
-- Modelo Empleado (desacoplado de Usuario)
-- SueldoMovimiento (SUELDO_BASE/ADELANTO/BONO/DESCUENTO)
-- Cálculo de neto mensual (solo informativo)
-- Banner explícito: no afecta flujo de caja de ventas
+- CRUD Egreso por categoría (sin comprobante adjunto — D4): alta,
+  edición sin límite de tiempo, anulación solo dentro de la ventana de
+  gracia de 10 min
+- Modelo Empleado (desacoplado de Usuario) — alta, edición, baja/reactivación
+- SueldoMovimiento (SUELDO_BASE/ADELANTO/BONO/DESCUENTO) — ledger
+  append-only, reversión con ventana de gracia
+- Cálculo de neto mensual (solo informativo), por mes calendario
+**Una migración** — a diferencia de Créditos (Sprint 11), `Egreso`/
+`SueldoMovimiento` sí necesitaron schema nuevo: `Egreso` gana `creadoEn`/
+`revertido`/`revertidoEn`, `SueldoMovimiento` gana `revertido`/
+`revertidoEn`. No destructiva, `Egreso`/`Empleado`/`SueldoMovimiento` ya
+existían completos desde Sprint 0, sin código encima hasta este sprint.
+**Corrección real en plena ejecución, a pedido del Product Owner
+(post-S12-20):** el banner explícito "no afecta la caja de ventas" que
+pedía el brief original se implementó y luego se sacó de las tres
+pantallas después de verlo en uso — el aislamiento real entre Egresos/
+Personal y la caja de Ventas/Créditos sigue intacto a nivel de código,
+solo cambió la comunicación visual. De paso se agregó un botón "Volver a
+Personal" en el detalle de un empleado.
+**Specs:** `specs/sprint-12-egresos-personal/`
+**Detalle de ejecución (migración de schema, ventanas de gracia
+verificadas con backdate real contra Neon para ambos guards, corrección
+del banner en plena ejecución, historial de Precio por Kilo agregado la
+misma sesión fuera de alcance; 553 tests, cobertura 100%/100%/100%/100%
+en services nuevos; sin bugs de código sobrevivientes):** `memory/estado-proyecto.md`
 
 ---
 

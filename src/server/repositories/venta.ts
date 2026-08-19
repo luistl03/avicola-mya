@@ -50,7 +50,13 @@ const INCLUDE_COMPROBANTE = {
   detalles: true,
   cliente: { select: { nombre: true } },
   usuario: { select: { nombre: true } },
-  credito: true, // Sprint 11 — desglose contado/crédito en el comprobante
+  // Sprint 11 — desglose contado/crédito en el comprobante. abonos (orden
+  // desc, mismo criterio que buscarCreditoConAbonosPorId en
+  // repositories/credito.ts) — historial de pagos posteriores a la venta,
+  // mostrado solo en "Ver detalle" de /ventas (VentasTabla), nunca en el
+  // PDF descargable: el comprobante es el documento de la venta al momento
+  // de cerrarse, no un ledger que cambia con el tiempo.
+  credito: { include: { abonos: { orderBy: { fecha: "desc" } } } },
 } as const;
 
 export function cerrarVenta(params: {
@@ -214,19 +220,37 @@ export function buscarBandejasNoDisponiblesEntreIds(ids: string[]) {
 type FiltrosVentas = {
   desde?: Date;
   hasta?: Date;
-  clienteId?: string;
   metodoPago?: MetodoPago;
   // true = solo ventas con Credito asociado (total o parcial), false =
   // solo 100% al contado (sin Credito), undefined = ambas.
   esCredito?: boolean;
+  // Búsqueda libre combinada — un solo campo en VentaFiltros que matchea
+  // por nombre de cliente O por N° de comprobante (prefijo hex de
+  // Venta.id, mismo valor que imprime lib/pdf/comprobante.ts,
+  // referenciaCorta()) a la vez, sin que el operario tenga que elegir cuál
+  // de los dos está tipeando. Antes eran dos campos separados (clienteId
+  // exacto vía autocomplete + comprobante); se unificaron en S11-hotfix
+  // porque con 7 controles la fila de filtros ya no entraba en una sola
+  // línea sin romperse en pantallas comunes (hallazgo real del Product
+  // Owner). Ningún nombre de cliente real matchea un prefijo hex de UUID
+  // por accidente salvo que coincida caracter a caracter, así que el OR no
+  // genera falsos positivos cruzados en la práctica.
+  busqueda?: string;
 };
 
 function whereVentas(filtros: FiltrosVentas) {
   return {
     fecha: { gte: filtros.desde, lte: filtros.hasta },
-    clienteId: filtros.clienteId,
     metodoPago: filtros.metodoPago,
     credito: filtros.esCredito === undefined ? undefined : filtros.esCredito ? { isNot: null } : { is: null },
+    ...(filtros.busqueda
+      ? {
+          OR: [
+            { cliente: { nombre: { contains: filtros.busqueda, mode: "insensitive" as const } } },
+            { id: { startsWith: filtros.busqueda, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
   };
 }
 

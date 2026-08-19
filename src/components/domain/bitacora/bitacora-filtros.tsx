@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, ListFilter } from "lucide-react";
+import { ChevronDown, ListFilter, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,10 +54,10 @@ export function BitacoraFiltros({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
-  // Abierto por defecto si ya hay un filtro activo (para que no quede
-  // escondido sin que se note que se está filtrando) — cerrado si no hay
-  // ninguno, para no ocupar espacio de entrada innecesario.
-  const [abierto, setAbierto] = useState(Boolean(categoria || desde || hasta));
+  // Siempre colapsado al entrar, sin importar si ya hay filtros activos en
+  // la URL — pedido explícito del Product Owner: cada módulo debe verse
+  // "limpio" de entrada, sin el panel de filtros ya desplegado.
+  const [abierto, setAbierto] = useState(false);
   // Controlados (no defaultValue): min/max de un campo dependen del valor
   // actual del otro, así que hace falta leerlos en cada render, no solo
   // en el DOM al momento del onChange.
@@ -85,34 +85,58 @@ export function BitacoraFiltros({
   }
 
   const hoy = hoyEnLimaComoStringDeInput();
+  const hayFiltrosActivos = Boolean(categoria || desde || hasta);
+
+  function limpiarFiltros() {
+    setDesdeValue("");
+    setHastaValue("");
+    startTransition(() => {
+      router.replace("/bitacora");
+    });
+  }
 
   return (
     // Marco chico (borde + fondo sutil), no un <Card> de sección grande.
     <div className="rounded-lg border border-border bg-muted/30 p-3">
-      {/* <button>, no <p>: el rótulo "Filtros" es el control que
-      colapsa/despliega el bloque — el ChevronDown que gira 180° comunica
-      que hay más para desplegar, en vez de un texto suelto que parecía
-      solo una etiqueta. */}
-      <button
-        type="button"
-        onClick={() => setAbierto((valor) => !valor)}
-        aria-expanded={abierto}
-        className="flex w-full items-center justify-between gap-1.5 rounded-md text-sm font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-      >
-        <span className="flex items-center gap-1.5">
+      <div className="flex w-full items-center justify-between gap-1.5">
+        {/* <button>, no <p>: el rótulo "Filtros" es el control que
+        colapsa/despliega el bloque — el ChevronDown que gira 180° comunica
+        que hay más para desplegar, en vez de un texto suelto que parecía
+        solo una etiqueta. */}
+        <button
+          type="button"
+          onClick={() => setAbierto((valor) => !valor)}
+          aria-expanded={abierto}
+          className="flex items-center gap-1.5 rounded-md text-sm font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
           <ListFilter className="size-4 text-muted-foreground" />
           Filtros
-        </span>
-        <ChevronDown
-          className={cn(
-            "size-4 text-muted-foreground transition-transform",
-            abierto && "rotate-180",
-          )}
-        />
-      </button>
+          <ChevronDown
+            className={cn(
+              "size-4 text-muted-foreground transition-transform",
+              abierto && "rotate-180",
+            )}
+          />
+        </button>
+        {hayFiltrosActivos ? (
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            className="flex items-center gap-1 rounded-md text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <X className="size-3.5" />
+            Limpiar filtros
+          </button>
+        ) : null}
+      </div>
 
       {abierto ? (
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        // Mismo patrón de grid responsive que MortalidadFiltros/
+        // RecoleccionFiltros/ClienteFiltros/VentaFiltros: grid-cols-1 en
+        // mobile (sin tocar), auto-fit a partir de sm (las columnas crecen
+        // para llenar el cuadro y se achican hasta un mínimo legible antes
+        // de envolver a una nueva fila).
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] sm:items-end">
           <div className="flex flex-col gap-2">
             <Label htmlFor="filtro-categoria" className={LABEL_COMPACTO}>
               Categoría
@@ -123,7 +147,7 @@ export function BitacoraFiltros({
                 actualizarFiltro("categoria", valor === CATEGORIA_TODAS ? null : valor)
               }
             >
-              <SelectTrigger id="filtro-categoria" className="h-10 w-full sm:w-56">
+              <SelectTrigger id="filtro-categoria" className="h-10 w-full">
                 <SelectValue placeholder="Todas las categorías">
                   {categoria
                     ? CATEGORIAS.find((opcion) => opcion.value === categoria)?.label

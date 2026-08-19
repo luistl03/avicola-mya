@@ -30,6 +30,15 @@ export type VentaCerradaData = {
   montoContado: number;
   montoCredito: number | null;
   fechaLimiteCredito: string | null;
+  // Ya reflejado por Credito.montoPagado (repositories/credito.ts,
+  // registrarAbono) — 0 en una venta recién cerrada, null cuando no es a
+  // crédito. Junto con montoCredito arma el saldo pendiente en "Ver
+  // detalle".
+  montoPagado: number | null;
+  // Historial de abonos posteriores a la venta — siempre [] en una venta
+  // recién cerrada (PosWorkspace), poblado al reabrir el detalle de una
+  // venta vieja desde /ventas ("Ver detalle", VentasTabla).
+  abonos: { id: string; fecha: string; monto: number; metodoPago: "EFECTIVO" | "YAPE" | "PLIN" | "TRANSFERENCIA" }[];
   items: { tipo: "PAQUETE" | "BANDEJA"; pesoKg: number; precioKiloAplicado: number; subtotal: number }[];
 };
 

@@ -92,6 +92,18 @@ export function PosCarrito({
   const montoContado = Number(montoContadoInput) || 0;
   const montoContadoValido = !esCreditoEfectivo || (montoContado >= 0 && montoContado <= totalCobrado);
 
+  // Regla única: "Método de pago" solo tiene sentido si se está cobrando
+  // algo AHORA — nunca si el monto que se cobra en este momento es 0.
+  // Cubre dos casos reales: una venta 100% a crédito (montoContado: 0, se
+  // paga después vía abonos con su propio metodoPago) y el caso límite de
+  // una venta al contado con descuento del 100% (totalCobrado: 0, válido
+  // desde Sprint 9 — nada que cobrar, ningún método que elegir). Pedido
+  // explícito del Product Owner tras cerrar Sprint 11: si no aparece acá,
+  // tampoco debe aparecer en el comprobante (ComprobanteDialog/PDF) ni en
+  // el listado de Ventas.
+  const montoPagadoAhora = esCreditoEfectivo ? montoContado : totalCobrado;
+  const mostrarMetodoPago = montoPagadoAhora > 0;
+
   const [state, formAction, pending] = useActionState<Estado, VentaPayload>(async (_prev, payload) => {
     const resultado = await cerrarVentaAction(payload);
     if (resultado.ok) {
@@ -161,8 +173,11 @@ export function PosCarrito({
         "Venta a crédito" se reubica dentro de VentaCreditoFields, debajo
         de "Monto al contado" — mismo <select> controlado, solo cambia
         dónde se monta, para que quede junto al resto de los datos de la
-        parte al contado en vez de separado arriba del todo. */}
-        {!esCreditoEfectivo ? <MetodoPagoSelect value={metodoPago} onChange={setMetodoPago} /> : null}
+        parte al contado en vez de separado arriba del todo. En ambos
+        casos, solo se muestra si mostrarMetodoPago (ver arriba). */}
+        {!esCreditoEfectivo && mostrarMetodoPago ? (
+          <MetodoPagoSelect value={metodoPago} onChange={setMetodoPago} />
+        ) : null}
 
         <VentaCreditoFields
           esCredito={esCreditoEfectivo}
@@ -174,7 +189,9 @@ export function PosCarrito({
           fechaLimite={fechaLimiteInput}
           onFechaLimiteChange={setFechaLimiteInput}
           metodoPagoSlot={
-            esCreditoEfectivo ? <MetodoPagoSelect value={metodoPago} onChange={setMetodoPago} /> : null
+            esCreditoEfectivo && mostrarMetodoPago ? (
+              <MetodoPagoSelect value={metodoPago} onChange={setMetodoPago} />
+            ) : null
           }
         />
 
@@ -196,6 +213,14 @@ export function PosCarrito({
           onClick={() => {
             if (!puedeCerrar) return;
             startTransition(() => {
+              // metodoPago se sigue enviando aunque mostrarMetodoPago sea
+              // false (queda en su valor por defecto, "EFECTIVO", sin que
+              // el operario lo haya elegido) — Venta.metodoPago es NOT
+              // NULL en el schema desde Sprint 0, sin migración prevista
+              // para esto. Es un placeholder técnico sin significado real
+              // cuando no se cobró nada ahora — por eso se oculta en el
+              // comprobante y en el listado de Ventas en ese caso, en vez
+              // de mostrarlo como si el operario lo hubiera elegido.
               formAction({
                 id: ventaId,
                 clienteId,

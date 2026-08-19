@@ -585,12 +585,24 @@ model Egreso {
   monto       Decimal         @db.Decimal(10, 2)
   descripcion String
   fecha       DateTime        @default(now())
+  // Inmutable — ancla la ventana de gracia de anulación (Sprint 12).
+  // Distinta de `fecha`, que sí es editable: si la ventana se anclara a
+  // `fecha`, editarla podría reabrir o cerrar la ventana de forma
+  // impredecible. Ver memory/estado-proyecto.md, cierre de Sprint 12.
+  creadoEn    DateTime        @default(now())
+  // Mismo patrón que RegistroMortalidad.revertido/revertidoEn: anular
+  // restaura nada (Egreso no descuenta ningún contador), solo marca el
+  // registro — nunca DELETE físico. Anulable solo dentro de
+  // VENTANA_GRACIA_MIN; fuera de esa ventana se corrige editando.
+  revertido   Boolean         @default(false)
+  revertidoEn DateTime?
   usuarioId   String
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
 
   @@index([fecha])
   @@index([categoria])
+  @@index([creadoEn, revertido])
 }
 
 enum EstadoEmpleado {
@@ -624,10 +636,15 @@ model SueldoMovimiento {
   monto       Decimal              @db.Decimal(10, 2)
   fecha       DateTime             @default(now())
   descripcion String?
+  // Ledger append-only (Sprint 12, sin edición) — `fecha` nunca cambia
+  // después del alta, así que sirve de ancla directa para la ventana de
+  // gracia sin el riesgo que sí tiene Egreso.creadoEn/fecha.
+  revertido   Boolean              @default(false)
+  revertidoEn DateTime?
 
   empleado Empleado @relation(fields: [empleadoId], references: [id], onDelete: Restrict)
 
-  @@index([empleadoId, fecha])
+  @@index([empleadoId, fecha, revertido])
 }
 
 // ============================================

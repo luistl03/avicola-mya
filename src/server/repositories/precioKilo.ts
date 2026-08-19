@@ -19,3 +19,21 @@ export function obtenerPrecioKiloVigente() {
     include: { usuario: { select: { nombre: true } } },
   });
 }
+
+// Historial completo (no solo el vigente) para /precio-kilo — cada fila
+// es un precio que estuvo vigente en algún momento, nunca se pisa
+// (mismo criterio de "nueva fila, nunca UPDATE" de crearPrecioKilo).
+// Paginado con el mismo patrón que el resto de tablas de gestión del
+// proyecto (memory/convenciones.md, "Paginación de tablas de datos").
+export function listarPrecioKilo(params: { skip: number; take: number }) {
+  return prisma.precioKilo.findMany({
+    orderBy: { vigenteDesde: "desc" },
+    skip: params.skip,
+    take: params.take,
+    include: { usuario: { select: { nombre: true } } },
+  });
+}
+
+export function contarPrecioKilo() {
+  return prisma.precioKilo.count();
+}
