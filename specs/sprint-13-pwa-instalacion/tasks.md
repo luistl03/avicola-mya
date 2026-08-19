@@ -891,13 +891,45 @@ tarea, tal como quedaron documentadas las de
      precachea `apple-touch-icon.png`, y que `/apple-touch-icon.png`
      responde 200.
 
+  10. **Botón/banner de instalar no funcionaba recién logueado, solo
+     tras refrescar:** reportado por el Product Owner probando en
+     Android real. Causa raíz: `SerwistProvider` (quien registra el
+     Service Worker) vivía dentro de la rama `usuario ? (...) : null` de
+     `src/app/layout.tsx` — el SW recién se registraba DESPUÉS de
+     loguearse. `beforeinstallprompt` exige un Service Worker ya activo
+     entre sus criterios de instalabilidad, y el login de este proyecto
+     no hace una recarga completa de documento (Server Action +
+     `redirect()`, transición del lado del cliente) — a Chrome no le
+     daba tiempo de evaluar esos criterios y disparar el evento antes de
+     que montara `InstallPromptAndroid`. Refrescar la página funcionaba
+     porque, en esa segunda carga, el SW ya estaba registrado desde la
+     visita anterior. **Corregido** moviendo `SerwistProvider` afuera de
+     la rama `usuario`, envolviendo todo `<body>` — se registra desde
+     `/login` mismo, sin sesión, para que llegue "precalentado" para
+     cuando el usuario entra. Las piezas que sí dependen de sesión
+     (`IdleTimer`, `PrecargarCatalogos`, `InstallPromptAndroid`,
+     `IosInstallBanner` — decisión de negocio 3, spec.md: el banner debe
+     aparecer recién logueado) siguen gateadas por `usuario` puertas
+     adentro del provider, sin cambiar el comportamiento visible que
+     pedía esa decisión. No cambia el criterio de seguridad: registrar
+     el SW no cachea nada por sí solo (solo las entradas explícitas de
+     `additionalPrecacheEntries`), la caché en tiempo de ejecución sigue
+     dependiendo de qué rutas se visiten de verdad. Es probable que esto
+     también resuelva la segunda queja del Product Owner ("la
+     notificación de descargando" tampoco aparecía sin refrescar) — es
+     la misma familia de problema (criterios de instalabilidad
+     evaluados demasiado tarde) — pendiente de confirmar en dispositivo
+     real. Verificado con `curl` contra `npm run start` que `/login` ya
+     sirve la referencia a `/serwist/sw.js` sin necesitar sesión.
+
   Verificado de nuevo `npm run typecheck && npm run lint && npm run build
   && npm test` tras cada uno de estos hallazgos — **553/553 en verde**
   en todos los casos —, y confirmado con `curl` contra `npm run start`
-  que `/serwist/sw.js` precachea `avicolamya-imagotipo-2.png` junto a
+  que `/serwist/sw.js` precachea `apple-touch-icon.png` junto a
   `/offline` (y sigue precacheando también `avicolamya-imagotipo.png`,
-  referenciado aparte por login/Sidebar), y que el manifest/meta tag ya
-  no traen `theme_color`.
+  referenciado aparte por login/Sidebar), que el manifest/meta tag ya
+  no traen `theme_color`, y que `/login` registra el Service Worker sin
+  sesión.
 
 - [ ] S13-21 — Verificación en iPhone real (a cargo del Product Owner, R3
   `spec.md`): banner de tutorial de iOS aparece una vez con los 3 pasos

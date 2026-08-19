@@ -86,26 +86,45 @@ export default async function RootLayout({
             });
           `}
         </Script>
-        <ToastProvider>
-          {usuario ? (
-            <TooltipProvider>
-              <SidebarProvider defaultOpen={sidebarAbierto}>
-                <AppSidebar rol={usuario.rol} nombre={usuario.nombre} />
-                <SidebarInset>{children}</SidebarInset>
-              </SidebarProvider>
-            </TooltipProvider>
-          ) : (
-            children
-          )}
-          {usuario ? (
-            <SerwistProvider swUrl="/serwist/sw.js" reloadOnOnline={false}>
-              <IdleTimer />
-              <PrecargarCatalogos />
-              <InstallPromptAndroid />
-              <IosInstallBanner />
-            </SerwistProvider>
-          ) : null}
-        </ToastProvider>
+        {/* SerwistProvider (registra el Service Worker) SIN gatear por
+            usuario a propósito — hallazgo real reportado por el Product
+            Owner: recién logueado, el botón/banner de instalar no
+            funcionaba hasta refrescar la página. Causa raíz: antes de
+            este cambio, el SW recién se registraba DESPUÉS del login (acá
+            mismo estaba adentro del `usuario ? ... : null`), y
+            beforeinstallprompt exige un Service Worker ya activo entre
+            sus criterios de instalabilidad — justo tras loguearse (con la
+            sesión resuelta del lado del servidor, sin recarga completa de
+            documento) no le daba tiempo a Chrome a evaluar esos criterios
+            y disparar el evento a tiempo. Registrando el SW desde
+            /login (sin sesión), para cuando el usuario entra ya lleva un
+            rato activo y beforeinstallprompt puede haber llegado antes de
+            que monte InstallPromptAndroid. Las piezas que si dependen de
+            sesión (temporizador de inactividad, precarga de catálogos, UI
+            de instalación — decisión de negocio 3, spec.md) siguen
+            gateadas por `usuario` puertas adentro del provider. */}
+        <SerwistProvider swUrl="/serwist/sw.js" reloadOnOnline={false}>
+          <ToastProvider>
+            {usuario ? (
+              <TooltipProvider>
+                <SidebarProvider defaultOpen={sidebarAbierto}>
+                  <AppSidebar rol={usuario.rol} nombre={usuario.nombre} />
+                  <SidebarInset>{children}</SidebarInset>
+                </SidebarProvider>
+              </TooltipProvider>
+            ) : (
+              children
+            )}
+            {usuario ? (
+              <>
+                <IdleTimer />
+                <PrecargarCatalogos />
+                <InstallPromptAndroid />
+                <IosInstallBanner />
+              </>
+            ) : null}
+          </ToastProvider>
+        </SerwistProvider>
       </body>
     </html>
   );
