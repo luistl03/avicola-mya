@@ -6,6 +6,7 @@ import Script from "next/script";
 import "./globals.css";
 
 import { IdleTimer } from "@/components/domain/auth/idle-timer";
+import { SincronizadorOffline } from "@/components/domain/offline/sincronizador-offline";
 import { IosInstallBanner } from "@/components/domain/pwa/ios-install-banner";
 import { InstallPromptAndroid } from "@/components/domain/pwa/install-prompt-android";
 import { PrecargarCatalogos } from "@/components/domain/pwa/precargar-catalogos";
@@ -119,6 +120,7 @@ export default async function RootLayout({
               <>
                 <IdleTimer />
                 <PrecargarCatalogos />
+                <SincronizadorOffline />
                 <InstallPromptAndroid />
                 <IosInstallBanner />
               </>

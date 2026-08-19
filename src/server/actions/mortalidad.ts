@@ -64,6 +64,7 @@ export const registrarMortalidad = withAuth(
         usuarioId: ctx.usuarioId,
         tipo: input.tipo,
         cantidad: input.cantidad,
+        creadoEnCliente: input.creadoEnCliente,
       });
     } catch (error) {
       if (error instanceof AvesInsuficientesError) {

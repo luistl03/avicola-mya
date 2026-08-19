@@ -125,6 +125,7 @@ describe("crearNotaBitacora", () => {
       id: NOTA_1_ID,
       categoria: "VACUNACION",
       contenido: "Vacuna Newcastle aplicada",
+      creadoEnCliente: AHORA,
     });
 
     expect(resultado).toEqual({ ok: true, data: { id: NOTA_1_ID } });
@@ -133,6 +134,7 @@ describe("crearNotaBitacora", () => {
       categoria: "VACUNACION",
       contenido: "Vacuna Newcastle aplicada",
       usuarioId: GERENTE_1_ID,
+      creadoEnCliente: AHORA,
     });
     expect(crearAuditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -158,6 +160,7 @@ describe("crearNotaBitacora", () => {
       id: NOTA_1_ID,
       categoria: "ALIMENTACION",
       contenido: "Reparto normal",
+      creadoEnCliente: AHORA,
     });
 
     expect(resultado.ok).toBe(true);
@@ -191,6 +194,7 @@ describe("crearNotaBitacora", () => {
         id: NOTA_1_ID,
         categoria: "OBSERVACION",
         contenido: "Nota original",
+        creadoEnCliente: AHORA,
       });
 
       expect(resultado).toEqual({ ok: true, data: { id: NOTA_1_ID } });
@@ -213,6 +217,7 @@ describe("crearNotaBitacora", () => {
         id: NOTA_1_ID,
         categoria: "OBSERVACION",
         contenido: "Nota original",
+        creadoEnCliente: AHORA,
       });
 
       expect(resultado).toEqual({

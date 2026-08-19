@@ -13,7 +13,12 @@ const contenido = z.string().trim().min(1, "La nota no puede estar vacía.").max
 // doble envío. Nunca lo elige el usuario a mano.
 const id = idUuid();
 
-export const crearNotaBitacoraSchema = z.object({ id, categoria, contenido });
+// Reloj del celular en el momento de la captura — Contrato Offline-Ready
+// (Sprint 14), mismo patrón que crearRecoleccionSchema/
+// crearRegistroMortalidadSchema.
+const creadoEnCliente = z.coerce.date({ message: "Fecha inválida" });
+
+export const crearNotaBitacoraSchema = z.object({ id, categoria, contenido, creadoEnCliente });
 
 export type CrearNotaBitacoraInput = z.infer<typeof crearNotaBitacoraSchema>;
 

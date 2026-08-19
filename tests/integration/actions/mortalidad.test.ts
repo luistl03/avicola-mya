@@ -94,7 +94,13 @@ function sessionOperario() {
 }
 
 describe("registrarMortalidad", () => {
-  const inputValido = { id: REGISTRO_1_ID, loteId: LOTE_1_ID, tipo: "MUERTE", cantidad: 3 };
+  const inputValido = {
+    id: REGISTRO_1_ID,
+    loteId: LOTE_1_ID,
+    tipo: "MUERTE",
+    cantidad: 3,
+    creadoEnCliente: AHORA,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -201,6 +207,7 @@ describe("registrarMortalidad", () => {
       usuarioId: GERENTE_1_ID,
       tipo: "MUERTE",
       cantidad: 3,
+      creadoEnCliente: AHORA,
     });
     expect(crearAuditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({
