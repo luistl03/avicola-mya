@@ -673,6 +673,50 @@ tarea, tal como quedaron documentadas las de
   tarea (incluida esta corrección) sigue abierta hasta que el Product
   Owner reintente contra el preview actualizado.
 
+  **Hallazgo real de proceso, no de código:** el primer reintento del
+  Product Owner siguió sin mostrar nada — resultó que estaba probando
+  contra `avicola-mya.vercel.app` (producción, sin Sprint 13 todavía) en
+  vez de la preview de la rama. Causa: nunca se había abierto el PR (no
+  hay forma de generar la URL de preview de Vercel sin uno, confirmado
+  con la API de GitHub — cero PRs, cero deployments para la rama). El
+  proyecto nunca había usado este flujo de preview-antes-de-mergear en
+  sprints anteriores (siempre commit directo a `main`) — se introdujo
+  recién en este sprint por la necesidad de HTTPS para probar en
+  dispositivo real, y no quedó suficientemente claro para el Product
+  Owner en el momento. Resuelto abriendo el PR manualmente
+  (`gh` no está instalado en esta máquina) y confirmando la URL real de
+  preview que comentó el bot de Vercel.
+
+  **Con la URL correcta, el fix de la carrera sí funcionó**: apareció el
+  banner propio, el botón "Instalar app" del Sidebar, el diálogo real de
+  instalación de Chrome con el ícono/nombre correctos, y la instalación
+  se completó (tardó un poco — normal, el precache son ~2.7MB en la
+  primera instalación). **S13-20 queda funcionalmente confirmado** en
+  esta parte — instalación real completa en Android, con el ícono y el
+  nombre correctos.
+
+  **Dos ajustes de pulido pedidos por el Product Owner, ya corregidos:**
+  1. El punto de conectividad se veía "huérfano" en su propia fila, entre
+     el rol y "Cerrar sesión" — reubicado en línea junto a la etiqueta de
+     rol ("Gerente ●"), no en una fila propia
+     (`connectivity-indicator.tsx` pasa de `div` a `span inline-flex`,
+     `sidebar.tsx` lo compone junto al `ROL_LABEL`).
+  2. El texto del banner de instalación usaba voseo ("Instalá") en vez de
+     español neutro — corregido en las 5 frases que lo tenían
+     (`install-prompt-android.tsx`: "Instalá" → "Instala";
+     `ios-install-banner.tsx`: "Instalá"/"Tocá"/"Elegí"/"Confirmá" →
+     "Instala"/"Toca"/"Elige"/"Confirma"). El resto de la copia de
+     Sprint 13 (botones, `/offline`) ya estaba en forma neutra, no hizo
+     falta tocarla.
+
+  Verificado `npm run typecheck && npm run lint && npm test` —
+  **553/553 en verde**, sin regresión. **Pendiente todavía:** confirmar
+  visualmente el reacomodo del punto de conectividad y el texto corregido
+  en el dispositivo real (no se pudo verificar en vivo, solo por código),
+  y el resto de los criterios de esta tarea (cooldown de "Ahora no",
+  botón manual a demanda, modo standalone, color de tema en la barra de
+  estado).
+
 - [ ] S13-21 — Verificación en iPhone real (a cargo del Product Owner, R3
   `spec.md`): banner de tutorial de iOS aparece una vez con los 3 pasos
   correctos, no reaparece solo después de cerrado, el botón manual "Cómo

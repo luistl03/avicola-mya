@@ -79,11 +79,11 @@ export function IosInstallBanner() {
 
   return (
     <div className="fixed inset-x-4 bottom-4 z-50 rounded-lg border bg-card p-4 text-card-foreground shadow-lg">
-      <p className="mb-2 text-sm font-medium">Instalá Avícola M&A en tu iPhone</p>
+      <p className="mb-2 text-sm font-medium">Instala Avícola M&A en tu iPhone</p>
       <ol className="mb-3 list-decimal space-y-1 pl-4 text-sm text-muted-foreground">
-        <li>Tocá el ícono de Compartir (el cuadrado con la flecha hacia arriba)</li>
-        <li>Elegí &quot;Añadir a inicio&quot;</li>
-        <li>Confirmá el nombre y tocá &quot;Añadir&quot;</li>
+        <li>Toca el ícono de Compartir (el cuadrado con la flecha hacia arriba)</li>
+        <li>Elige &quot;Añadir a inicio&quot;</li>
+        <li>Confirma el nombre y toca &quot;Añadir&quot;</li>
       </ol>
       <Button size="sm" variant="outline" onClick={cerrarBannerIos}>
         Entendido

@@ -106,7 +106,7 @@ export function InstallPromptAndroid() {
 
   return (
     <div className="fixed inset-x-4 bottom-4 z-50 flex items-center justify-between gap-4 rounded-lg border bg-card p-4 text-card-foreground shadow-lg">
-      <p className="text-sm">Instalá Avícola M&A en tu celular para abrirla más rápido.</p>
+      <p className="text-sm">Instala Avícola M&A en tu celular para abrirla más rápido.</p>
       <div className="flex gap-2">
         <Button
           size="sm"

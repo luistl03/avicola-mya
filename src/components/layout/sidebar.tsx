@@ -111,10 +111,12 @@ export function AppSidebar({ rol, nombre }: { rol: Rol; nombre: string }) {
 
       <SidebarFooter className="gap-3 border-t border-sidebar-border p-4">
         {!colapsado && (
-          <div className="flex flex-col gap-1 overflow-hidden">
+          <div className="flex flex-col overflow-hidden">
             <span className="truncate text-sm font-medium text-sidebar-foreground">{nombre}</span>
-            <span className="text-xs text-sidebar-foreground/70">{ROL_LABEL[rol]}</span>
-            <ConnectivityIndicator />
+            <span className="flex items-center gap-1.5 text-xs text-sidebar-foreground/70">
+              {ROL_LABEL[rol]}
+              <ConnectivityIndicator />
+            </span>
           </div>
         )}
         {!colapsado && (

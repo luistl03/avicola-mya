@@ -22,8 +22,12 @@ function obtenerSnapshotServidor() {
   return true;
 }
 
-// Vive en el footer del Sidebar (decisión de negocio 5, spec.md) — punto
-// de estado siempre presente, solo agrega texto cuando está offline.
+// Vive en el footer del Sidebar (decisión de negocio 5, spec.md), en línea
+// junto a la etiqueta de rol — no en su propia fila (bug real de UX
+// reportado por el Product Owner probando en Android: el punto solo en
+// una fila propia se veía "huérfano", flotando entre el rol y "Cerrar
+// sesión"). `inline-flex`, pensado para componerse dentro de otro
+// contenedor flex, no un bloque aparte.
 // useSyncExternalStore, no useState+useEffect: es el patrón recomendado
 // por React para suscribirse a estado externo del navegador (el propio
 // linter de React lo marca como anti-patrón si se hace con setState
@@ -33,12 +37,12 @@ export function ConnectivityIndicator() {
   const online = useSyncExternalStore(suscribirse, obtenerSnapshot, obtenerSnapshotServidor);
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-sidebar-foreground/70">
+    <span className="inline-flex items-center gap-1.5">
       <span
         className={online ? "size-2 rounded-full bg-emerald-500" : "size-2 rounded-full bg-muted-foreground"}
         aria-hidden
       />
       {!online && <span>Sin conexión</span>}
-    </div>
+    </span>
   );
 }
