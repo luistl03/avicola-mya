@@ -9,14 +9,20 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 13 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+- **Sprint actual:** 14 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
   Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
   Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora, Sprint 5 —
   Recolección e Inventario, Sprint 6 — Ventana de gracia y reversión,
   Sprint 7 — Consolidación de residuos, Sprint 8 — Clientes y Precio por
   Kilo, Sprint 9 — POS: Carrito y Cierre, Sprint 10 — Consolidación:
   Romper Paquete/Bandeja, Sprint 11 — Créditos y cobranza, Sprint 12 —
-  Egresos y Personal). Sprint 13 (PWA e instalación) es el siguiente.
+  Egresos y Personal, Sprint 13 — PWA e instalación). Sprint 13 queda
+  cerrado salvo un único ítem, S13-21 (verificación en iPhone real), en
+  espera explícita del Product Owner — ver su entrada más abajo. La
+  rama `feat/S13-pwa-instalacion` todavía no está mergeada a `main`.
+  Sprint 14 (Cola offline y sincronización) es el siguiente — viene
+  marcado ALTO RIESGO en el roadmap, dividir en 14A/14B antes de
+  arrancar.
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -781,15 +787,16 @@ priorizado). Una vez separados:
   cliente registrado, tiene que existir también en producción.
 
 ## Cómo continuar desde acá
-0. **Sprint 12 (Egresos y Personal) ya está cerrado** (ver el registro
-   completo en "Registro de cierre de sprints" más abajo y
-   `specs/sprint-12-egresos-personal/`). Sprint 13 (PWA e instalación) es
-   el siguiente — primer sprint de la Release 3 "Campo Real", introduce
-   `next-pwa`/Serwist, manifest, iconos maskable y estrategias de caché;
-   releer `memory/decisiones-tecnicas.md` (D1-D6) antes de empezar, en
-   particular cualquier supuesto de conectividad que los módulos de
-   gestión (Egresos/Personal incluidos) hayan asumido sin pensar en modo
-   offline.
+0. **Sprint 13 (PWA e instalación) ya está cerrado, salvo un único
+   ítem** (ver el registro completo en "Registro de cierre de sprints"
+   más abajo y `specs/sprint-13-pwa-instalacion/`): S13-21 (verificación
+   en iPhone real) queda en espera explícita del Product Owner — no
+   bloqueante para seguir, pero falta tildarlo cuando lo pruebe. La
+   rama `feat/S13-pwa-instalacion` todavía no está mergeada a `main`.
+   Sprint 14 (Cola offline y sincronización) es el siguiente — viene
+   marcado ALTO RIESGO en el roadmap; dividir en 14A/14B antes de
+   arrancar, y releer `memory/decisiones-tecnicas.md` (D1-D7, D7 es la
+   elección de Serwist del propio Sprint 13) antes de tocar la cola.
 
    **Hallazgo real de Sprint 12, a tener presente en cualquier sprint
    futuro con un modelo que fue diseñado en Sprint 0 sin campos de
@@ -1690,6 +1697,76 @@ priorizado). Una vez separados:
   futuro que lo necesite de verdad. El ajuste manual de Mortalidad y el
   botón "Deshacer" de `RegistroConsolidacion`/`RoturaPaquete`/
   `RoturaBandeja`, heredados de sprints anteriores, siguen sin resolver.
+
+- **Sprint 13** — cerrado salvo un ítem (2026-08-19). 553 tests, sin
+  ninguna migración (todo el sprint es infraestructura de Service
+  Worker/manifest, ningún campo nuevo en el schema). Instalable en
+  Android real y offline-ready para Mortalidad/Bitácora/Recolección —
+  D7 agregada (`memory/decisiones-tecnicas.md`): Serwist vía
+  `@serwist/turbopack`, no `next-pwa` (incompatible con Turbopack).
+  Detalle completo, con los 11 hallazgos reales encontrados durante la
+  verificación en dispositivo, en `specs/sprint-13-pwa-instalacion/`
+  (spec.md, plan.md, tasks.md).
+
+  **Único ítem pendiente: S13-21 (verificación en iPhone real), en
+  espera explícita del Product Owner** — decisión suya de seguir
+  adelante con esta entrada de cierre sin esperarlo, priorizando otro
+  trabajo (edición de Lotes, ver más abajo). Cuando lo prueba, falta
+  solo tildar S13-21 en `tasks.md` y esta entrada queda completa.
+
+  **11 hallazgos reales durante la verificación en Android** (Product
+  Owner probando contra la preview de Vercel, primera vez que Sprint 13
+  se prueba en un dispositivo real distinto de un desktop): `manifest`
+  con zona segura maskable insuficiente en los primeros íconos;
+  `beforeinstallprompt` perdido por una carrera entre el evento y la
+  hidratación de React (corregido capturándolo en un `<script
+  strategy="beforeInteractive">`, no en un `useEffect`); el botón
+  "Instalar app" no se ocultaba tras instalar de verdad (agregado un
+  flag en `localStorage` en el evento real `appinstalled`); caché de
+  las 3 pantallas de campo compartiendo un balde con `maxEntries`
+  chico y sufriendo desalojo LRU (separadas en baldes propios,
+  `pantallas-campo`/`pantallas-campo-rsc`); faltaba `<meta
+  name="theme-color">` para pestañas normales (agregado vía
+  `viewport`, no `metadata.themeColor` — deprecado en Next 16); guardar
+  sin señal rompía a la pantalla nativa de Chrome en vez de mostrar un
+  error propio (3 dialogs de campo sin `try/catch` alrededor de su
+  Server Action); el Service Worker recién se registraba DESPUÉS de
+  loguearse, así que `beforeinstallprompt` no llegaba a tiempo justo
+  tras el login (se movió el registro a `/login`, sin sesión); un
+  `BeforeInstallPromptEvent` nunca se limpiaba tras usarlo, así que un
+  segundo toque en el banner o el botón del Sidebar (que comparten el
+  mismo evento) reintentaba `prompt()` sobre un evento ya gastado sin
+  ningún error visible; y una advertencia nativa de Chrome de
+  "contraseña no segura" (Google Password Manager, con una credencial
+  de prueba débil) competía por la misma superficie del navegador que
+  el diálogo de instalación — confirmado por el propio Product Owner
+  como la causa real del último síntoma, tras probar con una
+  contraseña fuerte. Aparte, tres pedidos de ajuste visual del Product
+  Owner ya en producción real: el imagotipo (no el isotipo) en
+  splash/launcher/`/offline` — con una segunda versión del imagotipo
+  con más margen, y luego un reemplazo a íconos armados a mano en vez
+  de generados por script; y el naranja forzado de la barra de estado,
+  revertido a pedido suyo (la barra inferior de Android no se puede
+  pintar vía web estándar, así que se prefirió no forzar ninguna).
+
+  **Verificado en vivo (2026-08-19), con `claude-in-chrome` reconectado
+  contra `npm run dev` real (Neon + Upstash reales, sesión de un
+  usuario GERENTE temporal creado y borrado solo para la prueba):**
+  guardar sin señal (servidor apagado a mitad del formulario, mismo
+  efecto que estar offline para el `fetch()` del navegador) mostró el
+  mensaje esperado en rojo, no la pantalla rota de Chrome, y no dejó
+  ningún registro parcial ni duplicado en Mortalidad (S13-22, cerrado).
+  Una ráfaga real de 65 solicitudes autenticadas contra el rate limit
+  operativo dio exactamente 60 en `200` y las 5 siguientes en `429` —
+  confirma que el error "Demasiadas solicitudes" que había reportado el
+  Product Owner durante las pruebas es el límite real funcionando como
+  está documentado (existe desde Sprint 1, sin tocar en este sprint),
+  no un bug — el tráfico de fondo que sí agregó Sprint 13
+  (`PrecargarCatalogos` + el prefetch nativo de `<Link>` para las 3
+  pantallas de campo, hasta ~9 solicitudes por cada recarga completa)
+  alcanza ese límite con unas pocas recargas seguidas, algo que pasó
+  durante la sesión de pruebas intensiva pero que no debería repetirse
+  en uso normal de producción.
 
 ## Bug real: `PageHeader` con 2+ botones de acción rompía el ancho en mobile (post-Sprint 7, 2026-08-13)
 El Product Owner probó `/consolidacion` en su celular real (los dos

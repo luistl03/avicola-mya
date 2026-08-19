@@ -1,8 +1,8 @@
 # Roadmap completo — ERP Avícola PWA
 
 ## Estado actual del proyecto
-**Última actualización:** Sprint 12 completado — CRUD de Egreso por categoría (editable sin límite de tiempo, anulable solo dentro de una ventana de gracia de 10 min), modelo Empleado desacoplado de Usuario (alta/edición/baja/reactivación), SueldoMovimiento como ledger append-only con reversión (ventana de gracia), neto mensual informativo por mes calendario. Única migración desde Sprint 8 (`Egreso` gana `creadoEn`/`revertido`/`revertidoEn`, `SueldoMovimiento` gana `revertido`/`revertidoEn`, no destructiva) — a diferencia de Créditos (Sprint 11), el schema de Sprint 0 no anticipaba edición/reversión para estos dos modelos. El banner "no afecta la caja de ventas" del brief original se implementó y se sacó de la UI a pedido del Product Owner en plena ejecución (el aislamiento real entre módulos sigue intacto a nivel de código). Cobertura 100%/100%/100%/100% en services nuevos, 553 tests, sin bugs de código sobrevivientes (ver `memory/estado-proyecto.md`).
-**Progreso:** 13 de 16 sprints (81%)
+**Última actualización:** Sprint 13 completado salvo un ítem — app instalable en Android real (manifest, iconos maskable, `beforeinstallprompt` con banner + botón manual de respaldo) y offline-ready para Mortalidad/Bitácora/Recolección vía Service Worker (`@serwist/turbopack`, D7 — no `next-pwa`, incompatible con Turbopack). 11 hallazgos reales encontrados y corregidos durante la verificación en dispositivo real (detalle completo en `memory/estado-proyecto.md` y `specs/sprint-13-pwa-instalacion/tasks.md`), entre ellos una carrera real de `beforeinstallprompt` contra la hidratación de React, desalojo LRU de caché por compartir balde, y un evento de instalación de un solo uso que no se limpiaba tras usarlo. Sin ninguna migración de schema. Verificado en vivo contra Neon/Upstash reales: guardar sin señal falla explícito sin perder ni duplicar datos, y el rate limit operativo responde exactamente como está documentado (60/min). Único ítem pendiente: S13-21 (verificación en iPhone real), en espera explícita del Product Owner, rama `feat/S13-pwa-instalacion` sin mergear a `main` todavía.
+**Progreso:** 14 de 16 sprints (88%, con una verificación puntual en iPhone pendiente de Sprint 13)
 **Deploy activo:** https://avicola-mya.vercel.app
 **Repo:** https://github.com/luistl03/avicola-mya
 
@@ -235,13 +235,36 @@ en services nuevos; sin bugs de código sobrevivientes):** `memory/estado-proyec
 
 ## 🚀 RELEASE 3 — CAMPO REAL
 
-### Sprint 13 — PWA e instalación (24 pts)
+### ✅ Sprint 13 — PWA e instalación (24 pts) — COMPLETADO salvo S13-21
 **Goal:** la app se instala en el celular, pantallas operativas abren sin señal.
-- next-pwa/Serwist + manifest + iconos maskable
-- Estrategias de caché (NetworkFirst/CacheFirst/StaleWhileRevalidate)
-- Precarga de catálogos al login
-- Prompt instalación Android + tutorial iOS ("Compartir → Añadir a inicio")
+- `@serwist/turbopack` + manifest + iconos maskable (D7 — no next-pwa,
+  incompatible con Turbopack)
+- Estrategias de caché (NetworkFirst para las 3 pantallas de campo,
+  balde propio por formato — documento y RSC —, `...defaultCache` para
+  el resto)
+- Precarga de catálogos al login (`PrecargarCatalogos`)
+- Prompt instalación Android (banner + botón manual de respaldo en el
+  Sidebar) + tutorial iOS ("Compartir → Añadir a inicio")
 - Indicador de conectividad
+**Sin ninguna migración de schema** — todo el sprint es infraestructura
+de Service Worker/manifest.
+**11 hallazgos reales durante la verificación en Android real**, entre
+ellos una carrera real de `beforeinstallprompt` contra la hidratación de
+React, desalojo LRU de caché por compartir balde con otras rutas, el
+Service Worker registrándose recién después del login (así que
+`beforeinstallprompt` no llegaba a tiempo), un evento de instalación de
+un solo uso que no se limpiaba tras usarlo, y una advertencia nativa de
+Chrome de "contraseña no segura" compitiendo por la misma superficie del
+navegador que el diálogo de instalación. Verificado en vivo contra
+Neon/Upstash reales que guardar sin señal falla explícito sin perder ni
+duplicar datos, y que el rate limit operativo (60/min, existente desde
+Sprint 1) responde tal como está documentado.
+**Único ítem pendiente:** S13-21 (verificación en iPhone real), en
+espera explícita del Product Owner — no bloqueante para seguir. Rama
+`feat/S13-pwa-instalacion` sin mergear a `main` todavía.
+**Specs:** `specs/sprint-13-pwa-instalacion/`
+**Detalle completo (los 11 hallazgos, decisiones de negocio
+confirmadas, verificación en vivo):** `memory/estado-proyecto.md`
 
 ### Sprint 14 — Cola offline y sincronización (37 pts) ⚠️ ALTO RIESGO, dividir en 14A/14B
 **Goal:** operario trabaja 4h sin señal, al volver no se pierde ni duplica nada.
