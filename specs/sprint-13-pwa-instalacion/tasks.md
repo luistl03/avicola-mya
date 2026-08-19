@@ -845,6 +845,17 @@ tarea, tal como quedaron documentadas las de
      tema del sistema operativo/fabricante — limitación explicada al
      Product Owner, aplica igual estando online u offline (mismo
      comportamiento en ambos casos, no es una inconsistencia nueva).
+  7. **Revertido el naranja de la barra de estado, a pedido explícito del
+     Product Owner** tras confirmar que la barra inferior no se puede
+     pintar: "dejemos la de arriba con la misma configuración del
+     Android... nada de naranja ni de color de fondo de sin conexión,
+     solo dejalo como tenga el celular predeterminado". Se quitó
+     `theme_color` de `src/app/manifest.ts` y el export
+     `viewport.themeColor` de `src/app/layout.tsx` (que ya no queda
+     `Viewport` sin usar). Verificado con `curl` contra `npm run start`
+     que el manifest ya no trae `theme_color` y que `/login` ya no
+     genera `<meta name="theme-color">`. `553/553` tests siguen en
+     verde.
 
   Verificado de nuevo `npm run typecheck && npm run lint && npm run build
   && npm test` tras estos 3 archivos (`scripts/generar-iconos-pwa.ts`,

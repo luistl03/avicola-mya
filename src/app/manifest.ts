@@ -6,6 +6,10 @@ import type { MetadataRoute } from "next";
 // Colores confirmados leyendo globals.css real en S13-1 (no asumidos):
 // --background (light) = #ffffff, --primary (light) = #f4900f (mismo
 // valor ya documentado en memory/estado-proyecto.md, "Paleta de color").
+// Sin theme_color a propósito (ver el mismo razonamiento en
+// src/app/layout.tsx): la barra de navegación inferior de Android no se
+// puede pintar vía web estándar, así que se deja la de arriba también
+// en el color por defecto del sistema en vez de una sola mitad naranja.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Avícola M&A",
@@ -14,7 +18,6 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#f4900f",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

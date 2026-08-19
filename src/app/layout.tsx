@@ -1,5 +1,5 @@
 import { SerwistProvider } from "@serwist/turbopack/react";
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import Script from "next/script";
@@ -25,17 +25,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// El manifest (app/manifest.ts) fija theme_color para la app YA INSTALADA
-// (WebAPK) — Chrome usa este export aparte (no metadata.themeColor, que
-// Next 16 deprecó a favor de este) para pestañas normales del navegador,
-// y según versión/fabricante de Android también puede influir en la
-// barra de estado incluso instalada. Nunca se había generado
-// <meta name="theme-color"> hasta ahora — hallazgo real reportado por el
-// Product Owner probando en su Android real.
-export const viewport: Viewport = {
-  themeColor: "#f4900f",
-};
-
+// Sin themeColor a propósito: se probó fijarlo en "#f4900f" (naranja),
+// pero la barra de navegación inferior de Android (los botones "atrás")
+// no tiene ninguna API web estándar para pintarla — queda siempre en el
+// color que decida el sistema/fabricante. A pedido del Product Owner
+// ("dejalo como tenga el celular predeterminado"), se prefiere que
+// arriba y abajo compartan el mismo criterio (el del propio Android) en
+// vez de tener solo la de arriba naranja y la de abajo sin poder
+// cambiarse — una inconsistencia peor que no forzar ninguna.
 export const metadata: Metadata = {
   title: "Avícola M&A",
   description: "Sistema de gestión interna — Avícola M&A",
