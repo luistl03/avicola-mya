@@ -871,6 +871,25 @@ tarea, tal como quedaron documentadas las de
      dibujo queda con más aire alrededor, texto sigue legible en 192px.
      De paso, corregido un voseo que había quedado suelto en el texto de
      `/offline` ("probá"/"recuperás" → "prueba"/"recuperas").
+  9. **Cambio de flujo: el Product Owner pasó a armar y colocar a mano
+     los 5 archivos de íconos** (`public/icons/icon-192.png`,
+     `icon-512.png`, `icon-192-maskable.png`, `icon-512-maskable.png`,
+     `public/apple-touch-icon.png`), reemplazando el resultado del
+     script — y borró `avicolamya-imagotipo-2.png`, que hasta ahora era
+     la imagen fuente que ese script leía. `apple-touch-icon.png` es
+     ahora el archivo de referencia. Actualizadas las 3 referencias de
+     código que apuntaban a la imagen fuente borrada (rotas tras el
+     borrado): `src/app/offline/page.tsx` (`<img src>`),
+     `src/app/serwist/[path]/route.ts` (`additionalPrecacheEntries`) y
+     `src/app/layout.tsx` (`metadata.icons.icon`) — las 3 ahora apuntan a
+     `/apple-touch-icon.png`. `scripts/generar-iconos-pwa.ts` se marcó
+     DEPRECADO con una nota al inicio (no se borra, queda de referencia
+     histórica de la lógica de zona segura maskable, pero no debe
+     volver a ejecutarse — su `FUENTE` ya ni siquiera existe en el
+     repo). Confirmado con `curl` contra `npm run start` que
+     `/serwist/sw.js` ya no menciona `avicolamya-imagotipo-2`, que
+     precachea `apple-touch-icon.png`, y que `/apple-touch-icon.png`
+     responde 200.
 
   Verificado de nuevo `npm run typecheck && npm run lint && npm run build
   && npm test` tras cada uno de estos hallazgos — **553/553 en verde**

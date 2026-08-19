@@ -1,5 +1,14 @@
 import sharp from "sharp";
 
+// DEPRECADO — no ejecutar. El Product Owner ahora arma y coloca a mano
+// los 5 archivos de íconos (public/icons/icon-*.png y
+// public/apple-touch-icon.png), partiendo de su propio diseño ya
+// recortado a cada tamaño — ya no de una imagen fuente única que este
+// script reescala/compone. FUENTE abajo ("avicolamya-imagotipo-2.png")
+// ya ni siquiera existe en el repo (se borró junto con este cambio).
+// Se deja el script sin borrar solo como referencia histórica de la
+// lógica de zona segura maskable, no para volver a correrlo.
+//
 // Imagotipo (símbolo + "AVÍCOLA M&A"), no isotipo (solo símbolo) — a
 // pedido del Product Owner probando la app instalada en Android real: el
 // manifest usa el MISMO set de íconos para el ícono del launcher Y para

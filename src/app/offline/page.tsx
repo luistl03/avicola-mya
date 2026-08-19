@@ -28,7 +28,7 @@ export default function OfflinePage() {
         servidor para optimizar cada variante) rompería justo el caso que
         esta pantalla existe para cubrir. El archivo crudo en /public sí cae
         bajo el runtime caching de imágenes estáticas de defaultCache. */}
-        <img src="/avicolamya-imagotipo-2.png" alt="Avícola M&A" className="h-20 w-auto" />
+        <img src="/apple-touch-icon.png" alt="Avícola M&A" className="h-20 w-auto" />
         <p className="max-w-md text-muted-foreground">
           Esta pantalla no está disponible sin señal todavía. Mortalidad, Bitácora y Recolección sí
           funcionan sin conexión — prueba con una de ellas mientras recuperas señal.
