@@ -39,7 +39,7 @@ export function puedeReducirCapacidad(params: {
   if (params.capacidadNueva < params.avesActualesAlojadas) {
     return {
       permitido: false,
-      motivo: `El galpón aloja ${params.avesActualesAlojadas} aves — no puede bajar de esa capacidad.`,
+      motivo: `El galpón aloja ${params.avesActualesAlojadas} aves - no puede bajar de esa capacidad.`,
     };
   }
   return { permitido: true };

@@ -93,11 +93,23 @@
   --border: oklch(0.85 0.025 75);
   --input: oklch(0.85 0.025 75);
   --ring: oklch(0.743 0.167 62.74);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Paleta categórica de los 5 gráficos de /reportes (Sprint 15) — hasta
+     acá eran los grises placeholder sin usar de `shadcn init` (chroma 0,
+     indistinguibles como identidad categórica). Reemplazados por 5 tonos
+     validados con el script de la skill dataviz (lightness band, piso de
+     croma, separación CVD adyacente ΔE≥15, contraste vs. superficie) —
+     mismo hex valida en claro (superficie #ffffff) y en oscuro (superficie
+     #171717, ~--background de acá abajo), por eso .dark repite los mismos
+     valores en vez de un segundo set. Orden fijo: nunca reasignar estos
+     colores a una entidad distinta de la que ya tienen en un gráfico dado
+     (memory/decisiones-tecnicas.md no lo documenta como D9 porque no es
+     una librería/dependencia nueva, es un uso del sistema de tokens ya
+     existente). */
+  --chart-1: oklch(0.646 0.194 41.12);
+  --chart-2: oklch(0.623 0.188 259.81);
+  --chart-3: oklch(0.596 0.127 163.23);
+  --chart-4: oklch(0.627 0.233 303.9);
+  --chart-5: oklch(0.554 0.121 66.44);
   --radius: 0.625rem;
   /* El Sidebar ya no es una superficie neutra: usa el mismo
      naranja encendido del logo como fondo (--sidebar = --primary), con
@@ -139,11 +151,14 @@
   --border: oklch(1 0 0 / 18%);
   --input: oklch(1 0 0 / 22%);
   --ring: oklch(0.65 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Mismos 5 tonos que :root — validados también contra superficie oscura
+     (#171717 ≈ --background de acá abajo), ver el comentario completo en
+     :root. */
+  --chart-1: oklch(0.646 0.194 41.12);
+  --chart-2: oklch(0.623 0.188 259.81);
+  --chart-3: oklch(0.596 0.127 163.23);
+  --chart-4: oklch(0.627 0.233 303.9);
+  --chart-5: oklch(0.554 0.121 66.44);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

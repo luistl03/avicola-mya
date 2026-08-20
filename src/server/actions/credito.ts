@@ -58,7 +58,7 @@ export const registrarAbonoAction = withAuth(
         // modos — solo puede ser una carrera real (otro abono concurrente
         // consumió el margen justo antes), no un caso ya cubierto arriba.
         throw new AccionError(
-          "El saldo cambió justo antes de registrar este abono — revisá el crédito y reintentá.",
+          "El saldo cambió justo antes de registrar este abono - revisa el crédito y reintenta.",
         );
       }
       if (!esErrorDeUnicidad(error)) {
@@ -73,7 +73,7 @@ export const registrarAbonoAction = withAuth(
         Number(existente.monto) === input.monto &&
         existente.metodoPago === input.metodoPago;
       if (!coincide) {
-        throw new AccionError("Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.");
+        throw new AccionError("Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.");
       }
       abono = existente;
     }

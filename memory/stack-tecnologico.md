@@ -56,6 +56,20 @@
   soporta adjuntar archivos, solo texto — hay un camino de descarga simple
   como respaldo cuando no está disponible.
 
+## Visualización de datos (Sprint 15)
+- **Recharts** — gráficos declarativos de los 8 reportes de `/reportes`
+  (producción, mortalidad, mortalidad por lote/galpón, ventas por método
+  de pago, ranking de clientes, créditos y cobranza, gasto por categoría,
+  balance financiero). Elegida sobre Chart.js/Visx por integrarse directo
+  con componentes React tipados, sin `<canvas>` imperativo (D8,
+  `decisiones-tecnicas.md`). Gráficos cargados con `next/dynamic`
+  (`ssr: false`) desde un wrapper cliente, para no sumar el peso de
+  Recharts al bundle inicial de la pantalla.
+- **ExcelJS** — exportación real de `/reportes` a `.xlsx` (encabezado con
+  color de marca, formato de moneda, ancho de columna automático).
+  Reemplaza el CSV simple original de este mismo sprint tras feedback en
+  vivo del Product Owner (D9, `decisiones-tecnicas.md`).
+
 ## Testing
 - **Vitest** — unit tests de `services/` (lógica pura) e integración de
   Server Actions.

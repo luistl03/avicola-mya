@@ -78,7 +78,7 @@ describe("puedeReducirCapacidad", () => {
 
     expect(resultado).toEqual({
       permitido: false,
-      motivo: "El galpón aloja 300 aves — no puede bajar de esa capacidad.",
+      motivo: "El galpón aloja 300 aves - no puede bajar de esa capacidad.",
     });
   });
 

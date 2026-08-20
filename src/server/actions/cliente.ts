@@ -51,7 +51,7 @@ export const crearCliente = withAuth(
         existente.tipo === input.tipo;
       if (!coincide) {
         throw new AccionError(
-          "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+          "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
         );
       }
       cliente = existente;

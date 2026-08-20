@@ -44,7 +44,7 @@ describe("puedeRevertirEgreso", () => {
 
     expect(resultado).toEqual({
       permitido: false,
-      motivo: "La ventana de 10 minutos para anular este egreso ya pasó. Podés corregirlo editándolo.",
+      motivo: "La ventana de 10 minutos para anular este egreso ya pasó. Puedes corregirlo editándolo.",
     });
   });
 

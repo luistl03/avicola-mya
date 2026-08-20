@@ -94,7 +94,7 @@ export const registrarRecoleccion = withAuth(
       }
       if (existente.cantidadTotal !== input.cantidadTotal) {
         throw new AccionError(
-          "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+          "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
         );
       }
       resultado = { registro: existente, paquetes: existente.paquetes };
@@ -158,11 +158,11 @@ export const revertirRecoleccionAction = withAuth(
       });
     } catch (error) {
       if (error instanceof YaRevertidoError) {
-        throw new AccionError("Este registro ya fue revertido — actualizá la pantalla.");
+        throw new AccionError("Este registro ya fue revertido - actualiza la pantalla.");
       }
       if (error instanceof PaquetesNoDisponiblesError) {
         throw new AccionError(
-          "Ya se vendió o rompió al menos un paquete de este registro — actualizá la pantalla e intentá de nuevo.",
+          "Ya se vendió o rompió al menos un paquete de este registro - actualiza la pantalla e intenta de nuevo.",
         );
       }
       if (error instanceof SaldoInsuficienteError) {

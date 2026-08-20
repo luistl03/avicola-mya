@@ -14,7 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Avícola M&A",
     short_name: "Avícola M&A",
-    description: "Sistema de gestión interna — Avícola M&A",
+    description: "Sistema de gestión interna - Avícola M&A",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

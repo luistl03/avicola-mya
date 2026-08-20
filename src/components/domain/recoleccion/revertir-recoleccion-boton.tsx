@@ -54,7 +54,7 @@ export function RevertirRecoleccionBoton({ registro }: Props) {
     return <span className="text-sm text-muted-foreground">No disponible</span>;
   }
   if (restanteMs <= 0) {
-    return <span className="text-sm text-muted-foreground">—</span>;
+    return <span className="text-sm text-muted-foreground">-</span>;
   }
 
   function confirmar() {

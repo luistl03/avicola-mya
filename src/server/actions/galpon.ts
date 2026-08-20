@@ -49,7 +49,7 @@ export const crearGalpon = withAuth(
       }
       if (existente.nombre !== input.nombre || existente.capacidadMaxima !== input.capacidadMaxima) {
         throw new AccionError(
-          "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+          "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
         );
       }
       galpon = existente;

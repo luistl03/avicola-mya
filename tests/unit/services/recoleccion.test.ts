@@ -74,7 +74,7 @@ describe("puedeRevertirRecoleccion", () => {
     expect(resultado).toEqual({
       permitido: false,
       motivo:
-        "Ya se vendió o rompió al menos un paquete de este registro — no se puede corregir automáticamente.",
+        "Ya se vendió o rompió al menos un paquete de este registro - no se puede corregir automáticamente.",
     });
   });
 
@@ -89,7 +89,7 @@ describe("puedeRevertirRecoleccion", () => {
     expect(resultado).toEqual({
       permitido: false,
       motivo:
-        "Ya se vendió o rompió al menos un paquete de este registro — no se puede corregir automáticamente.",
+        "Ya se vendió o rompió al menos un paquete de este registro - no se puede corregir automáticamente.",
     });
   });
 

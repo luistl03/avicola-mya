@@ -54,7 +54,7 @@ export const crearNotaBitacora = withAuth(
       }
       if (existente.categoria !== input.categoria || existente.contenido !== input.contenido) {
         throw new AccionError(
-          "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+          "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
         );
       }
       nota = existente;

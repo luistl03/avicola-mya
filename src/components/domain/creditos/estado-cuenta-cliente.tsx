@@ -146,8 +146,8 @@ export function EstadoCuentaCliente() {
                         >
                           {credito.estado === "PENDIENTE" ? "Pendiente" : "Liquidado"}
                         </Badge>
-                        S/ {credito.montoTotal.toFixed(2)} — pagado S/ {credito.montoPagado.toFixed(2)}
-                        {credito.estado === "PENDIENTE" ? ` — saldo S/ ${saldo.toFixed(2)}` : ""}
+                        S/ {credito.montoTotal.toFixed(2)} - pagado S/ {credito.montoPagado.toFixed(2)}
+                        {credito.estado === "PENDIENTE" ? ` - saldo S/ ${saldo.toFixed(2)}` : ""}
                       </span>
                       {expandido ? (
                         <ChevronUp className="size-4 text-muted-foreground" />
@@ -192,7 +192,7 @@ export function EstadoCuentaCliente() {
                               className="flex justify-between text-sm text-muted-foreground"
                             >
                               <span>
-                                {new Date(abono.fecha).toLocaleDateString("es-PE", { timeZone: "America/Lima" })} —{" "}
+                                {new Date(abono.fecha).toLocaleDateString("es-PE", { timeZone: "America/Lima" })} -{" "}
                                 {ETIQUETA_METODO_PAGO[abono.metodoPago] ?? abono.metodoPago}
                               </span>
                               <span>S/ {abono.monto.toFixed(2)}</span>

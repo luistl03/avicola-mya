@@ -306,7 +306,7 @@ describe("registrarRecoleccion", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
       });
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });
@@ -415,7 +415,7 @@ describe("revertirRecoleccionAction", () => {
     expect(resultado).toEqual({
       ok: false,
       error:
-        "Ya se vendió o rompió al menos un paquete de este registro — no se puede corregir automáticamente.",
+        "Ya se vendió o rompió al menos un paquete de este registro - no se puede corregir automáticamente.",
     });
     expect(revertirRecoleccionRepoMock).not.toHaveBeenCalled();
   });
@@ -445,7 +445,7 @@ describe("revertirRecoleccionAction", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "Este registro ya fue revertido — actualizá la pantalla.",
+      error: "Este registro ya fue revertido - actualiza la pantalla.",
     });
     expect(crearAuditLogMock).not.toHaveBeenCalled();
   });
@@ -461,7 +461,7 @@ describe("revertirRecoleccionAction", () => {
     expect(resultado).toEqual({
       ok: false,
       error:
-        "Ya se vendió o rompió al menos un paquete de este registro — actualizá la pantalla e intentá de nuevo.",
+        "Ya se vendió o rompió al menos un paquete de este registro - actualiza la pantalla e intenta de nuevo.",
     });
     expect(crearAuditLogMock).not.toHaveBeenCalled();
   });

@@ -24,12 +24,14 @@
     "clsx": "^2.1.1",
     "dexie": "^4.4.5",
     "dexie-react-hooks": "^4.4.0",
+    "exceljs": "^4.4.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.28.0",
     "next": "16.2.12",
     "next-auth": "^5.0.0-beta.32",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "recharts": "^3.10.1",
     "serwist": "^9.5.12",
     "shadcn": "^4.16.1",
     "tailwind-merge": "^3.6.0",
@@ -59,6 +61,9 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "@types/node": "^20"
   },
   "allowScripts": {
     "@swc/core@1.15.46": true,

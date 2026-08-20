@@ -90,8 +90,8 @@ function ClienteFila({ cliente }: { cliente: Cliente }) {
   return (
     <TableRow>
       <TableCell>{cliente.nombre}</TableCell>
-      <TableCell>{cliente.celular ?? <span className="text-muted-foreground">—</span>}</TableCell>
-      <TableCell>{cliente.direccion ?? <span className="text-muted-foreground">—</span>}</TableCell>
+      <TableCell>{cliente.celular ?? <span className="text-muted-foreground">-</span>}</TableCell>
+      <TableCell>{cliente.direccion ?? <span className="text-muted-foreground">-</span>}</TableCell>
       <TableCell>
         <Badge variant="outline" className={TIPO_CLASE[cliente.tipo]}>
           {TIPO_LABEL[cliente.tipo]}
@@ -110,7 +110,7 @@ function ClienteFila({ cliente }: { cliente: Cliente }) {
           {esPublicoGeneral ? (
             <span
               className="text-sm text-muted-foreground"
-              title="Público General es el cliente del sistema para ventas de mostrador — no se puede editar ni suspender."
+              title="Público General es el cliente del sistema para ventas de mostrador - no se puede editar ni suspender."
             >
               Cliente del sistema
             </span>

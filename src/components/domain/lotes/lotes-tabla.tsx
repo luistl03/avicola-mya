@@ -91,7 +91,7 @@ function LoteFila({
         {ubicacionAbierta ? (
           ubicacionAbierta.galpon.nombre
         ) : (
-          <span className="text-muted-foreground">— finalizado —</span>
+          <span className="text-muted-foreground">- finalizado -</span>
         )}
       </TableCell>
       <TableCell>
@@ -113,7 +113,7 @@ function LoteFila({
             <FinalizarLoteDialog lote={{ id: lote.id, codigo: lote.codigo }} />
           </div>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="text-muted-foreground">-</span>
         )}
       </TableCell>
     </TableRow>

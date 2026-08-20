@@ -86,7 +86,7 @@ export function SueldoMovimientosTabla({
               <TableCell className={movimiento.revertido ? "line-through" : undefined}>
                 {SUMA_AL_NETO[movimiento.tipo] ? "+" : "−"} S/ {movimiento.monto.toFixed(2)}
               </TableCell>
-              <TableCell>{movimiento.descripcion ?? "—"}</TableCell>
+              <TableCell>{movimiento.descripcion ?? "-"}</TableCell>
               <TableCell className="text-right">
                 {movimiento.revertido ? (
                   <Badge variant="outline" className="badge-estado-inactivo">

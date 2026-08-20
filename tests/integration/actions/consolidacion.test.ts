@@ -175,7 +175,7 @@ describe("consolidarPaqueteMixtoAction", () => {
     expect(resultado).toEqual({
       ok: false,
       error:
-        "Los saldos cambiaron — el máximo disponible ahora es 1, se recibieron 2 pesos. Actualizá la pantalla e intentá de nuevo.",
+        "Los saldos cambiaron - el máximo disponible ahora es 1, se recibieron 2 pesos. Actualiza la pantalla e intenta de nuevo.",
     });
     expect(consolidarSueltosRepoMock).not.toHaveBeenCalled();
   });
@@ -228,7 +228,7 @@ describe("consolidarPaqueteMixtoAction", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "El saldo ya no alcanza para esta consolidación — actualizá la pantalla e intentá de nuevo.",
+      error: "El saldo ya no alcanza para esta consolidación - actualiza la pantalla e intenta de nuevo.",
     });
     expect(crearAuditLogMock).not.toHaveBeenCalled();
   });
@@ -378,7 +378,7 @@ describe("consolidarPaqueteMixtoAction", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe una consolidación con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe una consolidación con este id pero con datos diferentes - no se sobrescribe.",
       });
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });

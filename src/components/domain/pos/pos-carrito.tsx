@@ -151,7 +151,7 @@ export function PosCarrito({
             >
               <span className="flex items-center gap-2 text-sm text-foreground">
                 <Badge variant="outline">{item.tipo === "PAQUETE" ? "Paquete" : "Bandeja"}</Badge>
-                {item.pesoKg.toFixed(3)} kg — S/ {(item.pesoKg * precioKiloVigente).toFixed(2)}
+                {item.pesoKg.toFixed(3)} kg - S/ {(item.pesoKg * precioKiloVigente).toFixed(2)}
               </span>
               <Button type="button" variant="outline" size="sm" onClick={() => onQuitar(item.id)}>
                 <X data-icon="inline-start" />

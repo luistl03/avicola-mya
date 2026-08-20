@@ -110,6 +110,43 @@ export function buscarRegistroMortalidadPorId(id: string) {
   return prisma.registroMortalidad.findUnique({ where: { id } });
 }
 
+// Tarjeta "Mortalidad hoy" del dashboard (Sprint 15, H1). `hasta` es
+// EXCLUSIVO (lt, no lte), mismo criterio que calcularRangoMesCalendario.
+export async function sumarMortalidadEnRango(desde: Date, hasta: Date) {
+  const resultado = await prisma.registroMortalidad.aggregate({
+    _sum: { cantidad: true },
+    where: { fecha: { gte: desde, lt: hasta }, revertido: false },
+  });
+  return resultado._sum.cantidad ?? 0;
+}
+
+// Reporte "Mortalidad" de /reportes (Sprint 15, H3) — filas crudas del
+// rango filtrado, con tipo para el desglose (agruparMortalidadPorTipo,
+// server/services/reportes.ts). No revertidos, filtrado acá (no en
+// listarRegistrosMortalidad, que alimenta la tabla de gestión sin excluir
+// revertidos a propósito).
+export function listarMortalidadEnRango(desde: Date, hasta: Date) {
+  return prisma.registroMortalidad.findMany({
+    where: { fecha: { gte: desde, lt: hasta }, revertido: false },
+    select: { fecha: true, cantidad: true, tipo: true },
+  });
+}
+
+// Reporte "Mortalidad por lote/galpón" de /reportes — mismo where que
+// listarMortalidadEnRango (usa el índice [fecha, revertido] nuevo de
+// Sprint 15), con lote/galpón incluidos para que
+// agruparMortalidadPorLote (server/services/reportes.ts) pueda rankear.
+export function listarMortalidadPorLoteEnRango(desde: Date, hasta: Date) {
+  return prisma.registroMortalidad.findMany({
+    where: { fecha: { gte: desde, lt: hasta }, revertido: false },
+    select: {
+      cantidad: true,
+      lote: { select: { codigo: true } },
+      galpon: { select: { nombre: true } },
+    },
+  });
+}
+
 // Ya se lo revirtió alguien más justo antes (doble clic, o dos pestañas
 // abiertas) — mismo criterio de nombre que AvesInsuficientesError.
 export class YaRevertidoError extends Error {}

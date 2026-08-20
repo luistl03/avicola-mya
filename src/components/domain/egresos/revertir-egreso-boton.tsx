@@ -45,10 +45,10 @@ export function RevertirEgresoBoton({ egreso }: Props) {
   }, [egreso.creadoEn, egreso.revertido]);
 
   if (egreso.revertido) {
-    return <span className="text-sm text-muted-foreground">—</span>;
+    return <span className="text-sm text-muted-foreground">-</span>;
   }
   if (restanteMs <= 0) {
-    return <span className="text-sm text-muted-foreground">—</span>;
+    return <span className="text-sm text-muted-foreground">-</span>;
   }
 
   function confirmar() {

@@ -254,3 +254,28 @@ export function contarRecolecciones(
     },
   });
 }
+
+// Tarjeta "Huevos hoy" del dashboard (Sprint 15, H1) — aggregate _sum, un
+// solo round-trip, sin traer filas. `hasta` es EXCLUSIVO (lt, no lte) —
+// mismo criterio que calcularRangoMesCalendario (server/services/sueldo-movimiento.ts).
+export async function sumarProduccionEnRango(desde: Date, hasta: Date) {
+  const resultado = await prisma.registroRecoleccion.aggregate({
+    _sum: { cantidadTotal: true },
+    where: { creadoEn: { gte: desde, lt: hasta }, revertido: false },
+  });
+  return resultado._sum.cantidadTotal ?? 0;
+}
+
+// Reporte "Producción" de /reportes (Sprint 15, H2) — filas crudas del
+// rango filtrado, select mínimo para que agruparSumaPorDia
+// (server/services/reportes.ts) arme el gráfico diario. No revertidos,
+// mismo criterio que sumarProduccionEnRango — filtrado acá, no en
+// listarRecolecciones (esa alimenta la tabla de gestión y a propósito no
+// excluye revertidos, ver memory/estado-proyecto.md/convención de
+// server/repositories/egreso.ts).
+export function listarProduccionEnRango(desde: Date, hasta: Date) {
+  return prisma.registroRecoleccion.findMany({
+    where: { creadoEn: { gte: desde, lt: hasta }, revertido: false },
+    select: { creadoEn: true, cantidadTotal: true },
+  });
+}

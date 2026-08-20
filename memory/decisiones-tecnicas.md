@@ -87,6 +87,113 @@ corregido en la misma sesión, ver `memory/estado-proyecto.md`).
 
 ---
 
+## D8 — Librería de gráficos: Recharts ✅ CERRADO (2026-08-19, Sprint 15)
+**Decisión:** se usa **Recharts** para los 5 reportes nuevos de
+`/reportes` (producción, mortalidad, ventas por método de pago, ranking de
+clientes, gasto por categoría). `stack-tecnologico.md` no mencionaba
+ninguna librería de gráficos — esta decisión la cierra.
+**Motivo:** comparada contra las alternativas reales del ecosistema
+React/Next — Chart.js exige un wrapper React aparte y manipula un
+`<canvas>` imperativo, más fricción para un proyecto 100% declarativo con
+componentes; Visx es una caja de herramientas de bajo nivel, no una
+librería de gráficos lista para usar, mucho más trabajo para los 5
+gráficos simples de este sprint. Recharts expone componentes declarativos
+(`<LineChart>`, `<BarChart>`) que se integran directo con props ya
+tipadas, es MIT/gratuita (mantiene el presupuesto $0 del stack) y no tiene
+dependencias nativas que puedan chocar con Turbopack (a diferencia del
+riesgo real que sí tuvo D7/Serwist con Webpack).
+**Impacto:** confirma el diseño de
+`specs/sprint-15-dashboard-reportes/plan.md` — `npm install recharts`, sin
+versión de compatibilidad especial que confirmar (SVG + React puro, sin
+integración con el bundler). `stack-tecnologico.md` gana la sección nueva
+"Visualización de datos".
+
+---
+
+## D9 — Exportación de /reportes: Excel real (exceljs), reemplaza CSV ✅ CERRADO (2026-08-20, Sprint 15, revisión post-cierre)
+**Decisión:** se usa **ExcelJS** (`exceljs`) para generar los 8 archivos
+exportables de `/reportes` como `.xlsx` real, en vez del CSV simple sin
+dependencias que había cerrado la decisión de negocio 3 original de este
+mismo sprint (`spec.md`).
+**Motivo:** el Product Owner probó el CSV en vivo y reportó que "se
+mostraba mal" — sin encabezado visualmente distinguible, sin tipos de
+columna (todo texto plano), montos sin formato de moneda. ExcelJS es la
+librería más madura y usada del ecosistema Node para `.xlsx` real con
+estilos (headers en negrita con el naranja de marca, formato de moneda
+`"S/" #,##0.00`, ancho de columna automático), sin depender de Excel/
+LibreOffice instalado en el servidor (todo se arma en memoria).
+**Riesgo aceptado:** ExcelJS depende de `uuid@^8.3.0`, con una
+vulnerabilidad moderada conocida (bounds check en un code path que
+requiere pasar un buffer explícito — ExcelJS no lo hace, no hay ruta de
+explotación real en este uso) sin fix disponible sin un cambio breaking de
+major version de ExcelJS. Mismo criterio que el proyecto ya aplica a
+otras vulnerabilidades preexistentes sin fix no-breaking (`hono`,
+`nanoid`, `postcss` — heredadas de `next`/`prisma`/`shadcn`): riesgo bajo,
+aceptado, no bloqueante.
+**Hallazgo real de dependencias, corregido en la misma sesión:**
+`@fast-csv/format`/`@fast-csv/parse` (dependencias transitivas de
+`exceljs`) declaran `@types/node@^14.0.1` como dependencia regular (no
+`devDependency`), instalando una copia anidada y ancestral de esos tipos
+que rompía la compilación de TypeScript en cadena (`Buffer`/
+`Buffer<ArrayBufferLike>` tratados como dos tipos incompatibles al pasar
+el resultado de `ExcelJS.Workbook.xlsx.writeBuffer()` a `NextResponse`).
+Corregido agregando `"overrides": { "@types/node": "^20" }` a
+`package.json` — fuerza una sola versión de `@types/node` en todo el
+árbol de dependencias, sin tocar código de negocio.
+**Impacto:** `server/services/reportes.ts` gana `construirLibroExcel()`
+(reemplaza `aFilasCsv()`, eliminada), `app/(app)/reportes/exportar/route.ts`
+responde con `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+y extensión `.xlsx` en el nombre de archivo, en vez de `text/csv`.
+
+## D10 — Filtro de /reportes: desde/hasta con calendarios, reemplaza el selector de mes único ✅ CERRADO (2026-08-20, Sprint 15, revisión post-cierre)
+**Decisión:** `/reportes` filtra con dos campos de fecha tipo calendario
+(Desde/Hasta), mismo patrón ya establecido en
+`EgresoFiltros`/`MortalidadFiltros`/`VentaFiltros` (`hasta` no puede ser
+futuro, `hasta` no puede ser anterior a `desde`) — reemplaza el `<select>`
+de mes calendario único y su límite de 12 meses hacia atrás (decisiones de
+negocio 4 y 6 originales de este mismo sprint, `spec.md`).
+**Motivo:** pedido explícito del Product Owner tras el cierre inicial —
+quería el mismo patrón de filtro que ya usa el resto de la app, no un
+selector de mes exclusivo de `/reportes`. El mes calendario actual se
+mantiene como **valor por defecto** (no como único valor posible) cuando
+la URL no trae `?desde=&hasta=`.
+**Impacto:** `REPORTES_MESES_MAXIMOS` (constante, `lib/constants.ts`) se
+elimina — sin reemplazo por ahora; el riesgo D6 (Neon plan gratuito) ya no
+se mitiga con un tope duro de rango, solo con la restricción "hasta" no
+futuro y el volumen actual bajo de la granja (mismo criterio de
+"riesgo aceptado, revisar si crece" que D6 ya documenta). `server/services/reportes.ts`
+gana `inicioDeDiaEnLima`/`finDeDiaEnLimaExclusivo`/`rangoMesActual`/
+`parsearRangoFechas`, reemplazando `mesActualEnLima`/`parsearMesParam`
+(eliminadas).
+
+## D11 — 3 reportes nuevos en /reportes (Créditos y cobranza, Mortalidad por lote/galpón, Balance financiero) ✅ CERRADO (2026-08-20, Sprint 15, revisión post-cierre)
+**Decisión:** se agregan 3 reportes a los 5 originales del roadmap, sin
+modelos nuevos (toda la data ya existía): **Créditos y cobranza**
+(créditos PENDIENTES por nivel de alerta, mismo criterio que ya usa el
+dashboard desde Sprint 11), **Mortalidad por lote/galpón** (ranking, para
+ubicar problemas sanitarios localizados en vez de solo el total de la
+granja) y **Balance financiero** (Ventas vs. Egresos operativos por día —
+explícitamente SIN planilla/SueldoMovimiento, ver el comentario de
+`combinarBalance()` en `server/services/reportes.ts` para el porqué).
+**Motivo:** el Product Owner pidió explícitamente "pensar como un
+gerente" y elegir 3 reportes reales para evaluar el negocio, delegando la
+elección concreta. Se priorizaron créditos (mision.md marca "créditos
+vencidos" como necesidad explícita del Gerente) y un balance de
+ingresos/egresos (el reporte financiero más básico que falta en el
+sistema) sobre otras opciones descartadas (ej. gasto en personal por
+separado — quedó fuera de alcance de Balance a propósito, ver D9... D11
+arriba).
+**Impacto:** `server/repositories/credito.ts` gana
+`listarCreditosPendientesConFechaLimiteEnRango`;
+`server/repositories/mortalidad.ts` gana `listarMortalidadPorLoteEnRango`
+(usa el índice `[fecha, revertido]` nuevo, ver `modelo-datos.md`);
+`server/repositories/egreso.ts` (`listarEgresosEnRango`) gana `fecha` en
+su `select`, sin query nueva, para que Balance financiero pueda derivarse
+de datos ya traídos. Componentes nuevos:
+`reporte-creditos.tsx`, `reporte-mortalidad-lote.tsx`, `reporte-balance.tsx`.
+
+---
+
 ## Historial de revisión
 Si alguna de estas decisiones cambia en el futuro, se agrega una sección
 nueva abajo con fecha, motivo del cambio y qué se migró — nunca se

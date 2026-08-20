@@ -43,7 +43,7 @@ export const crearEmpleadoAction = withAuth(
         (existente.celular ?? undefined) === input.celular &&
         (existente.cargo ?? undefined) === input.cargo;
       if (!coincide) {
-        throw new AccionError("Ya existe un empleado con este id pero con datos diferentes — no se sobrescribe.");
+        throw new AccionError("Ya existe un empleado con este id pero con datos diferentes - no se sobrescribe.");
       }
       empleado = existente;
     }

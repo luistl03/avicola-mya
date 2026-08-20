@@ -103,7 +103,7 @@ export const cerrarVentaAction = withAuth(
       bandejaIds.length > 0 ? buscarBandejasPorIds(bandejaIds) : Promise.resolve([]),
     ]);
     if (paquetes.length !== paqueteIds.length || bandejas.length !== bandejaIds.length) {
-      throw new AccionError("Uno o más ítems del carrito ya no existen — actualiza el selector.");
+      throw new AccionError("Uno o más ítems del carrito ya no existen - actualiza el selector.");
     }
 
     const pesoPorId = new Map<string, number>([
@@ -192,7 +192,7 @@ export const cerrarVentaAction = withAuth(
         montoContadoExistente === montoContadoEsperado;
       if (!coincide) {
         throw new AccionError(
-          "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+          "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
         );
       }
       venta = existente;

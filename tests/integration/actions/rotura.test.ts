@@ -254,7 +254,7 @@ describe("romperPaqueteAction", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "Este paquete ya no está disponible — puede que ya lo hayan roto o vendido justo ahora.",
+      error: "Este paquete ya no está disponible - puede que ya lo hayan roto o vendido justo ahora.",
     });
     expect(crearAuditLogMock).not.toHaveBeenCalled();
   });
@@ -303,7 +303,7 @@ describe("romperPaqueteAction", () => {
       expect(resultado).toEqual({
         ok: false,
         error:
-          "Este paquete ya fue roto (por otro operario, o hace un instante) con un peso distinto al que digitaste — no se sobrescribe.",
+          "Este paquete ya fue roto (por otro operario, o hace un instante) con un peso distinto al que digitaste - no se sobrescribe.",
       });
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });
@@ -418,7 +418,7 @@ describe("romperBandejaAction", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "Esta bandeja ya no está disponible — puede que ya la hayan roto o vendido justo ahora.",
+      error: "Esta bandeja ya no está disponible - puede que ya la hayan roto o vendido justo ahora.",
     });
     expect(crearAuditLogMock).not.toHaveBeenCalled();
   });
@@ -495,7 +495,7 @@ describe("romperBandejaAction", () => {
       expect(resultado).toEqual({
         ok: false,
         error:
-          "Esta bandeja ya fue rota (por otro operario, o hace un instante) con un peso distinto al que digitaste — no se sobrescribe.",
+          "Esta bandeja ya fue rota (por otro operario, o hace un instante) con un peso distinto al que digitaste - no se sobrescribe.",
       });
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });

@@ -169,7 +169,7 @@ function DescartarPendienteDialog({ id }: { id: string }) {
             Descartar pendiente
           </DialogTitle>
           <DialogDescription>
-            Este registro nunca se va a enviar al servidor — se pierde el
+            Este registro nunca se va a enviar al servidor - se pierde el
             dato capturado sin señal. Esta acción no se puede deshacer.
           </DialogDescription>
         </DialogHeader>

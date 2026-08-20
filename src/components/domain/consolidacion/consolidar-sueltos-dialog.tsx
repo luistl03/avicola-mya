@@ -280,7 +280,7 @@ function ConsolidarSueltosForm({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <Label className={LABEL_COMPACTO}>Orígenes (galpón — lote)</Label>
+        <Label className={LABEL_COMPACTO}>Orígenes (galpón - lote)</Label>
         {saldosDisponibles.length === 0 ? (
           <p className="text-sm text-muted-foreground">No hay sueltos disponibles para consolidar.</p>
         ) : (
@@ -300,7 +300,7 @@ function ConsolidarSueltosForm({
                   )}
                 >
                   <span>
-                    {saldo.galponNombre} — {saldo.loteCodigo}
+                    {saldo.galponNombre} - {saldo.loteCodigo}
                   </span>
                   <span className="flex items-center gap-2 text-muted-foreground">
                     {saldo.disponible} sueltos
@@ -319,8 +319,8 @@ function ConsolidarSueltosForm({
             <>
               <p className={LABEL_COMPACTO}>
                 Vas a armar {cantidadAConsolidar} {etiquetaUnidad}
-                {cantidadAConsolidar === 1 ? "" : "s"} de {unidadDestino} (podés armar hasta{" "}
-                {maxUnidades} con lo seleccionado) — quedan {sueltosSinConsolidar} sueltos sin
+                {cantidadAConsolidar === 1 ? "" : "s"} de {unidadDestino} (puedes armar hasta{" "}
+                {maxUnidades} con lo seleccionado) - quedan {sueltosSinConsolidar} sueltos sin
                 consolidar.
               </p>
               <div className="flex flex-wrap gap-2">

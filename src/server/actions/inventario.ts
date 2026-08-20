@@ -76,7 +76,7 @@ export const ajustarInventarioSueltosAction = withAuth(
       }
       if (existente.cantidad !== input.delta || existente.motivo !== input.motivo) {
         throw new AccionError(
-          "Ya existe un ajuste con este id pero con datos diferentes — no se sobrescribe.",
+          "Ya existe un ajuste con este id pero con datos diferentes - no se sobrescribe.",
         );
       }
       movimiento = existente;

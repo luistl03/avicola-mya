@@ -69,7 +69,7 @@ export const registrarMortalidad = withAuth(
     } catch (error) {
       if (error instanceof AvesInsuficientesError) {
         throw new AccionError(
-          "Ya no quedan suficientes aves vivas para este registro — actualizá la pantalla e intentá de nuevo.",
+          "Ya no quedan suficientes aves vivas para este registro - actualiza la pantalla e intenta de nuevo.",
         );
       }
       if (esErrorDeUnicidad(error)) {
@@ -83,7 +83,7 @@ export const registrarMortalidad = withAuth(
           existente.cantidad !== input.cantidad
         ) {
           throw new AccionError(
-            "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+            "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
           );
         }
         registro = existente;
@@ -134,7 +134,7 @@ export const revertirMortalidadAction = withAuth(
       });
     } catch (error) {
       if (error instanceof YaRevertidoError) {
-        throw new AccionError("Este registro ya fue revertido — actualizá la pantalla.");
+        throw new AccionError("Este registro ya fue revertido - actualiza la pantalla.");
       }
       throw error;
     }

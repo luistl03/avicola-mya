@@ -174,7 +174,7 @@ describe("Server Actions de galpón (Sprint 3)", () => {
 
         expect(resultado).toEqual({
           ok: false,
-          error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+          error: "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
         });
         expect(crearAuditLogMock).not.toHaveBeenCalled();
       });
@@ -215,7 +215,7 @@ describe("Server Actions de galpón (Sprint 3)", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "El galpón aloja 300 aves — no puede bajar de esa capacidad.",
+        error: "El galpón aloja 300 aves - no puede bajar de esa capacidad.",
       });
       expect(actualizarGalponMock).not.toHaveBeenCalled();
     });

@@ -316,7 +316,7 @@ describe("cerrarVentaAction", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "Uno o más ítems del carrito ya no existen — actualiza el selector.",
+      error: "Uno o más ítems del carrito ya no existen - actualiza el selector.",
     });
     expect(cerrarVentaRepoMock).not.toHaveBeenCalled();
   });
@@ -416,7 +416,7 @@ describe("cerrarVentaAction", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
       });
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });
@@ -443,7 +443,7 @@ describe("cerrarVentaAction", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
       });
     });
 
@@ -460,7 +460,7 @@ describe("cerrarVentaAction", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
       });
     });
 
@@ -638,7 +638,7 @@ describe("cerrarVentaAction", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
       });
     });
   });

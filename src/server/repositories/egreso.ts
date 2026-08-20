@@ -99,3 +99,27 @@ export function contarEgresos(params: { categoria?: CategoriaEgreso; desde?: Dat
 export function buscarEgresoPorId(id: string) {
   return prisma.egreso.findUnique({ where: { id } });
 }
+
+// Reporte "Gasto por categoría" Y "Balance financiero" de /reportes —
+// filas crudas del rango filtrado, `revertido: false` explícito (criterio
+// ya documentado arriba en este mismo archivo desde Sprint 12: el
+// filtrado de revertidos es responsabilidad de quien agrega el total, no
+// de listarEgresos). `hasta` es EXCLUSIVO (lt, no lte). `fecha` se agrega
+// al select (no estaba en el diseño original de Sprint 15) para que
+// Balance financiero pueda agrupar por día sin una segunda query.
+export function listarEgresosEnRango(desde: Date, hasta: Date) {
+  return prisma.egreso.findMany({
+    where: { fecha: { gte: desde, lt: hasta }, revertido: false },
+    select: { categoria: true, monto: true, fecha: true },
+  });
+}
+
+// Tarjeta "Balance del mes" del dashboard — aggregate _sum, un solo
+// round-trip, mismo criterio que sumarVentasEnRango/sumarMortalidadEnRango.
+export async function sumarEgresosEnRango(desde: Date, hasta: Date) {
+  const resultado = await prisma.egreso.aggregate({
+    _sum: { monto: true },
+    where: { fecha: { gte: desde, lt: hasta }, revertido: false },
+  });
+  return resultado._sum.monto ?? 0;
+}

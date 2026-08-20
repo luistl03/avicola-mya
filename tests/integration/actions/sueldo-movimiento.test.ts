@@ -216,7 +216,7 @@ describe("crearSueldoMovimientoAction", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe un movimiento con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe un movimiento con este id pero con datos diferentes - no se sobrescribe.",
       });
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });
@@ -323,7 +323,7 @@ describe("revertirSueldoMovimientoAction", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "Este movimiento ya fue revertido — actualizá la pantalla.",
+      error: "Este movimiento ya fue revertido - actualiza la pantalla.",
     });
     expect(crearAuditLogMock).not.toHaveBeenCalled();
   });

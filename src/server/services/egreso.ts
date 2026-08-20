@@ -20,7 +20,7 @@ export function puedeRevertirEgreso(params: {
   if (minutosTranscurridos > VENTANA_GRACIA_MIN) {
     return {
       permitido: false,
-      motivo: `La ventana de ${VENTANA_GRACIA_MIN} minutos para anular este egreso ya pasó. Podés corregirlo editándolo.`,
+      motivo: `La ventana de ${VENTANA_GRACIA_MIN} minutos para anular este egreso ya pasó. Puedes corregirlo editándolo.`,
     };
   }
   return { permitido: true };

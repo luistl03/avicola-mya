@@ -297,7 +297,7 @@ function RegistrarRecoleccionForm({
             <div className="flex flex-col gap-3">
               <p className={LABEL_COMPACTO}>
                 Se {paquetes === 1 ? "forma" : "forman"} {paquetes} paquete
-                {paquetes === 1 ? "" : "s"} de {UNIDADES_POR_PAQUETE} — pesá cada uno en la
+                {paquetes === 1 ? "" : "s"} de {UNIDADES_POR_PAQUETE} - pesá cada uno en la
                 balanza:
               </p>
               {pesos.map((peso, indice) => (

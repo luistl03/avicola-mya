@@ -48,7 +48,7 @@ export function RevertirMortalidadBoton({ registro }: Props) {
     return <span className="text-sm text-muted-foreground">Revertido</span>;
   }
   if (restanteMs <= 0) {
-    return <span className="text-sm text-muted-foreground">—</span>;
+    return <span className="text-sm text-muted-foreground">-</span>;
   }
 
   function confirmar() {

@@ -172,7 +172,7 @@ describe("crearEgresoAction", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe un egreso con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe un egreso con este id pero con datos diferentes - no se sobrescribe.",
       });
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });
@@ -317,7 +317,7 @@ describe("revertirEgresoAction", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "La ventana de 10 minutos para anular este egreso ya pasó. Podés corregirlo editándolo.",
+      error: "La ventana de 10 minutos para anular este egreso ya pasó. Puedes corregirlo editándolo.",
     });
     expect(revertirEgresoRepoMock).not.toHaveBeenCalled();
   });
@@ -343,7 +343,7 @@ describe("revertirEgresoAction", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "Este egreso ya fue anulado — actualizá la pantalla.",
+      error: "Este egreso ya fue anulado - actualiza la pantalla.",
     });
     expect(crearAuditLogMock).not.toHaveBeenCalled();
   });

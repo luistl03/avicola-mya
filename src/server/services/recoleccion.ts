@@ -59,7 +59,7 @@ export function puedeRevertirRecoleccion(params: {
     return {
       permitido: false,
       motivo:
-        "Ya se vendió o rompió al menos un paquete de este registro — no se puede corregir automáticamente.",
+        "Ya se vendió o rompió al menos un paquete de este registro - no se puede corregir automáticamente.",
     };
   }
   const minutosTranscurridos = (params.ahora.getTime() - params.creadoEn.getTime()) / 60_000;

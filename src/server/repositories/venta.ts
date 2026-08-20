@@ -1,5 +1,6 @@
 import type { MetodoPago } from "@prisma/client";
 
+import { CLIENTE_PUBLICO_GENERAL_ID } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 
 // Lanzado dentro de la transacción para forzar el rollback cuando al menos
@@ -275,4 +276,39 @@ export function listarVentas(params: FiltrosVentas & { skip: number; take: numbe
 
 export function contarVentas(params: FiltrosVentas = {}) {
   return prisma.venta.count({ where: whereVentas(params) });
+}
+
+// Tarjeta "Ventas hoy" del dashboard (Sprint 15, H1). Venta no tiene campo
+// `revertido` (confirmado en schema.prisma — este proyecto no anula
+// ventas), así que no hace falta excluir nada. `hasta` es EXCLUSIVO (lt,
+// no lte), mismo criterio que calcularRangoMesCalendario.
+export async function sumarVentasEnRango(desde: Date, hasta: Date) {
+  const resultado = await prisma.venta.aggregate({
+    _sum: { totalCobrado: true },
+    where: { fecha: { gte: desde, lt: hasta } },
+  });
+  return resultado._sum.totalCobrado ?? 0;
+}
+
+// Reporte "Ventas por método de pago" de /reportes (Sprint 15, H4) —
+// select mínimo para agruparVentasPorDiaYMetodo (server/services/reportes.ts).
+export function listarVentasEnRango(desde: Date, hasta: Date) {
+  return prisma.venta.findMany({
+    where: { fecha: { gte: desde, lt: hasta } },
+    select: { fecha: true, totalCobrado: true, metodoPago: true },
+  });
+}
+
+// Reporte "Ranking de clientes" de /reportes (Sprint 15, H5) — excluye
+// Público General en el where (corolario de diseño 2, spec.md: no compite
+// en el ranking, es el cajón de sastre de mostrador sin identidad real).
+export function listarVentasParaRankingEnRango(desde: Date, hasta: Date) {
+  return prisma.venta.findMany({
+    where: { fecha: { gte: desde, lt: hasta }, clienteId: { not: CLIENTE_PUBLICO_GENERAL_ID } },
+    select: {
+      clienteId: true,
+      totalCobrado: true,
+      cliente: { select: { nombre: true, tipo: true } },
+    },
+  });
 }

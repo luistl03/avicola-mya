@@ -187,14 +187,14 @@ function RegistrarMortalidadForm({
           <SelectTrigger id="loteId" className="h-10 w-full">
             <SelectValue placeholder="Selecciona un lote">
               {loteSeleccionado
-                ? `${loteSeleccionado.codigo} — ${loteSeleccionado.avesVivas} vivas`
+                ? `${loteSeleccionado.codigo} - ${loteSeleccionado.avesVivas} vivas`
                 : undefined}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {lotesActivos.map((lote) => (
               <SelectItem key={lote.id} value={lote.id}>
-                {lote.codigo} — {lote.avesVivas} vivas
+                {lote.codigo} - {lote.avesVivas} vivas
               </SelectItem>
             ))}
           </SelectContent>

@@ -129,7 +129,7 @@ export const mudarLoteAction = withAuth(
     } catch (error) {
       if (esErrorDeUnicidad(error)) {
         throw new AccionError(
-          "Este lote ya fue mudado — actualizá la pantalla antes de reintentar.",
+          "Este lote ya fue mudado - actualiza la pantalla antes de reintentar.",
         );
       }
       throw error;

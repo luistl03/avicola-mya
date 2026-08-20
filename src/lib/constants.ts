@@ -24,3 +24,6 @@ export const UNIDADES_POR_BANDEJA = 30;
 
 /** Días que el prompt de instalación de Android espera antes de volver a ofrecerse solo, después de que el usuario lo cierra sin instalar (Sprint 13, decisión de negocio 3). Usada por install-prompt-android.tsx. */
 export const INSTALL_PROMPT_COOLDOWN_DIAS = 30;
+
+/** Tamaño del Top de clientes en el ranking de /reportes (Sprint 15) — mismo criterio que UNIDADES_POR_PAQUETE: un solo número, compartido entre server/services/reportes.ts (rankearClientes, autoritativo) y cualquier texto de UI que lo mencione ("Top 10"). */
+export const REPORTES_RANKING_CLIENTES_TOP = 10;

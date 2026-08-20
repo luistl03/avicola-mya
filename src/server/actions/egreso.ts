@@ -50,7 +50,7 @@ export const crearEgresoAction = withAuth(
         existente.descripcion === input.descripcion &&
         existente.fecha.getTime() === input.fecha.getTime();
       if (!coincide) {
-        throw new AccionError("Ya existe un egreso con este id pero con datos diferentes — no se sobrescribe.");
+        throw new AccionError("Ya existe un egreso con este id pero con datos diferentes - no se sobrescribe.");
       }
       egreso = existente;
     }
@@ -133,7 +133,7 @@ export const revertirEgresoAction = withAuth(
       await revertirEgresoRepo({ id: input.id, ahora: new Date() });
     } catch (error) {
       if (error instanceof EgresoYaRevertidoError) {
-        throw new AccionError("Este egreso ya fue anulado — actualizá la pantalla.");
+        throw new AccionError("Este egreso ya fue anulado - actualiza la pantalla.");
       }
       throw error;
     }

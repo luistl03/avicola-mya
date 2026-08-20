@@ -26,7 +26,7 @@ export default async function PosPage() {
 
       {!precioVigente ? (
         <p className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-          No hay ningún precio por kilo configurado — pedile a un Gerente que lo fije en{" "}
+          No hay ningún precio por kilo configurado - pídele a un Gerente que lo fije en{" "}
           <a href="/precio-kilo" className="text-primary underline underline-offset-4">
             Precio por Kilo
           </a>
@@ -50,7 +50,7 @@ export default async function PosPage() {
         // DELETE físico) — este caso no debería ocurrir en la práctica,
         // pero evita que la página reviente si alguna vez pasara.
         <p className="text-sm text-destructive">
-          No se encontró el cliente &quot;Público General&quot; — contactá a soporte.
+          No se encontró el cliente &quot;Público General&quot; - contacta a soporte.
         </p>
       )}
     </div>

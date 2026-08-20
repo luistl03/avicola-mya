@@ -38,7 +38,7 @@ export const crearPrecioKilo = withAuth(
       }
       if (Number(existente.precio) !== input.precio) {
         throw new AccionError(
-          "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+          "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
         );
       }
       precioKilo = existente;

@@ -56,7 +56,7 @@ export const crearSueldoMovimientoAction = withAuth(
         (existente.descripcion ?? undefined) === input.descripcion;
       if (!coincide) {
         throw new AccionError(
-          "Ya existe un movimiento con este id pero con datos diferentes — no se sobrescribe.",
+          "Ya existe un movimiento con este id pero con datos diferentes - no se sobrescribe.",
         );
       }
       movimiento = existente;
@@ -106,7 +106,7 @@ export const revertirSueldoMovimientoAction = withAuth(
       await revertirSueldoMovimientoRepo({ id: input.id, ahora: new Date() });
     } catch (error) {
       if (error instanceof SueldoMovimientoYaRevertidoError) {
-        throw new AccionError("Este movimiento ya fue revertido — actualizá la pantalla.");
+        throw new AccionError("Este movimiento ya fue revertido - actualiza la pantalla.");
       }
       throw error;
     }

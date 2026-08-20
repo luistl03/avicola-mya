@@ -115,8 +115,8 @@ export function ComprobanteDialog({
         try {
           await navigator.share({
             files: [archivo],
-            title: `Comprobante — ${venta.clienteNombre}`,
-            text: `Comprobante de venta — ${venta.clienteNombre}`,
+            title: `Comprobante - ${venta.clienteNombre}`,
+            text: `Comprobante de venta - ${venta.clienteNombre}`,
           });
         } catch {
           // El operario canceló el selector nativo de compartir, o falló a
@@ -130,7 +130,7 @@ export function ComprobanteDialog({
       toastManager.add({
         type: "info",
         title: "Tu navegador no soporta compartir archivos directamente",
-        description: "Se descargó el PDF — podés adjuntarlo a mano en WhatsApp.",
+        description: "Se descargó el PDF - puedes adjuntarlo a mano en WhatsApp.",
       });
     } finally {
       setGenerando(false);
@@ -185,7 +185,7 @@ export function ComprobanteDialog({
             {venta.items.map((item, indice) => (
               <li key={indice} className="flex justify-between text-muted-foreground">
                 <span>
-                  {ETIQUETA_TIPO[item.tipo]} — {item.pesoKg.toFixed(3)} kg
+                  {ETIQUETA_TIPO[item.tipo]} - {item.pesoKg.toFixed(3)} kg
                 </span>
                 <span>S/ {item.subtotal.toFixed(2)}</span>
               </li>
@@ -268,7 +268,7 @@ export function ComprobanteDialog({
                   {venta.abonos.map((abono) => (
                     <li key={abono.id} className="flex justify-between gap-2 text-muted-foreground">
                       <span>
-                        {new Date(abono.fecha).toLocaleString("es-PE", { timeZone: "America/Lima" })} —{" "}
+                        {new Date(abono.fecha).toLocaleString("es-PE", { timeZone: "America/Lima" })} -{" "}
                         {ETIQUETA_METODO_PAGO[abono.metodoPago]}
                       </span>
                       <span className="shrink-0">S/ {abono.monto.toFixed(2)}</span>

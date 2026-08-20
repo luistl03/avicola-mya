@@ -13,7 +13,7 @@ describe("puedeDesactivarUsuario", () => {
 
     expect(resultado).toEqual({
       permitido: false,
-      motivo: "No podés desactivar tu propio usuario.",
+      motivo: "No puedes desactivar tu propio usuario.",
     });
   });
 
@@ -66,7 +66,7 @@ describe("puedeDesactivarUsuario", () => {
 
     expect(resultado).toEqual({
       permitido: false,
-      motivo: "No podés desactivar tu propio usuario.",
+      motivo: "No puedes desactivar tu propio usuario.",
     });
   });
 

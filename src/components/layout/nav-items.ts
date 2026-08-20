@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Combine,
   Contact,
   CreditCard,
@@ -44,4 +45,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/creditos", label: "Créditos", icon: CreditCard },
   { href: "/egresos", label: "Egresos", icon: Wallet },
   { href: "/personal", label: "Personal", icon: IdCard },
+  { href: "/reportes", label: "Reportes", icon: BarChart3 }, // NUEVO Sprint 15
 ];

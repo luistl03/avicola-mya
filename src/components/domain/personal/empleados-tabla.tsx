@@ -52,8 +52,8 @@ function EmpleadoFila({ empleado }: { empleado: Empleado }) {
   return (
     <TableRow>
       <TableCell>{empleado.nombre}</TableCell>
-      <TableCell>{empleado.celular ?? "—"}</TableCell>
-      <TableCell>{empleado.cargo ?? "—"}</TableCell>
+      <TableCell>{empleado.celular ?? "-"}</TableCell>
+      <TableCell>{empleado.cargo ?? "-"}</TableCell>
       <TableCell>
         <Badge
           variant="secondary"

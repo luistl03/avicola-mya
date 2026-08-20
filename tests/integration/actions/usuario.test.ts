@@ -411,7 +411,7 @@ describe("Server Actions de usuario (CRUD, Sprint 2)", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "No podés desactivar tu propio usuario.",
+        error: "No puedes desactivar tu propio usuario.",
       });
       expect(desactivarUsuarioYRevocarSesionesMock).not.toHaveBeenCalled();
     });

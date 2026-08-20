@@ -88,6 +88,13 @@ el detalle completo del porqué.
   `reconstruirSaldo()` que audita descuadres de inventario.
 - `RegistroRecoleccion(creadoEn, revertido)` — soporta el botón de
   corrección de 10 minutos (ver Sprint 6 del plan SCRUM).
+- `RegistroMortalidad(fecha, revertido)` (Sprint 15) — hasta este sprint,
+  toda query de Mortalidad filtraba siempre por `loteId` primero (el
+  índice `[loteId, fecha]` ya alcanzaba). El dashboard y `/reportes`
+  agregan mortalidad de **toda la granja** por rango de fecha, sin
+  `loteId` — sin este índice nuevo, esa query fuerza un seq scan completo
+  de la tabla en cada carga (hallazgo real, reportado por el Product
+  Owner como lentitud percibida tras el rollout de Sprint 15).
 - `InventarioSueltos` usa `@@unique([galponId, loteId])` en vez de índice
   simple — debe existir un único contador vivo por esa combinación,
   nunca filas duplicadas.

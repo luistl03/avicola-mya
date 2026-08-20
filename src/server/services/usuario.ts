@@ -20,7 +20,7 @@ export function puedeDesactivarUsuario(params: {
     return { permitido: false, motivo: "Debe quedar al menos un Gerente activo." };
   }
   if (params.usuarioObjetivoId === params.usuarioActualId) {
-    return { permitido: false, motivo: "No podés desactivar tu propio usuario." };
+    return { permitido: false, motivo: "No puedes desactivar tu propio usuario." };
   }
   return { permitido: true };
 }

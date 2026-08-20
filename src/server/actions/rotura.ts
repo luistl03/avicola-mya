@@ -54,7 +54,7 @@ export const romperPaqueteAction = withAuth(
     } catch (error) {
       if (error instanceof PaqueteNoDisponibleError) {
         throw new AccionError(
-          "Este paquete ya no está disponible — puede que ya lo hayan roto o vendido justo ahora.",
+          "Este paquete ya no está disponible - puede que ya lo hayan roto o vendido justo ahora.",
         );
       }
       if (!esErrorDeUnicidad(error)) {
@@ -69,7 +69,7 @@ export const romperPaqueteAction = withAuth(
       }
       if (Number(existente.pesoExtraido) !== input.pesoExtraido) {
         throw new AccionError(
-          "Este paquete ya fue roto (por otro operario, o hace un instante) con un peso distinto al que digitaste — no se sobrescribe.",
+          "Este paquete ya fue roto (por otro operario, o hace un instante) con un peso distinto al que digitaste - no se sobrescribe.",
         );
       }
       resultado = { rotura: existente, unidadesSinLote: UNIDADES_POR_PAQUETE - existente.unidadesDevueltas };
@@ -119,7 +119,7 @@ export const romperBandejaAction = withAuth(
     } catch (error) {
       if (error instanceof BandejaNoDisponibleError) {
         throw new AccionError(
-          "Esta bandeja ya no está disponible — puede que ya la hayan roto o vendido justo ahora.",
+          "Esta bandeja ya no está disponible - puede que ya la hayan roto o vendido justo ahora.",
         );
       }
       if (!esErrorDeUnicidad(error)) {
@@ -131,7 +131,7 @@ export const romperBandejaAction = withAuth(
       }
       if (Number(existente.pesoExtraido) !== input.pesoExtraido) {
         throw new AccionError(
-          "Esta bandeja ya fue rota (por otro operario, o hace un instante) con un peso distinto al que digitaste — no se sobrescribe.",
+          "Esta bandeja ya fue rota (por otro operario, o hace un instante) con un peso distinto al que digitaste - no se sobrescribe.",
         );
       }
       resultado = { rotura: existente, unidadesSinLote: UNIDADES_POR_BANDEJA - existente.unidadesDevueltas };

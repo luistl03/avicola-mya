@@ -170,7 +170,7 @@ describe("crearEmpleadoAction", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe un empleado con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe un empleado con este id pero con datos diferentes - no se sobrescribe.",
       });
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });

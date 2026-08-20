@@ -225,6 +225,14 @@ model RegistroMortalidad {
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
 
   @@index([loteId, fecha])
+  // Sprint 15 — sumarMortalidadEnRango/listarMortalidadEnRango filtran por
+  // fecha en toda la granja, SIN loteId (a diferencia de todo lo demás en
+  // este modelo hasta ahora). El índice [loteId, fecha] no sirve para ese
+  // patrón (Postgres necesita loteId como predicado inicial para usarlo) —
+  // sin este índice nuevo, el dashboard y cada carga de /reportes fuerzan
+  // un seq scan completo de la tabla. Mismo criterio que ya usa
+  // RegistroRecoleccion([creadoEn, revertido]).
+  @@index([fecha, revertido])
 }
 
 // ============================================

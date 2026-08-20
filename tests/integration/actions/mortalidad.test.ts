@@ -177,7 +177,7 @@ describe("registrarMortalidad", () => {
     expect(resultado).toEqual({
       ok: false,
       error:
-        "Ya no quedan suficientes aves vivas para este registro — actualizá la pantalla e intentá de nuevo.",
+        "Ya no quedan suficientes aves vivas para este registro - actualiza la pantalla e intenta de nuevo.",
     });
     expect(crearAuditLogMock).not.toHaveBeenCalled();
   });
@@ -294,7 +294,7 @@ describe("registrarMortalidad", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
       });
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });
@@ -380,7 +380,7 @@ describe("revertirMortalidadAction", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "Este registro ya fue revertido — actualizá la pantalla.",
+      error: "Este registro ya fue revertido - actualiza la pantalla.",
     });
     expect(crearAuditLogMock).not.toHaveBeenCalled();
   });

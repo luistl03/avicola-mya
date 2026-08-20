@@ -107,7 +107,7 @@ function GalponFila({ galpon }: { galpon: GalponConOcupacion }) {
             ))}
           </div>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="text-muted-foreground">-</span>
         )}
       </TableCell>
       <TableCell>

@@ -34,4 +34,22 @@ describe("rolPermitidoParaRuta", () => {
     expect(rolPermitidoParaRuta("/operacion/recoleccion", "OPERARIO")).toBe(true);
     expect(rolPermitidoParaRuta("/", "OPERARIO")).toBe(true);
   });
+
+  it("permite a GERENTE acceder a /reportes (Sprint 15)", () => {
+    expect(rolPermitidoParaRuta("/reportes", "GERENTE")).toBe(true);
+  });
+
+  it("bloquea a OPERARIO acceder a /reportes (Sprint 15)", () => {
+    expect(rolPermitidoParaRuta("/reportes", "OPERARIO")).toBe(false);
+  });
+
+  it("bloquea a OPERARIO acceder a /reportes/exportar — misma regla por startsWith (Sprint 15)", () => {
+    expect(rolPermitidoParaRuta("/reportes/exportar", "OPERARIO")).toBe(false);
+    expect(rolPermitidoParaRuta("/reportes/exportar", "GERENTE")).toBe(true);
+  });
+
+  it("no restringe '/' (dashboard) a ningún rol aunque /reportes sí quede restringido (Sprint 15, decisión de negocio 5)", () => {
+    expect(rolPermitidoParaRuta("/", "OPERARIO")).toBe(true);
+    expect(rolPermitidoParaRuta("/", "GERENTE")).toBe(true);
+  });
 });

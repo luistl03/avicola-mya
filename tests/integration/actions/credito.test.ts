@@ -224,7 +224,7 @@ describe("registrarAbonoAction", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "El saldo cambió justo antes de registrar este abono — revisá el crédito y reintentá.",
+      error: "El saldo cambió justo antes de registrar este abono - revisa el crédito y reintenta.",
     });
     expect(crearAuditLogMock).not.toHaveBeenCalled();
   });
@@ -269,7 +269,7 @@ describe("registrarAbonoAction", () => {
 
       expect(resultado).toEqual({
         ok: false,
-        error: "Ya existe un registro con este id pero con datos diferentes — no se sobrescribe.",
+        error: "Ya existe un registro con este id pero con datos diferentes - no se sobrescribe.",
       });
       expect(crearAuditLogMock).not.toHaveBeenCalled();
     });

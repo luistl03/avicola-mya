@@ -81,7 +81,16 @@ export function AppSidebar({ rol, nombre }: { rol: Rol; nombre: string }) {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      {/* `ui/sidebar.tsx` (shadcn, no editar a mano) fija
+          `overflow-hidden` en modo colapsado a íconos — asumía que la
+          lista de íconos siempre entraba en la altura del viewport.
+          Con "Reportes" (Sprint 15) ya no entra siempre: el último ícono
+          quedaba cortado y sin forma de llegar a él (hallazgo real del
+          Product Owner). Se sobreescribe acá, en el punto de uso, a
+          `overflow-y-auto` — className se mergea después de la clase base
+          vía cn()/tailwind-merge, así que esta gana sobre el
+          `overflow-hidden` original sin tocar el componente compartido. */}
+      <SidebarContent className="group-data-[collapsible=icon]:overflow-y-auto">
         <SidebarMenu className="gap-1 p-2">
           {items.map((item) => {
             const activo = pathname === item.href;

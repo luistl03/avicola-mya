@@ -42,10 +42,10 @@ export function RevertirSueldoMovimientoBoton({ movimiento }: Props) {
   }, [movimiento.fecha, movimiento.revertido]);
 
   if (movimiento.revertido) {
-    return <span className="text-sm text-muted-foreground">—</span>;
+    return <span className="text-sm text-muted-foreground">-</span>;
   }
   if (restanteMs <= 0) {
-    return <span className="text-sm text-muted-foreground">—</span>;
+    return <span className="text-sm text-muted-foreground">-</span>;
   }
 
   function confirmar() {

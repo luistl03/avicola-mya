@@ -36,7 +36,7 @@ const geistMono = Geist_Mono({
 // cambiarse — una inconsistencia peor que no forzar ninguna.
 export const metadata: Metadata = {
   title: "Avícola M&A",
-  description: "Sistema de gestión interna — Avícola M&A",
+  description: "Sistema de gestión interna - Avícola M&A",
   icons: {
     icon: "/apple-touch-icon.png",
     apple: "/apple-touch-icon.png",

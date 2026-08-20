@@ -89,7 +89,7 @@ function RomperPaqueteForm({
         toastManager.add({
           type: "info",
           title: "Unidades sin lote de origen conocido",
-          description: `${resultado.data.unidadesSinLote} unidades quedaron sin acreditar automáticamente — un Gerente puede acreditarlas desde "Ajustar inventario".`,
+          description: `${resultado.data.unidadesSinLote} unidades quedaron sin acreditar automáticamente - un Gerente puede acreditarlas desde "Ajustar inventario".`,
         });
       }
       onExito();

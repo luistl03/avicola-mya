@@ -116,6 +116,17 @@ export function listarCreditosPendientesConCliente() {
   });
 }
 
+// Reporte "Créditos y cobranza" de /reportes — créditos PENDIENTES cuya
+// fechaLimite cae en el rango filtrado, usa el mismo índice
+// Credito(estado, fechaLimite) que ya documenta modelo-datos.md. `hasta`
+// es EXCLUSIVO (lt, no lte), mismo criterio que el resto de /reportes.
+export function listarCreditosPendientesConFechaLimiteEnRango(desde: Date, hasta: Date) {
+  return prisma.credito.findMany({
+    where: { estado: "PENDIENTE", fechaLimite: { gte: desde, lt: hasta } },
+    select: { montoTotal: true, montoPagado: true, fechaLimite: true },
+  });
+}
+
 // Estado de cuenta: TODOS los créditos de un cliente (PENDIENTE y
 // LIQUIDADO), con su historial de abonos completo — usa el índice
 // Credito(clienteId).

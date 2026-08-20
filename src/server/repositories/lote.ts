@@ -107,6 +107,13 @@ export function contarLotes() {
   return prisma.lote.count();
 }
 
+// Tarjeta "Lotes activos" del dashboard (Sprint 15, H1) — count agregado en
+// el servidor, no un findMany completo: no hace falta traer las filas para
+// solo contar.
+export function contarLotesActivos() {
+  return prisma.lote.count({ where: { estado: "ACTIVO" } });
+}
+
 // Para poblar el <Select> de lote en el formulario de mortalidad (Sprint
 // 4) — sin paginar, mismo criterio que listarGalponesActivos(). avesVivas
 // viaja junto para que el formulario pueda mostrar "quedan N vivas" sin

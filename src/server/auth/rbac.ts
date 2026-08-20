@@ -19,6 +19,7 @@ export const RUTAS_POR_ROL: { ruta: string; roles: Rol[] }[] = [
   { ruta: "/precio-kilo", roles: ["GERENTE"] }, // NUEVO Sprint 8
   { ruta: "/egresos", roles: ["GERENTE"] }, // NUEVO Sprint 12
   { ruta: "/personal", roles: ["GERENTE"] }, // NUEVO Sprint 12
+  { ruta: "/reportes", roles: ["GERENTE"] }, // NUEVO Sprint 15 — cubre también /reportes/exportar (startsWith)
 ];
 
 export function rolPermitidoParaRuta(pathname: string, rol: Rol): boolean {

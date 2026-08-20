@@ -70,7 +70,7 @@ async function ejecutarConsolidacion(
   }
   if (input.pesos.length > porcionesMax.length) {
     throw new AccionError(
-      `Los saldos cambiaron — el máximo disponible ahora es ${porcionesMax.length}, se recibieron ${input.pesos.length} pesos. Actualizá la pantalla e intentá de nuevo.`,
+      `Los saldos cambiaron - el máximo disponible ahora es ${porcionesMax.length}, se recibieron ${input.pesos.length} pesos. Actualiza la pantalla e intenta de nuevo.`,
     );
   }
 
@@ -95,7 +95,7 @@ async function ejecutarConsolidacion(
   } catch (error) {
     if (error instanceof SaldoInsuficienteConsolidacionError) {
       throw new AccionError(
-        "El saldo ya no alcanza para esta consolidación — actualizá la pantalla e intentá de nuevo.",
+        "El saldo ya no alcanza para esta consolidación - actualiza la pantalla e intenta de nuevo.",
       );
     }
     if (!esErrorDeUnicidad(error)) {
@@ -115,7 +115,7 @@ async function ejecutarConsolidacion(
     }
     if (existente.cantidadUnidadesFormadas !== porciones.length) {
       throw new AccionError(
-        "Ya existe una consolidación con este id pero con datos diferentes — no se sobrescribe.",
+        "Ya existe una consolidación con este id pero con datos diferentes - no se sobrescribe.",
       );
     }
     resultado = {
