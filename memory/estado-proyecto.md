@@ -9,20 +9,21 @@ Si retomas este proyecto en una sesión nueva (chat o terminal), lee este
 archivo primero, después el roadmap en `specs/roadmap-completo.md`.
 
 ## Resumen ejecutivo
-- **Sprint actual:** 14 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
+- **Sprint actual:** 15 de 16 completados (Sprint 0 — Cimientos, Sprint 1 —
   Autenticación y sesiones, Sprint 2 — RBAC, auditoría y shell, Sprint 3 —
   Galpones, Lotes y Mudanzas, Sprint 4 — Mortalidad y Bitácora, Sprint 5 —
   Recolección e Inventario, Sprint 6 — Ventana de gracia y reversión,
   Sprint 7 — Consolidación de residuos, Sprint 8 — Clientes y Precio por
   Kilo, Sprint 9 — POS: Carrito y Cierre, Sprint 10 — Consolidación:
   Romper Paquete/Bandeja, Sprint 11 — Créditos y cobranza, Sprint 12 —
-  Egresos y Personal, Sprint 13 — PWA e instalación). Sprint 13 queda
-  cerrado salvo un único ítem, S13-21 (verificación en iPhone real), en
-  espera explícita del Product Owner — ver su entrada más abajo. La
-  rama `feat/S13-pwa-instalacion` todavía no está mergeada a `main`.
-  Sprint 14 (Cola offline y sincronización) es el siguiente — viene
-  marcado ALTO RIESGO en el roadmap, dividir en 14A/14B antes de
-  arrancar.
+  Egresos y Personal, Sprint 13 — PWA e instalación, Sprint 14 — Cola
+  offline y sincronización). Sprint 13 queda cerrado salvo un único
+  ítem, S13-21 (verificación en iPhone real), en espera explícita del
+  Product Owner — ver su entrada más abajo. Sprint 14 queda cerrado
+  completo (14A y 14B) — ver su entrada más abajo. Ninguna de las dos
+  ramas (`feat/S13-pwa-instalacion`, `feat/S14-cola-offline`) está
+  mergeada a `main` todavía. Sprint 15 (Dashboard y reportes) es el
+  siguiente.
 - **Deploy activo:** https://avicola-mya.vercel.app
 - **Repo:** https://github.com/luistl03/avicola-mya
 - **Herramienta de desarrollo:** Claude Code en terminal (Warp) y en chat, plan Pro
@@ -793,10 +794,11 @@ priorizado). Una vez separados:
    en iPhone real) queda en espera explícita del Product Owner — no
    bloqueante para seguir, pero falta tildarlo cuando lo pruebe. La
    rama `feat/S13-pwa-instalacion` todavía no está mergeada a `main`.
-   Sprint 14 (Cola offline y sincronización) es el siguiente — viene
-   marcado ALTO RIESGO en el roadmap; dividir en 14A/14B antes de
-   arrancar, y releer `memory/decisiones-tecnicas.md` (D1-D7, D7 es la
-   elección de Serwist del propio Sprint 13) antes de tocar la cola.
+   **Sprint 14 (Cola offline y sincronización) ya está cerrado
+   completo** (14A y 14B, ver su entrada más arriba y
+   `specs/sprint-14-cola-offline/`), rama `feat/S14-cola-offline`
+   tampoco mergeada a `main` todavía. Sprint 15 (Dashboard y reportes)
+   es el siguiente.
 
    **Hallazgo real de Sprint 12, a tener presente en cualquier sprint
    futuro con un modelo que fue diseñado en Sprint 0 sin campos de
@@ -1767,6 +1769,60 @@ priorizado). Una vez separados:
   alcanza ese límite con unas pocas recargas seguidas, algo que pasó
   durante la sesión de pruebas intensiva pero que no debería repetirse
   en uso normal de producción.
+
+- **Sprint 14** — cerrado completo, 14A y 14B (2026-08-19). 575 tests
+  (573 preexistentes + los de este sprint), 100% cobertura en los 4
+  archivos nuevos de la capa offline (`lib/offline/db.ts`, `cola.ts`,
+  `sincronizador.ts`, `app/api/sync/route.ts`). Una migración:
+  `creadoEnCliente DateTime?` en `RegistroMortalidad` y `BitacoraGlobal`
+  (completa el Contrato Offline-Ready que `RegistroRecoleccion`/
+  `RegistroConsolidacion` ya tenían desde Sprint 5/7 — `fecha` no se
+  renombró). Cola local en IndexedDB (Dexie 4.4.5) para las 3 pantallas
+  de campo, `POST /api/sync` (batch idempotente, tope 25 ítems por
+  request) reutilizando las Server Actions existentes sin duplicar
+  lógica de negocio — confirmado en vivo que `auth()` funciona igual
+  dentro de un Route Handler que en una Server Action (riesgo R1 de
+  `spec.md`, cerrado). Pantalla `/pendientes` con reintento manual y
+  descarte con confirmación explícita, badge de conteo en el footer del
+  Sidebar. Rama `feat/S14-cola-offline`, sin mergear a `main` todavía.
+  Detalle completo en `specs/sprint-14-cola-offline/` (spec.md, plan.md,
+  tasks.md — con el resultado real tarea por tarea).
+
+  **Bug real encontrado y corregido en vivo (S14-13), no detectable por
+  tests:** un comentario nuevo en `globals.css` mencionaba dos nombres
+  de clase seguidos, `.badge-categoria-*/.badge-tipo-cliente-*` — la
+  secuencia literal `*/` ahí cierra el comentario CSS antes de tiempo,
+  corrompiendo todo el archivo desde ese punto hasta el final
+  ("Parsing CSS source code failed... Unexpected end of input" en
+  Turbopack). El proyecto no tiene lint de CSS que lo hubiera atrapado
+  antes de abrir el navegador — corregido agregando un espacio entre
+  `*` y `/`. Vale la pena revisar cualquier comentario CSS futuro que
+  mencione dos selectores con `*` terminando uno justo antes de `/`.
+
+  **Verificado en vivo contra Neon dev real, con `claude-in-chrome`:**
+  guardar sin señal en las 3 pantallas (interceptando `window.fetch`,
+  ya que la extensión usada en esta sesión no expone throttling de
+  DevTools) encoló en vez de mostrar error; con señal restaurada y
+  sesión válida, la cola sincronizó sola, sin duplicar, y la ventana de
+  gracia de 10 minutos del registro sincronizado arrancó en el momento
+  de sincronizar, no en el momento de la captura offline (decisión de
+  negocio 4, confirmada en el countdown real del botón "Deshacer").
+  Reintento manual y descarte verificados en la pantalla de pendientes,
+  con el badge del Shell bajando en vivo en cada transición. Error
+  permanente real forzado (un lote de prueba desechable finalizado
+  antes de sincronizar un registro pendiente contra él) quedó en
+  `ERROR` visible con el motivo real del servidor, sin descartarse
+  solo, mientras otro ítem sin relación del mismo lote de sync sí se
+  procesó bien — confirma independencia entre ítems. **Hallazgo real no
+  buscado:** una sesión de navegador vieja (JWT válido, sin
+  `SesionActiva` viva en la base) hizo que varios ítems sincronizaran
+  con esa sesión inválida y quedaran en `ERROR` con el mensaje real del
+  servidor — sin reintentarse solos ni siquiera después de iniciar
+  sesión de nuevo con una cuenta válida, confirmando en vivo (sin
+  haberlo buscado) tanto la decisión de negocio 6 (los errores no se
+  reintentan automático) como que la cola sobrevive un logout/login
+  real (S14-18/decisión de atribución de autoría, riesgo aceptado y
+  documentado, no resuelto este sprint).
 
 ## Bug real: `PageHeader` con 2+ botones de acción rompía el ancho en mobile (post-Sprint 7, 2026-08-13)
 El Product Owner probó `/consolidacion` en su celular real (los dos

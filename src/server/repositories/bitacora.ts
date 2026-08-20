@@ -7,6 +7,7 @@ export function crearNotaBitacora(data: {
   categoria: CategoriaBitacora;
   contenido: string;
   usuarioId: string;
+  creadoEnCliente: Date;
 }) {
   return prisma.bitacoraGlobal.create({ data });
 }

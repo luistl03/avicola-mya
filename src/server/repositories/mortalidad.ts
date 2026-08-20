@@ -41,6 +41,7 @@ export function registrarMortalidadYDescontarAves(data: {
   usuarioId: string;
   tipo: TipoMortalidad;
   cantidad: number;
+  creadoEnCliente: Date;
 }) {
   return prisma.$transaction(async (tx) => {
     const actualizado = await tx.lote.updateMany({
@@ -58,6 +59,7 @@ export function registrarMortalidadYDescontarAves(data: {
         usuarioId: data.usuarioId,
         tipo: data.tipo,
         cantidad: data.cantidad,
+        creadoEnCliente: data.creadoEnCliente,
       },
     });
   });

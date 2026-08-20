@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { toastManager } from "@/components/ui/toast";
 import { UNIDADES_POR_PAQUETE } from "@/lib/constants";
+import { encolar } from "@/lib/offline/cola";
 import { registrarRecoleccion } from "@/server/actions/recoleccion";
 import type { ActionResult } from "@/server/auth/with-auth";
 
@@ -165,12 +166,29 @@ function RegistrarRecoleccionForm({
       try {
         resultado = await registrarRecoleccion(payload);
       } catch {
-        // Ver el mismo catch en nueva-nota-bitacora-dialog.tsx — sin red,
-        // el fetch de la Server Action rechaza antes de llegar al
-        // servidor; sin este catch React lo trata como error no manejado
-        // en vez de mostrarlo con el mismo mensaje en rojo del resto del
-        // formulario (H3, spec.md Sprint 13).
-        return { ok: false, error: "Sin conexión. Guarda de nuevo cuando recuperes señal." };
+        // Sin red, el fetch de la Server Action rechaza antes de llegar al
+        // servidor — esto SÍ es la señal real de "estoy offline" (a
+        // diferencia de un {ok:false} de negocio, que withAuth ya
+        // devolvió sin lanzar). Se encola en vez de solo avisar (H3,
+        // spec.md Sprint 14).
+        await encolar("RECOLECCION", payload);
+        // Preview local (misma fórmula que el servidor, ver
+        // calcularEmpaquePreview arriba) — no es el resultado real
+        // todavía (eso lo decide /api/sync al sincronizar), pero es
+        // honesto mostrarlo como estimado en vez de un 0 fijo.
+        const { paquetes: paquetesEstimados, sueltos: sueltosEstimados } = calcularEmpaquePreview(
+          payload.cantidadTotal,
+        );
+        toastManager.add({
+          type: "success",
+          title: "Guardado sin conexión",
+          description: "Se enviará solo cuando recuperes señal.",
+        });
+        onExito();
+        return {
+          ok: true,
+          data: { id: payload.id, paquetesCreados: paquetesEstimados, sueltos: sueltosEstimados },
+        };
       }
       if (resultado.ok) {
         router.refresh();

@@ -42,6 +42,7 @@ export const crearNotaBitacora = withAuth(
         categoria: input.categoria,
         contenido: input.contenido,
         usuarioId: ctx.usuarioId,
+        creadoEnCliente: input.creadoEnCliente,
       });
     } catch (error) {
       if (!esErrorDeUnicidad(error)) {

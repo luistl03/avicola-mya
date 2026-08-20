@@ -56,6 +56,18 @@ valor + `fechaIngreso` + una `fechaReferencia` que decide quien llama
 `HistorialUbicacionLote` si está INACTIVO, para que la edad quede
 "congelada" en el momento de finalizar y no siga subiendo después).
 
+## Contrato Offline-Ready: `creadoEnCliente` (Sprint 14)
+`RegistroMortalidad` y `BitacoraGlobal` ganan `creadoEnCliente DateTime?`
+(nullable, sin backfill) para completar el Contrato Offline-Ready
+(`memory/convenciones.md`) que `RegistroRecoleccion`/`RegistroConsolidacion`
+ya tenían desde Sprint 5/7. **El timestamp de servidor de estos dos
+modelos sigue llamándose `fecha`, no se renombró a `creadoEn`** — es el
+campo preexistente desde antes de Sprint 5, usado en índices
+(`@@index([loteId, fecha])`), en las guards de ventana de gracia
+(`puedeRevertirMortalidad`) y en el `orderBy` del muro de Bitácora.
+Ver `specs/sprint-14-cola-offline/plan.md` ("Divergencia de nombre") para
+el detalle completo del porqué.
+
 ## Decisiones que ya moldearon este schema (ver `decisiones-tecnicas.md`)
 
 - **D2**: no existe modelo `BitacoraGalpon`. `BitacoraGlobal` es siempre

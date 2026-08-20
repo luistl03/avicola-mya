@@ -171,6 +171,13 @@ enum CategoriaBitacora {
 model BitacoraGlobal {
   id        String            @id @default(uuid())
   fecha     DateTime          @default(now())
+  // Reloj del celular en el momento de la captura (Sprint 14, Contrato
+  // Offline-Ready) — nullable, sin backfill: las filas existentes no
+  // tienen forma de reconstruirlo. Mismo criterio que
+  // RegistroRecoleccion.creadoEnCliente (Sprint 5); `fecha` sigue siendo
+  // el timestamp de servidor, no se renombra (ver plan.md, "Divergencia
+  // de nombre").
+  creadoEnCliente DateTime?
   usuarioId String
   categoria CategoriaBitacora
   contenido String
@@ -202,6 +209,11 @@ model RegistroMortalidad {
   tipo        TipoMortalidad
   cantidad    Int
   fecha       DateTime       @default(now())
+  // Reloj del celular en el momento de la captura (Sprint 14, Contrato
+  // Offline-Ready) — nullable, sin backfill, mismo criterio que
+  // BitacoraGlobal.creadoEnCliente de arriba. `fecha` sigue siendo el
+  // timestamp de servidor, usado en la ventana de gracia de abajo.
+  creadoEnCliente DateTime?
   // Ventana de gracia de 10 minutos (post-Sprint 4): revertir un registro
   // restaura avesVivas y marca revertido — nunca DELETE físico, mismo
   // criterio que RegistroRecoleccion.revertido (Sprint 6 del roadmap).

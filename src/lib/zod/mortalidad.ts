@@ -14,7 +14,19 @@ const cantidad = z.coerce.number().int().positive("Debe ser mayor a 0");
 // elige el usuario a mano.
 const id = idUuid();
 
-export const crearRegistroMortalidadSchema = z.object({ id, loteId, tipo, cantidad });
+// Reloj del celular en el momento de la captura — no es opcional: el
+// Contrato Offline-Ready exige los dos timestamps siempre (creadoEnCliente
+// + fecha, este último lo pone el servidor, no viaja en el payload).
+// Mismo patrón que crearRecoleccionSchema (lib/zod/recoleccion.ts).
+const creadoEnCliente = z.coerce.date({ message: "Fecha inválida" });
+
+export const crearRegistroMortalidadSchema = z.object({
+  id,
+  loteId,
+  tipo,
+  cantidad,
+  creadoEnCliente,
+});
 
 export type CrearRegistroMortalidadInput = z.infer<typeof crearRegistroMortalidadSchema>;
 

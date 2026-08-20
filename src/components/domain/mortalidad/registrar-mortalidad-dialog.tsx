@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plus, Skull } from "lucide-react";
 
@@ -24,10 +24,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toastManager } from "@/components/ui/toast";
+import { encolar } from "@/lib/offline/cola";
 import { registrarMortalidad } from "@/server/actions/mortalidad";
 import type { ActionResult } from "@/server/auth/with-auth";
 
 type LoteOpcion = { id: string; codigo: string; avesVivas: number };
+
+type MortalidadPayload = {
+  id: string;
+  loteId: string;
+  tipo: string;
+  cantidad: number;
+  creadoEnCliente: Date;
+};
 
 type Estado = ActionResult<{ id: string }> | undefined;
 
@@ -95,35 +104,51 @@ function RegistrarMortalidadForm({
   // de ítems no lo tiene registrado en ese momento.
   const [loteId, setLoteId] = useState<string | null>(null);
   const [tipo, setTipo] = useState<string | null>(null);
+  const [cantidadInput, setCantidadInput] = useState("");
   // Generado una sola vez por apertura del diálogo — mismo fix que el bug
   // real de Recolección (S5-13), acá con más motivo: un doble clic sin
   // esto no solo duplicaba el registro, decrementaba avesVivas dos veces
   // (hallazgo real de la auditoría post-Sprint 5).
   const [id] = useState(() => crypto.randomUUID());
 
-  const [state, formAction, pending] = useActionState<Estado, FormData>(async (_prev, formData) => {
-    let resultado: Estado;
-    try {
-      resultado = await registrarMortalidad(formData);
-    } catch {
-      // Ver el mismo catch en nueva-nota-bitacora-dialog.tsx — sin red, el
-      // fetch de la Server Action rechaza antes de llegar al servidor;
-      // sin este catch React lo trata como error no manejado en vez de
-      // mostrarlo con el mismo mensaje en rojo del resto del formulario
-      // (H3, spec.md Sprint 13).
-      return { ok: false, error: "Sin conexión. Guarda de nuevo cuando recuperes señal." };
-    }
-    if (resultado.ok) {
-      router.refresh();
-      toastManager.add({
-        type: "success",
-        title: "Mortalidad registrada",
-        description: `${formData.get("cantidad")} aves`,
-      });
-      onExito();
-    }
-    return resultado;
-  }, undefined);
+  // Payload como objeto plano, no FormData (Sprint 14) — mismo motivo que
+  // registrar-recoleccion-dialog.tsx: la cola offline necesita persistir
+  // el payload en IndexedDB, y FormData no es serializable ahí sin
+  // conversión manual. Ver plan.md, "Interceptor en los 3 dialogs".
+  const [state, formAction, pending] = useActionState<Estado, MortalidadPayload>(
+    async (_prev, payload) => {
+      let resultado: Estado;
+      try {
+        resultado = await registrarMortalidad(payload);
+      } catch {
+        // Sin red, el fetch de la Server Action rechaza antes de llegar al
+        // servidor — esto SÍ es la señal real de "estoy offline" (a
+        // diferencia de un {ok:false} de negocio, que withAuth ya
+        // devolvió sin lanzar). Se encola en vez de solo avisar (H3,
+        // spec.md Sprint 14) — mismo cierre de diálogo que un guardado
+        // online exitoso, no se le pide al Operario que reintente a mano.
+        await encolar("MORTALIDAD", payload);
+        toastManager.add({
+          type: "success",
+          title: "Guardado sin conexión",
+          description: "Se enviará solo cuando recuperes señal.",
+        });
+        onExito();
+        return { ok: true, data: { id: payload.id } };
+      }
+      if (resultado.ok) {
+        router.refresh();
+        toastManager.add({
+          type: "success",
+          title: "Mortalidad registrada",
+          description: `${payload.cantidad} aves`,
+        });
+        onExito();
+      }
+      return resultado;
+    },
+    undefined,
+  );
 
   const erroresDe = (campo: string): string[] | undefined =>
     state && !state.ok ? state.campos?.[campo] : undefined;
@@ -131,9 +156,23 @@ function RegistrarMortalidadForm({
   const loteSeleccionado = lotesActivos.find((lote) => lote.id === loteId);
   const tipoSeleccionado = TIPOS.find((opcion) => opcion.value === tipo);
 
+  const cantidad = Number(cantidadInput) || 0;
+  const puedeGuardar = Boolean(loteId) && Boolean(tipo) && cantidad > 0;
+
   return (
-    <form action={formAction} className="flex flex-col gap-4">
-      <input type="hidden" name="id" value={id} />
+    <form
+      className="flex flex-col gap-4"
+      onSubmit={(evento) => {
+        evento.preventDefault();
+        if (!loteId || !tipo || !puedeGuardar || pending) return;
+        // startTransition: useActionState() exige que su dispatch se
+        // invoque dentro de una transición — mismo motivo (y mismo bug
+        // real evitado, S5-13) que registrar-recoleccion-dialog.tsx.
+        startTransition(() => {
+          formAction({ id, loteId, tipo, cantidad, creadoEnCliente: new Date() });
+        });
+      }}
+    >
       {state && !state.ok ? (
         <p role="alert" className="text-sm text-destructive">
           {state.error}
@@ -144,7 +183,7 @@ function RegistrarMortalidadForm({
         <Label htmlFor="loteId" className={LABEL_COMPACTO}>
           Lote
         </Label>
-        <Select name="loteId" value={loteId} onValueChange={setLoteId}>
+        <Select value={loteId} onValueChange={setLoteId}>
           <SelectTrigger id="loteId" className="h-10 w-full">
             <SelectValue placeholder="Selecciona un lote">
               {loteSeleccionado
@@ -171,7 +210,7 @@ function RegistrarMortalidadForm({
         <Label htmlFor="tipo" className={LABEL_COMPACTO}>
           Tipo
         </Label>
-        <Select name="tipo" value={tipo} onValueChange={setTipo}>
+        <Select value={tipo} onValueChange={setTipo}>
           <SelectTrigger id="tipo" className="h-10 w-full">
             <SelectValue placeholder="Selecciona un tipo">{tipoSeleccionado?.label}</SelectValue>
           </SelectTrigger>
@@ -196,12 +235,13 @@ function RegistrarMortalidadForm({
         </Label>
         <Input
           id="cantidad"
-          name="cantidad"
           type="number"
           inputMode="numeric"
           min={1}
           required
           autoFocus
+          value={cantidadInput}
+          onChange={(evento) => setCantidadInput(evento.target.value)}
           className={INPUT_COMPACTO}
         />
         {erroresDe("cantidad")?.map((error) => (
@@ -212,7 +252,7 @@ function RegistrarMortalidadForm({
       </div>
 
       <DialogFooter>
-        <Button type="submit" variant="default" size="md" disabled={pending}>
+        <Button type="submit" variant="default" size="md" disabled={pending || !puedeGuardar}>
           <Check data-icon="inline-start" />
           {pending ? "Guardando..." : "Guardar"}
         </Button>
