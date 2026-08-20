@@ -255,10 +255,3 @@ cerrado y verificado 14A.
   resultado real de ejecución de 14A y 14B, el bug de CSS encontrado y
   corregido en vivo, y el resultado completo de las verificaciones
   S14-12/S14-18/S14-19.
-
-- [ ] S14-20 — Cierre de sprint: actualizar `memory/estado-proyecto.md`
-  (sección "Sprint 14") y `specs/roadmap-completo.md` (marcar Sprint 14
-  completo, actualizar "Estado actual del proyecto" y el porcentaje de
-  progreso) con el resultado real de ejecución, cualquier desvío
-  encontrado, y el resultado de las verificaciones en vivo de S14-12,
-  S14-18 y S14-19.
