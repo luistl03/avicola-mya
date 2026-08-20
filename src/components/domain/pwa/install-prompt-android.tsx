@@ -64,6 +64,19 @@ function yaInstalada(): boolean {
   return localStorage.getItem(INSTALADA_KEY) === "1";
 }
 
+// Bug real (reportado por el Product Owner, 2026-08-19): sin este chequeo,
+// el banner y el botón "Instalar app" del Sidebar aparecían también en
+// desktop — cualquier Chrome/Edge que considere el sitio instalable
+// dispara beforeinstallprompt, sin importar el dispositivo. El hermano de
+// iOS (ios-install-banner.tsx) ya filtraba por userAgent
+// (esIosSafariSinInstalar); a este le faltaba el mismo chequeo — el
+// nombre del componente y la decisión de negocio 3 (spec.md, Sprint 13,
+// H4 "Prompt de instalación en Android") ya dejaban claro que es
+// exclusivo de Android, el código nunca lo hizo cumplir.
+function esAndroid(): boolean {
+  return /android/i.test(navigator.userAgent);
+}
+
 export function obtenerInstalacionDisponible() {
   return !yaInstalada() && eventoCapturado !== null;
 }
@@ -111,6 +124,7 @@ export function InstallPromptAndroid() {
     // (el caso real que fallaba), lo consume acá — no depende de que el
     // evento se dispare DESPUÉS de que este efecto corra.
     const capturarSiYaLlego = () => {
+      if (!esAndroid()) return; // ver nota de esAndroid() más arriba
       if (yaInstalada()) return; // ver nota de yaInstalada() más arriba
       if (window.__bipEvento && !eventoCapturado) {
         establecerEvento(window.__bipEvento);
