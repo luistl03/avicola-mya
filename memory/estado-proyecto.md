@@ -2358,22 +2358,56 @@ Sprint 12 (S12-21/S12-22).
 
 ## Sprint 16 — Push, hardening y UAT, en ejecución (2026-08-20/21)
 Último sprint del roadmap. Planificado y ejecutándose en la misma sesión
-(`specs/sprint-16-push-hardening-uat/`). H1-H5 completos y verificados en
-vivo; detalle completo de cada hallazgo real en `tasks.md` de esa carpeta
-— acá solo el resumen para no tener que releer todo.
+(`specs/sprint-16-push-hardening-uat/`). H1-H6 completos y verificados en
+vivo, incluyendo contra producción real; detalle completo de cada
+hallazgo real en `tasks.md` de esa carpeta — acá solo el resumen para no
+tener que releer todo.
 
-**H1-H4 (Push real de créditos vencidos, cron diario):** suscripción vía
+**H1-H4 (Push real de créditos vencidos, cron diario) — CONFIRMADO
+end-to-end en producción real, no solo en dev:** suscripción vía
 `/creditos` (solo Gerente), cron `/api/cron/creditos-vencidos` protegido
-con `CRON_SECRET`, idempotencia real (`Credito.notificacionVencidoEnviada`,
-migración nueva) verificada con dos invocaciones seguidas del cron el
-mismo día sin duplicar. **Falta que el Product Owner acepte el permiso
-nativo de notificaciones del navegador una vez** (la extensión Claude in
-Chrome no puede interactuar con diálogos nativos de Chrome, mismo límite
-que ya documentaba `resize_window`) — instrucciones paso a paso ya
-entregadas, pendiente de confirmación humana, idealmente durante el UAT
-(H7). **Vercel: sigue pendiente cargar las 5 env vars nuevas** (`VAPID_*`,
-`CRON_SECRET`) en Production+Preview antes de desplegar — generadas y
-verificadas solo en local.
+con `CRON_SECRET`, idempotencia real (`Credito.notificacionVencidoEnviada`)
+verificada. El Product Owner recibió y confirmó visualmente en su celular
+un push real enviado desde el cron de producción ("YA ESTÁ, CLARO QUE
+YES").
+
+**Deploy directo a `main`, sin PR — decisión puntual del Product Owner:**
+la verificación real de push (permiso nativo del navegador + entrega real
+en un dispositivo) no se podía completar con la extensión Claude in
+Chrome (no interactúa con diálogos nativos) ni en local (sin HTTPS/infra
+de push real), así que el Product Owner pidió saltar Preview/PR y probar
+directo contra `main`/Vercel Production. `git merge --ff-only` de
+`feat/S16-push-hardening-uat` (que ya traía Sprint 15 encima) a `main`,
+confirmado explícitamente antes de hacerlo. Desvío puntual del flujo
+Preview→PR→main habitual, no un cambio de proceso general.
+
+**Dos bugs reales de producción encontrados y corregidos durante esta
+verificación, ninguno relacionado con la lógica de Push en sí — ambos
+solo se manifiestan contra Vercel real, nunca en local:**
+
+1. **Bug de Sprint 13, dormido hasta ahora — `ServiceWorker script
+   evaluation failed` en producción**, causa por la que el botón "Activar
+   notificaciones" no aparecía nunca. `src/app/serwist/[path]/route.ts`
+   declaraba `apple-touch-icon.png` a mano en `additionalPrecacheEntries`
+   con `revision: VERCEL_GIT_COMMIT_SHA`, duplicando la entrada que
+   Serwist ya genera solo (hash de contenido real) para ese mismo archivo
+   en `public/`. Dos revisiones distintas para la misma URL — conflicto
+   que Serwist rechaza al construirse. Nunca se disparaba en local
+   (`VERCEL_GIT_COMMIT_SHA` no existe ahí) y en Vercel cambia en cada
+   deploy, así que era inevitable en producción real. Diagnosticado
+   ejecutando el bundle minificado real de Vercel dentro de un mock de
+   `ServiceWorkerGlobalScope` (módulo `vm` de Node) para hacer explotar el
+   error real en vez del mensaje genérico del navegador. Corregido
+   quitando la entrada duplicada.
+2. **`VAPID_SUBJECT` guardado como "Note" en vez de "Value" en Vercel** —
+   las 5 env vars aparecían correctamente nombradas y en el scope
+   correcto en el dashboard, pero una de ellas nunca llegaba a
+   `process.env` porque estaba en el campo de documentación interna de
+   Vercel, no en el valor real. Detectado por un ícono distinto (📄 vs 🔒)
+   en un screenshot del dashboard. **Lección operativa para cualquier
+   carga de env vars en Vercel a futuro: confirmar el ícono de tipo junto
+   al nombre de la variable, no solo que el nombre y el scope estén
+   bien.**
 
 **H5 (Playwright, 5 flujos E2E):** instalado y funcionando —
 `playwright.config.ts`, `tests/e2e/helpers.ts` +

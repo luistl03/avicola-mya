@@ -177,6 +177,66 @@ commitean junto con el resto de Sprint 16).
     usuarios `e2e.s16.gerente`/`e2e.s16.operario`) borrados al terminar —
     script temporal descartado, mismo criterio de siempre.
 
+- [x] S16-14b — **Verificación en vivo contra producción real (Vercel +
+  Neon), no planeada en `plan.md` original** — el permiso nativo del
+  navegador y el envío real de un push (pendientes al cierre de S16-14 por
+  la limitación de la extensión con diálogos nativos) solo se podían
+  confirmar en un dispositivo real, así que el Product Owner pidió saltar
+  Preview/PR y mergear esta rama directo a `main` para probar contra
+  producción (`git merge --ff-only`, confirmado explícitamente antes de
+  hacerlo — desvío real respecto al flujo Preview→PR→main que documenta
+  `convenciones.md`, decisión puntual del Product Owner, no un cambio de
+  proceso general). Env vars (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+  `VAPID_SUBJECT`, `CRON_SECRET`, más las heredadas) cargadas en Vercel
+  Production por el Product Owner siguiendo instrucciones paso a paso.
+
+  **Dos bugs reales encontrados y corregidos, ninguno de los dos
+  relacionado con Push — los expuso recién esta primera verificación real
+  contra Vercel, nunca antes disparados en local:**
+
+  1. **`ServiceWorker script evaluation failed` en producción** — el botón
+     "Activar notificaciones" no aparecía porque el Service Worker entero
+     no lograba registrarse. Causa raíz: `src/app/serwist/[path]/route.ts`
+     (Sprint 13) declaraba `apple-touch-icon.png` a mano en
+     `additionalPrecacheEntries` con `revision: VERCEL_GIT_COMMIT_SHA`,
+     duplicando la entrada que Serwist ya genera solo (con el hash de
+     contenido real del archivo) para todo lo que vive en `public/`. Dos
+     revisiones distintas para la misma URL es un conflicto que Serwist
+     rechaza al construirse (`add-to-cache-list-conflicting-entries`) —
+     nunca se disparaba en local porque ahí `VERCEL_GIT_COMMIT_SHA` no
+     existe y cae a un valor fijo; en Vercel cambia en cada deploy, así
+     que el conflicto es inevitable en producción real. Diagnosticado
+     ejecutando el bundle minificado real descargado de Vercel dentro de
+     un mock de `ServiceWorkerGlobalScope` armado con el módulo `vm` de
+     Node (sin eso, el único síntoma visible era el mensaje genérico del
+     navegador, sin causa). Corregido quitando la entrada duplicada
+     (`e3e5e7f`) — bug real de Sprint 13, dormido hasta esta verificación.
+  2. **Push seguía fallando ("VAPID no configurado") tras cargar las 5 env
+     vars** — las 5 aparecían correctamente nombradas y en el scope
+     correcto (Production) en el dashboard de Vercel. Causa raíz:
+     `VAPID_SUBJECT` se había guardado como campo "Note" (documentación
+     interna de Vercel, nunca llega a `process.env`) en vez de "Value" —
+     detectado por un ícono distinto (📄 vs 🔒) junto a esa variable en un
+     screenshot del dashboard. Corregido por el Product Owner
+     (recargada como Value, `28919ba` forzó el redeploy).
+
+  **Confirmado end-to-end contra infraestructura real** (`curl` directo a
+  `/api/cron/creditos-vencidos` en producción, con un crédito y
+  suscripciones de prueba reales, reseteando
+  `notificacionVencidoEnviada` entre corridas para reenviar a propósito):
+  3/3 suscripciones activas del Product Owner recibieron el push real
+  (`ok:true`) en su celular (confirmado visualmente por él, "YA ESTÁ") —
+  2 suscripciones viejas de pruebas anteriores, ya expiradas, se
+  auto-limpiaron solas vía 410 (confirma H3 con infraestructura real, no
+  solo con los mocks de `webPush.test.ts`).
+
+  **Cierre:** instrumentación de debug temporal (`debug`/`motivo`,
+  agregada en `e9e21e6` para diagnosticar el problema de VAPID_SUBJECT)
+  revertida (`5fbdae1`) una vez confirmada la entrega real. Cliente
+  "PRUEBA PUSH — borrar" y su Venta/Crédito de prueba borrados de Neon
+  (producción — mismo entorno que dev, ver riesgo ya documentado en
+  `memory/decisiones-tecnicas.md`).
+
 ## 16D — Playwright: 5 flujos críticos
 
 - [x] S16-15 — `npm install -D @playwright/test`, `npx playwright install
