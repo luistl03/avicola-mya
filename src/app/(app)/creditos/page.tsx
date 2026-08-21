@@ -1,14 +1,16 @@
 import { EstadoCuentaCliente } from "@/components/domain/creditos/estado-cuenta-cliente";
 import { PanelAlertas } from "@/components/domain/creditos/panel-alertas";
+import { SuscripcionPushToggle } from "@/components/domain/creditos/suscripcion-push-toggle";
 import { PageHeader } from "@/components/layout/page-header";
 import { hoyEnLima } from "@/lib/zod/comun";
+import { auth } from "@/server/auth";
 import { listarCreditosPendientesConCliente } from "@/server/repositories/credito";
 
 // Sin guard de rol: igual que /pos/consolidacion/recoleccion, esta
 // pantalla queda abierta a GERENTE y OPERARIO por igual (decisión 10,
 // spec.md). Sin entrada en server/auth/rbac.ts.
 export default async function CreditosPage() {
-  const creditosPendientes = await listarCreditosPendientesConCliente();
+  const [session, creditosPendientes] = await Promise.all([auth(), listarCreditosPendientesConCliente()]);
   // hoyEnLima() (D5), no new Date() crudo — Credito.fechaLimite es una
   // fecha-calendario anclada a medianoche UTC (mismo criterio que
   // hoyEnLima()); comparar contra la hora real del servidor podía dar un
@@ -19,7 +21,10 @@ export default async function CreditosPage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-8">
-      <PageHeader title="Créditos" description="Alertas por antigüedad y estado de cuenta por cliente." />
+      <PageHeader
+        title="Créditos"
+        actions={session?.user?.rol === "GERENTE" ? <SuscripcionPushToggle /> : undefined}
+      />
 
       <PanelAlertas
         // Decimal de Prisma nunca cruza el límite Server→Client Component

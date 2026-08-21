@@ -4,6 +4,8 @@ import {
   calcularFechaLimiteSugerida,
   calcularNivelAlerta,
   calcularSaldoPendiente,
+  construirMensajePush,
+  creditosParaNotificar,
   resumirAlertasCredito,
   validarFechaLimite,
 } from "@/server/services/credito";
@@ -92,5 +94,55 @@ describe("resumirAlertasCredito", () => {
       { montoTotal: 80, montoPagado: 30, fechaLimite: fechaADiasDe(HOY, -10) }, // VENCIDO_CRITICO, saldo 50
     ];
     expect(resumirAlertasCredito(creditos, HOY)).toEqual({ cantidadVencidos: 2, montoVencido: 200 });
+  });
+});
+
+describe("creditosParaNotificar", () => {
+  it("lista vacía — nada para notificar", () => {
+    expect(creditosParaNotificar([], HOY)).toEqual([]);
+  });
+
+  it("crédito que vence exactamente hoy — VENCIDO_RECIENTE, se notifica", () => {
+    const creditos = [{ id: "c1", fechaLimite: HOY }];
+    expect(creditosParaNotificar(creditos, HOY)).toEqual(["c1"]);
+  });
+
+  it("crédito vencido hace 5 días — sigue VENCIDO_RECIENTE, se notifica", () => {
+    const creditos = [{ id: "c1", fechaLimite: fechaADiasDe(HOY, -5) }];
+    expect(creditosParaNotificar(creditos, HOY)).toEqual(["c1"]);
+  });
+
+  it("crédito POR_VENCER (todavía no vence) — no se notifica", () => {
+    const creditos = [{ id: "c1", fechaLimite: fechaADiasDe(HOY, 2) }];
+    expect(creditosParaNotificar(creditos, HOY)).toEqual([]);
+  });
+
+  it("crédito VENCIDO_CRITICO (más de 7 días vencido) — no se notifica", () => {
+    const creditos = [{ id: "c1", fechaLimite: fechaADiasDe(HOY, -10) }];
+    expect(creditosParaNotificar(creditos, HOY)).toEqual([]);
+  });
+
+  it("mezcla — solo devuelve los ids en VENCIDO_RECIENTE", () => {
+    const creditos = [
+      { id: "por-vencer", fechaLimite: fechaADiasDe(HOY, 1) },
+      { id: "recien-vencido", fechaLimite: HOY },
+      { id: "critico", fechaLimite: fechaADiasDe(HOY, -8) },
+    ];
+    expect(creditosParaNotificar(creditos, HOY)).toEqual(["recien-vencido"]);
+  });
+});
+
+describe("construirMensajePush", () => {
+  it("arma título fijo y cuerpo con nombre de cliente y saldo formateado", () => {
+    const credito = { cliente: { nombre: "Juan Pérez" }, montoTotal: 200, montoPagado: 50 };
+    expect(construirMensajePush(credito)).toEqual({
+      titulo: "Crédito vencido",
+      cuerpo: "Juan Pérez debe S/ 150.00",
+    });
+  });
+
+  it("saldo con decimales se redondea a 2 posiciones", () => {
+    const credito = { cliente: { nombre: "Ana" }, montoTotal: 99.999, montoPagado: 0 };
+    expect(construirMensajePush(credito).cuerpo).toBe("Ana debe S/ 100.00");
   });
 });

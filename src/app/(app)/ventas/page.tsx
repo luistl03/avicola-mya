@@ -92,7 +92,7 @@ export default async function VentasPage({
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-8">
-      <PageHeader title="Ventas" description="Historial de ventas del punto de venta." />
+      <PageHeader title="Ventas"/>
       <VentaFiltros
         metodoPago={metodoPagoParam}
         tipo={tipoParam}

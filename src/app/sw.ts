@@ -2,9 +2,33 @@ import { defaultCache } from "@serwist/turbopack/worker";
 import { ExpirationPlugin, NetworkFirst, NetworkOnly, Serwist } from "serwist";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 
+// Sprint 16 — Web Push. El tsconfig del proyecto solo carga la lib "dom"
+// (no "webworker": las dos chocan por definiciones de Event/MessageEvent
+// incompatibles) — por eso WorkerGlobalScope acá NO es el
+// ServiceWorkerGlobalScope real del navegador, es una interfaz nueva
+// creada desde cero por la declaración de abajo (ya existía así desde
+// Sprint 13, solo con __SW_MANIFEST). PushEvent/NotificationEvent
+// tampoco existen en "dom" — se declaran mínimamente acá con la forma
+// real de la API (confirmada contra lib.webworker.d.ts de TypeScript),
+// sin traer la lib completa. Notification/ServiceWorkerRegistration SÍ
+// vienen de "dom" (se usan tal cual, ya escritos allí).
+interface PushEvent extends Event {
+  readonly data: { json(): unknown } | null;
+  waitUntil(f: Promise<unknown>): void;
+}
+
+interface NotificationEvent extends Event {
+  readonly notification: Notification;
+  waitUntil(f: Promise<unknown>): void;
+}
+
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
     __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
+    addEventListener(type: "push", listener: (event: PushEvent) => void): void;
+    addEventListener(type: "notificationclick", listener: (event: NotificationEvent) => void): void;
+    registration: ServiceWorkerRegistration;
+    clients: { openWindow(url: string): Promise<unknown> };
   }
 }
 declare const self: WorkerGlobalScope;
@@ -101,3 +125,25 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// Sprint 16 — Web Push. Eventos nativos del Service Worker, no pasan por
+// las estrategias de runtimeCaching de Serwist, se registran aparte.
+type PayloadPush = { titulo: string; cuerpo: string; url: string };
+
+self.addEventListener("push", (event) => {
+  const datos = event.data?.json() as PayloadPush | undefined;
+  if (!datos) return;
+  event.waitUntil(
+    self.registration.showNotification(datos.titulo, {
+      body: datos.cuerpo,
+      icon: "/icons/icon-192.png",
+      data: { url: datos.url },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data as { url?: string } | undefined)?.url ?? "/";
+  event.waitUntil(self.clients.openWindow(url));
+});

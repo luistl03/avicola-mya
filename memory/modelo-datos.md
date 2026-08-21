@@ -76,6 +76,16 @@ el detalle completo del porqué.
   Instancia única.
 - **D4**: `Egreso` no tiene campo de archivo adjunto.
 
+## Idempotencia del cron: `Credito.notificacionVencidoEnviada` (Sprint 16)
+Campo nuevo, `Boolean @default(false)`, migración aditiva (no destructiva).
+El cron diario de créditos vencidos (`/api/cron/creditos-vencidos`) puede
+correr más de una vez el mismo día (retry de Vercel Cron en plan Hobby, sin
+garantía de ejecución única) — sin este campo, un crédito recién vencido
+podría disparar el mismo push dos veces. Se marca `true` en la misma
+corrida del cron que lo notificó (best-effort: se marca aunque el envío a
+alguna `PushSubscription` puntual haya fallado por un motivo transitorio,
+ver `specs/sprint-16-push-hardening-uat/spec.md`, corolario de diseño 4).
+
 ## Índices que no son obvios y por qué existen
 
 - `Credito(estado, fechaLimite)` — el panel de alertas del Gerente filtra

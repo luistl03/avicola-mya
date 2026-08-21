@@ -194,6 +194,49 @@ de datos ya traídos. Componentes nuevos:
 
 ---
 
+## D12 — Playwright E2E corre contra Neon dev real ✅ CERRADO (2026-08-20, Sprint 16)
+**Decisión:** los 5 flujos E2E de Playwright de este sprint corren contra
+la misma base Neon de desarrollo que usa el resto del proyecto para
+"verificación en vivo" — no se provisiona una base/rama de Neon aislada
+nueva solo para tests.
+**Motivo:** consistencia con el criterio ya establecido en Sprints 1-15
+(scripts temporales contra Neon real, nunca mocks para verificación
+final). Provisionar y mantener una rama de Neon aparte solo para
+CI/Playwright es un costo de infraestructura nuevo que el roadmap no pide
+resolver este sprint.
+**Riesgo aceptado, mitigado por diseño:** cada spec de
+`tests/e2e/*.spec.ts` crea sus propios datos de prueba con nombres
+reconocibles y los borra en `afterAll` (incluso si el test falla), usa un
+Usuario de prueba dedicado (no las cuentas reales sembradas), y los 5
+flujos se corren manualmente/local — no integrados a GitHub Actions en
+cada PR (ver "Fuera de alcance", `specs/sprint-16-push-hardening-uat/spec.md`)
+para no competir con sesiones de prueba manual del Product Owner sin
+coordinación.
+**Impacto:** confirma el diseño de
+`specs/sprint-16-push-hardening-uat/plan.md` — `playwright.config.ts` con
+`baseURL: http://localhost:3000` (contra `npm run dev`, no un build de
+producción).
+
+---
+
+## D13 — Librería de Web Push: `web-push` ✅ CERRADO (2026-08-20, Sprint 16)
+**Decisión:** se usa `web-push` (Node, MIT) para enviar notificaciones
+VAPID desde el servidor (cron de créditos vencidos).
+**Motivo:** es la librería de referencia del ecosistema Node para Web Push
+con VAPID — implementa el protocolo completo (cifrado del payload,
+firmado JWT del header VAPID) sin que el proyecto tenga que
+reimplementarlo a mano. No hay alternativa real más liviana para este
+caso de uso, y no depende de ningún servicio de terceros de pago (mantiene
+el presupuesto $0 del stack).
+**Impacto:** confirma el diseño de
+`specs/sprint-16-push-hardening-uat/plan.md` — `lib/webPush.ts` envuelve
+`web-push`, mismo criterio ADR-000 que `lib/rate-limit.ts` envuelve
+Upstash (integración externa sin Prisma vive en `lib/`, no en
+`services/`/`repositories/`). `stack-tecnologico.md` gana la confirmación
+de "Web Push (VAPID)" como real, no solo intención.
+
+---
+
 ## Historial de revisión
 Si alguna de estas decisiones cambia en el futuro, se agrega una sección
 nueva abajo con fecha, motivo del cambio y qué se migró — nunca se

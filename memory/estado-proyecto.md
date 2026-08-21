@@ -2355,3 +2355,87 @@ necesario — repository sin tests por convención, y no hay lógica de
 negocio nueva que testear, solo lectura paginada). Verificación en vivo
 contra Neon real queda para cuando se retome la verificación general de
 Sprint 12 (S12-21/S12-22).
+
+## Sprint 16 — Push, hardening y UAT, en ejecución (2026-08-20/21)
+Último sprint del roadmap. Planificado y ejecutándose en la misma sesión
+(`specs/sprint-16-push-hardening-uat/`). H1-H5 completos y verificados en
+vivo; detalle completo de cada hallazgo real en `tasks.md` de esa carpeta
+— acá solo el resumen para no tener que releer todo.
+
+**H1-H4 (Push real de créditos vencidos, cron diario):** suscripción vía
+`/creditos` (solo Gerente), cron `/api/cron/creditos-vencidos` protegido
+con `CRON_SECRET`, idempotencia real (`Credito.notificacionVencidoEnviada`,
+migración nueva) verificada con dos invocaciones seguidas del cron el
+mismo día sin duplicar. **Falta que el Product Owner acepte el permiso
+nativo de notificaciones del navegador una vez** (la extensión Claude in
+Chrome no puede interactuar con diálogos nativos de Chrome, mismo límite
+que ya documentaba `resize_window`) — instrucciones paso a paso ya
+entregadas, pendiente de confirmación humana, idealmente durante el UAT
+(H7). **Vercel: sigue pendiente cargar las 5 env vars nuevas** (`VAPID_*`,
+`CRON_SECRET`) en Production+Preview antes de desplegar — generadas y
+verificadas solo en local.
+
+**H5 (Playwright, 5 flujos E2E):** instalado y funcionando —
+`playwright.config.ts`, `tests/e2e/helpers.ts` +
+`login.spec.ts`/`pos-venta-contado.spec.ts`/`pos-venta-credito-abono.spec.ts`/
+`mortalidad-offline.spec.ts`/`lote-alta-mudanza.spec.ts` (D12: contra
+Neon dev real). 7/7 tests en verde, corridos 3 veces cada uno para
+confirmar que no son intermitentes, más una corrida conjunta final.
+
+**Incidente real durante el desarrollo de S16-18 (venta a crédito +
+abono), ya resuelto — el más importante de anotar acá:** la primera
+versión del test, con un locator "Registrar abono" sin acotar a la fila
+del cliente de prueba, hizo clic por error en el crédito REAL de una
+clienta sembrada en Neon dev (Nancy Marlene Quiroz Ninaquispe) en dos
+corridas seguidas, registrando 2 `HistorialAbonos` falsos de S/35.55
+cada uno. Detectado por Claude Code mismo (no por el Product Owner) al
+investigar por qué quedaban usuarios de prueba huérfanos —
+`HistorialAbonos.usuarioId` es `onDelete: Restrict`, así que el intento
+de borrar el usuario de prueba falló y expuso el problema. Revertido a
+mano contra Neon dev (`HistorialAbonos` falsos eliminados,
+`Credito.montoPagado` restaurado a 0) y **confirmado en el navegador
+real que el saldo de Nancy volvió a S/96.00**, su valor original. El
+test quedó corregido acotando cualquier locator ambiguo a la fila
+identificada por datos únicos del propio test (mismo criterio aplicado
+preventivamente en el resto de los specs). **Lección para cualquier
+E2E futuro contra Neon dev real (D12): un botón con texto genérico
+("Registrar abono", "Editar", "Eliminar") que también existe en datos
+reales sembrados es una trampa real, no teórica — todo locator de
+acción debe acotarse a un contenedor identificado por un dato único del
+propio test antes de hacer clic, nunca asumir que es el único de la
+pantalla.**
+
+Otros 3 hallazgos reales de S16 (todos de diseño de los propios tests,
+no del producto): `AuditLog`/`HistorialAbonos` con `onDelete: Restrict`
+bloqueaban borrar usuarios de prueba tras cualquier mutación real
+(corregido en `helpers.ts`); `getByLabel` de Playwright hace match por
+substring por defecto ("Contraseña" matcheaba el botón "Mostrar
+contraseña"); fecha UTC cruda vs. América/Lima (D5) en el formulario de
+alta de Lote — mismo tipo de bug que ya tiene precedente en el proyecto
+(Sprint 3 Bug 4, Sprint 15 `listarDiasDelRango`).
+
+**H6 (auditoría de performance) completa, sin hallazgos que corregir:**
+`EXPLAIN ANALYZE` contra Neon dev real sobre las queries de mayor riesgo
+(`listarLotesConUbicacion`, `listarGalponesConOcupacion`,
+`listarVentas` — las 3 con joins/counts anidados — más las queries de
+mayor frecuencia del dashboard/reportes:
+`sumarMortalidadEnRango`/`sumarProduccionEnRango`/`listarEgresosEnRango`/
+`listarCreditosPendientesConFechaLimiteEnRango`). Todas muestran `Seq
+Scan` en vez de `Index Scan` — confirmado que es la decisión CORRECTA
+del planner de Postgres al tamaño actual de estas tablas (unas pocas
+filas cada una: un índice cuesta más que recorrer la tabla completa a
+este volumen), no un índice faltante — cada una ya tiene el índice
+correcto disponible para cuando la tabla crezca (confirmado en vivo:
+`RegistroRecoleccion`, con más filas que las demás, ya usa su propio
+índice real,
+`RegistroRecoleccion_creadoEn_revertido_idx`). El índice de
+`RegistroMortalidad` agregado en Sprint 15 (S15-26) sigue vigente y
+correcto. **Sin deuda nueva documentada** — no se encontró ningún caso
+nuevo del patrón real de Sprint 15 (filtro de fecha sin índice
+aplicable).
+
+Queda pendiente: H7 (UAT con Gerente + Operario en campo + manual de
+usuario) — no se puede ejecutar sin la participación real del Product
+Owner/Operario, coordinar aparte. S13-21 (verificación en iPhone real)
+queda pendiente indefinidamente, sin dispositivo disponible — decisión
+explícita del Product Owner de no perseguirlo en este sprint.

@@ -41,6 +41,38 @@ export function validarFechaLimite(fechaLimite: Date, hoy: Date): boolean {
 // del dashboard. Recibe la misma lista que ya trajo
 // listarCreditosPendientesConCliente (repository) — sin una query aparte,
 // dashboard y /creditos comparten una sola fuente de datos.
+// Sprint 16 — decide, sin tocar la base, qué créditos de la lista ya
+// traída por el repository (solo PENDIENTES con
+// notificacionVencidoEnviada = false, ver
+// listarCreditosPendientesSinNotificar) cruzan a "recién vencido" hoy.
+// Reutiliza calcularNivelAlerta — no un cuarto nivel nuevo ni un cálculo
+// de fecha aparte. Como el repository ya excluye los créditos ya
+// notificados, un crédito solo puede aparecer acá una vez en su historia
+// (la primera corrida del cron que lo ve en VENCIDO_RECIENTE) — no hace
+// falta comparar contra "exactamente el día que cruzó", el propio flag
+// de "ya notificado" evita el reenvío en días siguientes.
+export function creditosParaNotificar(
+  creditos: { id: string; fechaLimite: Date }[],
+  hoy: Date,
+): string[] {
+  return creditos
+    .filter((credito) => calcularNivelAlerta(credito.fechaLimite, hoy) === "VENCIDO_RECIENTE")
+    .map((credito) => credito.id);
+}
+
+// Sprint 16 — arma el texto del push, función pura y testeable sin red.
+export function construirMensajePush(credito: {
+  cliente: { nombre: string };
+  montoTotal: number;
+  montoPagado: number;
+}): { titulo: string; cuerpo: string } {
+  const saldo = calcularSaldoPendiente(credito.montoTotal, credito.montoPagado);
+  return {
+    titulo: "Crédito vencido",
+    cuerpo: `${credito.cliente.nombre} debe S/ ${saldo.toFixed(2)}`,
+  };
+}
+
 export function resumirAlertasCredito(
   creditos: { montoTotal: number; montoPagado: number; fechaLimite: Date }[],
   hoy: Date,

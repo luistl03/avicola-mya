@@ -90,4 +90,22 @@ describe("guard por rol de src/proxy.ts (H1, Sprint 2)", () => {
 
     expect(res?.status).toBe(429);
   });
+
+  it("Sprint 16 — /api/cron/creditos-vencidos sin sesión NO redirige a /login (se autentica solo con CRON_SECRET dentro de la ruta)", async () => {
+    const req = fakeRequest("/api/cron/creditos-vencidos", null);
+
+    const res = await proxyHandler(req, FAKE_CTX);
+
+    expect(res?.status).not.toBe(302);
+    expect(res?.status).not.toBe(307);
+    expect(res?.headers.get("location")).toBeNull();
+  });
+
+  it("Sprint 16 — /api/cron/creditos-vencidos también deja pasar una sesión real, sin chequeo de rol", async () => {
+    const req = fakeRequest("/api/cron/creditos-vencidos", { user: { id: "u1", rol: "OPERARIO" } });
+
+    const res = await proxyHandler(req, FAKE_CTX);
+
+    expect(res?.status).not.toBe(403);
+  });
 });

@@ -36,8 +36,9 @@
   desde Sprint 0 (D7, `decisiones-tecnicas.md`, Sprint 13).
 - **Dexie** (wrapper de IndexedDB) — cola local de operaciones pendientes.
   (Sprint 14, sin instalar todavía.)
-- **Web Push (VAPID)** — notificaciones push para alertas de crédito vencido.
-  (Sprint 16, sin instalar todavía.)
+- **Web Push (VAPID)**, vía `web-push` (D13) — notificaciones push para
+  alertas de crédito vencido. `lib/webPush.ts` envuelve la librería, mismo
+  criterio que `lib/rate-limit.ts` con Upstash (Sprint 16).
 
 ## Comprobantes (Sprint 9)
 - **jsPDF** — genera el comprobante de venta del POS como PDF **enteramente
@@ -73,7 +74,8 @@
 ## Testing
 - **Vitest** — unit tests de `services/` (lógica pura) e integración de
   Server Actions.
-- **Playwright** — E2E de los flujos críticos.
+- **Playwright** (D12) — E2E de los 5 flujos críticos, contra Neon dev real
+  (no una base aislada), ejecución manual/local (Sprint 16).
 
 ## Infraestructura
 - **Vercel** — hosting, preview deployments automáticos por PR, Vercel Cron

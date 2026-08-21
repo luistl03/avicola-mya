@@ -27,7 +27,12 @@ export default auth(async (req) => {
     return NextResponse.next();
   }
 
-  const esRutaPublica = pathname === "/login";
+  // /api/cron/* (Sprint 16): invocado por Vercel Cron, sin cookie de
+  // sesión — se autentica solo con CRON_SECRET dentro del propio Route
+  // Handler (src/app/api/cron/creditos-vencidos/route.ts). Sin esta
+  // exclusión, el guard de abajo redirigiría el cron a /login antes de
+  // que la ruta pueda verificar su secreto.
+  const esRutaPublica = pathname === "/login" || pathname.startsWith("/api/cron");
 
   if (!req.auth && !esRutaPublica) {
     return NextResponse.redirect(new URL("/login", req.nextUrl.origin));

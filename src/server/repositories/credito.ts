@@ -127,6 +127,36 @@ export function listarCreditosPendientesConFechaLimiteEnRango(desde: Date, hasta
   });
 }
 
+// Sprint 16 — créditos PENDIENTES aún no notificados por el cron de
+// vencimientos, con el cliente ya aplanado en el select (único consumidor
+// es el Route Handler del cron, sin JSX que aplane un include, mismo
+// criterio de "aplanar en el punto de consumo" que ya usa
+// listarVentasParaRankingEnRango). Usa el índice
+// Credito(estado, fechaLimite) ya documentado en modelo-datos.md.
+export function listarCreditosPendientesSinNotificar() {
+  return prisma.credito.findMany({
+    where: { estado: "PENDIENTE", notificacionVencidoEnviada: false },
+    select: {
+      id: true,
+      fechaLimite: true,
+      montoTotal: true,
+      montoPagado: true,
+      cliente: { select: { nombre: true } },
+    },
+  });
+}
+
+// Sprint 16 — marca en batch los créditos que el cron efectivamente
+// notificó este ciclo (best-effort: se marcan aunque algún envío
+// individual haya fallado por un motivo transitorio, ver
+// specs/sprint-16-push-hardening-uat/spec.md, corolario de diseño 4).
+export function marcarCreditosComoNotificados(ids: string[]) {
+  return prisma.credito.updateMany({
+    where: { id: { in: ids } },
+    data: { notificacionVencidoEnviada: true },
+  });
+}
+
 // Estado de cuenta: TODOS los créditos de un cliente (PENDIENTE y
 // LIQUIDADO), con su historial de abonos completo — usa el índice
 // Credito(clienteId).
