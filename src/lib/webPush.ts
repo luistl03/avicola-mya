@@ -12,7 +12,9 @@ if (vapidConfigurado) {
   );
 }
 
-export type ResultadoEnvioPush = { ok: true } | { ok: false; suscripcionInvalida: boolean };
+export type ResultadoEnvioPush =
+  | { ok: true }
+  | { ok: false; suscripcionInvalida: boolean; motivo?: string };
 
 /**
  * Envía una notificación push real a una suscripción. `suscripcionInvalida`
@@ -29,7 +31,7 @@ export async function enviarNotificacionPush(
     // Sin claves VAPID configuradas (entorno local sin .env completo, o
     // primer deploy antes de cargar las env vars en Vercel) — no se
     // bloquea nada, mismo criterio que lib/rate-limit.ts sin Upstash.
-    return { ok: false, suscripcionInvalida: false };
+    return { ok: false, suscripcionInvalida: false, motivo: "VAPID no configurado" };
   }
 
   try {
@@ -40,6 +42,12 @@ export async function enviarNotificacionPush(
     return { ok: true };
   } catch (error) {
     const statusCode = (error as { statusCode?: number }).statusCode;
-    return { ok: false, suscripcionInvalida: statusCode === 404 || statusCode === 410 };
+    const body = (error as { body?: string }).body;
+    const mensaje = error instanceof Error ? error.message : String(error);
+    return {
+      ok: false,
+      suscripcionInvalida: statusCode === 404 || statusCode === 410,
+      motivo: `status=${statusCode} body=${body} msg=${mensaje}`,
+    };
   }
 }

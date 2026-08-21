@@ -37,10 +37,17 @@ export async function GET(request: Request) {
   const idsParaNotificar = creditosParaNotificar(creditosAplanados, hoyEnLima());
   const creditosParaEnviar = creditosAplanados.filter((credito) => idsParaNotificar.includes(credito.id));
 
+  // DEBUG TEMPORAL (Sprint 16, verificación en vivo) — detalle real de
+  // cada envío para diagnosticar por qué un push no llega, sin depender
+  // de logs del servidor que no se pueden ver desde acá. Revertir antes
+  // de cerrar el sprint (ver S16-14b en tasks.md).
+  const debug: unknown[] = [];
+
   for (const credito of creditosParaEnviar) {
     const mensaje = construirMensajePush(credito);
     for (const suscripcion of suscripciones) {
       const resultado = await enviarNotificacionPush(suscripcion, { ...mensaje, url: "/creditos" });
+      debug.push({ suscripcionId: suscripcion.id, resultado });
       if (!resultado.ok && resultado.suscripcionInvalida) {
         await eliminarSuscripcionPushPorId(suscripcion.id);
       }
@@ -55,5 +62,9 @@ export async function GET(request: Request) {
     await marcarCreditosComoNotificados(idsParaNotificar);
   }
 
-  return NextResponse.json({ notificados: idsParaNotificar.length });
+  return NextResponse.json({
+    notificados: idsParaNotificar.length,
+    suscripcionesEncontradas: suscripciones.length,
+    debug,
+  });
 }
